@@ -22,9 +22,14 @@ function Estrelas({ avaliacao }: { avaliacao: number | null }) {
   )
 }
 
-export default function ProfissionalCard({ profissional }: { profissional: Profissional }) {
+interface ProfissionalCardProps {
+  profissional: Profissional
+  baseHref?: string
+}
+
+export default function ProfissionalCard({ profissional, baseHref = '/app/profissionais' }: ProfissionalCardProps) {
   return (
-    <Link href={`/app/rotina/profissionais/${profissional.id}`} className="block">
+    <Link href={`${baseHref}/${profissional.id}`} className="block">
       <div
         className="flex flex-col gap-2 px-4 py-4 bg-white"
         style={{ borderRadius: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
@@ -87,7 +92,7 @@ export default function ProfissionalCard({ profissional }: { profissional: Profi
                 className="font-bold uppercase tracking-wide"
                 style={{
                   fontSize: 10,
-                  backgroundColor: '#F5F5F5',
+                  backgroundColor: '#E8F5F4',
                   color: '#1B5E5A',
                   borderRadius: 6,
                   padding: '2px 8px',

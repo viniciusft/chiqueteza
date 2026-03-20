@@ -71,7 +71,7 @@ export default function NovaProfissionalPage() {
       setSalvando(false)
       return
     }
-    router.push('/app/rotina')
+    router.push('/app/profissionais')
   }
 
   return (

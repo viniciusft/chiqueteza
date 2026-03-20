@@ -50,7 +50,7 @@ export default async function ProfissionalPerfilPage({
       <AppHeader
         actions={
           <Link
-            href={`/app/rotina/profissionais/${params.id}/editar`}
+            href={`/app/profissionais/${params.id}/editar`}
             className="text-gray-400 font-medium"
             style={{ fontSize: 14 }}
           >
@@ -63,7 +63,7 @@ export default async function ProfissionalPerfilPage({
 
         {/* Cabeçalho da profissional */}
         <div className="flex flex-col gap-2">
-          <Link href="/app/rotina" className="text-gray-400 text-sm">← Voltar</Link>
+          <Link href="/app/profissionais" className="text-gray-400 text-sm">← Voltar</Link>
           <h1 className="font-extrabold tracking-tight" style={{ fontSize: 24, color: '#171717' }}>
             {profissional.nome}
           </h1>
@@ -82,7 +82,7 @@ export default async function ProfissionalPerfilPage({
                   className="font-bold uppercase tracking-wide"
                   style={{
                     fontSize: 10,
-                    backgroundColor: '#F5F5F5',
+                    backgroundColor: '#E8F5F4',
                     color: '#1B5E5A',
                     borderRadius: 6,
                     padding: '3px 8px',

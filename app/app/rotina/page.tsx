@@ -4,7 +4,6 @@ import AppHeader from '@/components/ui/AppHeader'
 import PageContainer from '@/components/ui/PageContainer'
 import LogoutButton from '../LogoutButton'
 import AgendamentoCard from './_components/AgendamentoCard'
-import ProfissionalCard from './_components/ProfissionalCard'
 import RotinaSeedFAB from './_components/RotinaSeedFAB'
 
 function diasAtraso(ultimoProcedimento: string, frequenciaDias: number): number {
@@ -28,7 +27,6 @@ export default async function RotinaPage() {
   const [
     { data: servicos },
     { data: agendamentos },
-    { data: profissionais },
     { data: gastosMes },
   ] = await Promise.all([
     supabase
@@ -44,12 +42,6 @@ export default async function RotinaPage() {
       .eq('status', 'agendado')
       .gte('data_hora', new Date().toISOString())
       .order('data_hora', { ascending: true }),
-    supabase
-      .from('profissionais')
-      .select('*')
-      .eq('usuario_id', user.id)
-      .eq('ativo', true)
-      .order('nome'),
     supabase
       .from('agendamentos_rotina')
       .select('valor')
@@ -72,6 +64,10 @@ export default async function RotinaPage() {
       <AppHeader actions={<LogoutButton />} />
 
       <main className="flex flex-col gap-5 px-5 py-6 pb-24">
+
+        <h1 className="font-extrabold tracking-tight" style={{ fontSize: 24, color: '#171717' }}>
+          Rotina
+        </h1>
 
         {/* Alertas de intervalo */}
         {alertas.length > 0 && (
@@ -121,26 +117,6 @@ export default async function RotinaPage() {
           ) : (
             (agendamentos ?? []).map((ag) => (
               <AgendamentoCard key={ag.id} agendamento={ag} />
-            ))
-          )}
-        </section>
-
-        {/* Minhas Profissionais */}
-        <section className="flex flex-col gap-2">
-          <h2 className="font-bold text-gray-500 uppercase tracking-widest" style={{ fontSize: 11 }}>
-            Minhas Profissionais
-          </h2>
-          {(profissionais ?? []).length === 0 ? (
-            <div
-              className="flex flex-col items-center gap-2 py-8"
-              style={{ borderRadius: 16, backgroundColor: '#fff', border: '1.5px solid #E8E8E8' }}
-            >
-              <span style={{ fontSize: 32 }}>💅</span>
-              <p className="text-gray-400 text-sm">Adicione suas profissionais favoritas</p>
-            </div>
-          ) : (
-            (profissionais ?? []).map((p) => (
-              <ProfissionalCard key={p.id} profissional={p} />
             ))
           )}
         </section>
