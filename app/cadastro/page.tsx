@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Button from '@/components/ui/Button'
+import AppHeader from '@/components/ui/AppHeader'
+import PageContainer from '@/components/ui/PageContainer'
 import { createClient } from '@/lib/supabase/client'
 
 export default function CadastroPage() {
@@ -23,9 +25,7 @@ export default function CadastroPage() {
     const { error } = await supabase.auth.signUp({
       email,
       password: senha,
-      options: {
-        data: { nome },
-      },
+      options: { data: { nome } },
     })
 
     if (error) {
@@ -40,33 +40,33 @@ export default function CadastroPage() {
   }
 
   return (
-    <main className="min-h-screen bg-silver-platter flex flex-col items-center justify-center px-6 py-12">
+    <PageContainer>
+      <AppHeader />
 
-      <div className="w-full max-w-sm flex flex-col gap-8">
+      <main className="flex flex-col px-5 py-8 gap-6">
 
-        {/* Cabeçalho */}
-        <div className="flex flex-col items-center gap-2 text-center">
-          <Link href="/" className="text-3xl font-bold text-ever-green tracking-tight">
-            Chiqueteza
-          </Link>
-          <p className="text-gray-500 text-sm">Crie sua conta e comece agora ✨</p>
+        {/* Título */}
+        <div className="flex flex-col gap-1">
+          <h1 className="font-extrabold tracking-tight" style={{ fontSize: 24, color: '#171717' }}>
+            Crie sua conta
+          </h1>
+          <p className="text-gray-500" style={{ fontSize: 14 }}>
+            É rápido e gratuito
+          </p>
         </div>
 
-        {/* Card do formulário */}
-        <form onSubmit={handleSubmit} className="bg-white rounded-3xl shadow-sm px-6 py-8 flex flex-col gap-5">
+        {/* Formulário */}
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
 
-          <h2 className="text-xl font-semibold text-gray-800">Criar conta</h2>
-
-          {/* Mensagem de erro */}
           {erro && (
-            <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+            <p className="text-sm text-red-600 bg-red-50 px-4 py-3"
+              style={{ borderRadius: 12, border: '1.5px solid #fecaca' }}>
               {erro}
             </p>
           )}
 
-          {/* Campo nome */}
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="nome" className="text-sm font-medium text-gray-700">
+            <label htmlFor="nome" className="font-semibold text-gray-700" style={{ fontSize: 14 }}>
               Nome
             </label>
             <input
@@ -77,13 +77,20 @@ export default function CadastroPage() {
               required
               value={nome}
               onChange={(e) => setNome(e.target.value)}
-              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-base text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-ever-green focus:border-transparent transition"
+              className="w-full text-gray-800 placeholder-gray-400 transition focus:outline-none"
+              style={{
+                borderRadius: 12,
+                border: '1.5px solid #E8E8E8',
+                padding: '12px 16px',
+                fontSize: 15,
+              }}
+              onFocus={(e) => (e.target.style.borderColor = '#1B5E5A')}
+              onBlur={(e) => (e.target.style.borderColor = '#E8E8E8')}
             />
           </div>
 
-          {/* Campo email */}
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="email" className="text-sm font-medium text-gray-700">
+            <label htmlFor="email" className="font-semibold text-gray-700" style={{ fontSize: 14 }}>
               E-mail
             </label>
             <input
@@ -94,13 +101,20 @@ export default function CadastroPage() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-base text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-ever-green focus:border-transparent transition"
+              className="w-full text-gray-800 placeholder-gray-400 transition focus:outline-none"
+              style={{
+                borderRadius: 12,
+                border: '1.5px solid #E8E8E8',
+                padding: '12px 16px',
+                fontSize: 15,
+              }}
+              onFocus={(e) => (e.target.style.borderColor = '#1B5E5A')}
+              onBlur={(e) => (e.target.style.borderColor = '#E8E8E8')}
             />
           </div>
 
-          {/* Campo senha */}
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="senha" className="text-sm font-medium text-gray-700">
+            <label htmlFor="senha" className="font-semibold text-gray-700" style={{ fontSize: 14 }}>
               Senha
             </label>
             <input
@@ -112,26 +126,32 @@ export default function CadastroPage() {
               minLength={6}
               value={senha}
               onChange={(e) => setSenha(e.target.value)}
-              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-base text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-ever-green focus:border-transparent transition"
+              className="w-full text-gray-800 placeholder-gray-400 transition focus:outline-none"
+              style={{
+                borderRadius: 12,
+                border: '1.5px solid #E8E8E8',
+                padding: '12px 16px',
+                fontSize: 15,
+              }}
+              onFocus={(e) => (e.target.style.borderColor = '#1B5E5A')}
+              onBlur={(e) => (e.target.style.borderColor = '#E8E8E8')}
             />
           </div>
 
-          {/* Botão criar conta */}
-          <Button variant="secondary" fullWidth type="submit" disabled={carregando}>
-            {carregando ? 'Criando conta...' : 'Criar conta'}
+          <Button variant="secondary" fullWidth type="submit" loading={carregando}>
+            Criar conta
           </Button>
 
         </form>
 
-        {/* Link já tenho conta */}
         <p className="text-center text-sm text-gray-500">
           Já tem conta?{' '}
-          <Link href="/login" className="text-ever-green font-semibold hover:underline">
+          <Link href="/login" className="font-semibold hover:underline" style={{ color: '#1B5E5A' }}>
             Entrar
           </Link>
         </p>
 
-      </div>
-    </main>
+      </main>
+    </PageContainer>
   )
 }
