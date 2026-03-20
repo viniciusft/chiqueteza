@@ -9,29 +9,62 @@
 - **Supabase URL:** https://zzrlrrzdusrtkkyvtirm.supabase.co
 
 ## O que é este app
-Assistente pessoal de beleza B2C. Múltiplas features entregando valor ao consumidor final.
-Foco: mulheres entre 18–45 anos, alta recorrência em serviços de beleza.
+Assistente pessoal de beleza B2C. Foco em mulheres entre 18–45 anos
+com alta recorrência em serviços de beleza.
 
 ## Regras absolutas
-- NUNCA expor chaves de API no frontend — toda chamada de IA passa por route handler server-side
-- NUNCA hardcodar URLs — sempre usar `process.env.NEXT_PUBLIC_SITE_URL`
+- NUNCA expor chaves de API no frontend
+- Toda chamada de IA passa por route handler server-side
+- NUNCA hardcodar URLs — sempre usar process.env.NEXT_PUBLIC_SITE_URL
 - NUNCA quebrar RLS (Row Level Security) do Supabase
-- Provider de IA abstraído em `lib/ai/` — permite troca sem refatoração
-- Sempre TypeScript — sem `any` sem justificativa
+- Provider de IA abstraído em lib/ai/ — permite troca sem refatoração
+- Sempre TypeScript — sem any sem justificativa
 - Commits em português, descritivos
 - Checkpoint com git commit antes de qualquer tarefa
-- `prompt_tecnico` dos looks NUNCA retornado em rotas públicas
+- prompt_tecnico dos looks NUNCA retornado em rotas públicas
+- Verificar créditos SEMPRE server-side, nunca confiar no frontend
 
 ---
 
 ## Identidade Visual
-- **Ever Green:** `#1B5E5A` — cor primária
-- **Pink Peony:** `#F472A0` — destaque e acentos
-- **Silver Platter:** `#E8E8E8` / `#F5F5F5` — fundo geral
-- **Wedding Band:** `#D4A843` — dourado, ícones decorativos
-- **Something Blue:** `#A8C5CC` — elementos secundários
+- **Ever Green:** #1B5E5A — cor primária, cards principais
+- **Pink Peony:** #F472A0 — destaque e acentos
+- **Silver Platter:** #E8E8E8 / #F5F5F5 — fundo geral
+- **Wedding Band:** #D4A843 — dourado, card dica especial
+- **Something Blue:** #A8C5CC — elementos secundários
 - **Fonte:** Inter (Google Fonts)
 - **Tom:** vibrante, moderno, feminino, personalidade brasileira
+- **Layout:** mobile-first, max-width 430px centralizado
+
+---
+
+## Modelo de Negócio
+
+### Plano Grátis — para sempre
+- Rotina e agendamentos (ilimitado)
+- Caderneta de profissionais (ilimitada)
+- 1 análise de visagismo por mês (relatório textual apenas, sem imagens)
+- 3 Try-Ons por mês (para descobrir o valor antes de pagar)
+
+### Plano Premium — R$19,90/mês
+- Tudo do grátis ilimitado
+- 100 créditos por mês (não acumulam — incentiva uso mensal)
+- Visagismo com imagens geradas
+- Try-On ilimitado em alta qualidade
+- Ideias de corte de cabelo (futuro)
+
+### Tabela de custos em créditos (lib/credits/costs.ts)
+- VISAGISMO_IMAGEM: 10 créditos (gerar look em cada seção do visagismo)
+- TRYON_LOOK: 15 créditos (try-on completo)
+- VISAGISMO_REFAZER: 5 créditos (refazer análise no mesmo mês)
+- CORTE_CABELO: 10 créditos (futuro)
+
+### Estratégia anti-churn
+- Agenda e profissionais são ilimitadas e gratuitas (criam hábito diário)
+- Créditos mensais criam motivo para renovar todo mês
+- Botões "gerar imagem nesse estilo" em cada seção do visagismo
+  criam desejo específico durante o uso → conversão natural para premium
+- Usuária free usa o app normalmente mas vê o que poderia ter
 
 ---
 
@@ -41,32 +74,31 @@ Foco: mulheres entre 18–45 anos, alta recorrência em serviços de beleza.
 - id (FK auth.users), nome, avatar_url, created_at, updated_at
 - Criado automaticamente via trigger on_auth_user_created
 
+### planos
+- id (TEXT: 'free' | 'premium'), nome, preco, creditos_mensais, descricao, ativo
+
+### creditos_usuarios
+- id, usuario_id → perfis
+- plano_id → planos (default: 'free')
+- creditos_disponiveis, creditos_usados_mes
+- mes_referencia (formato 'YYYY-MM')
+- renovacao_em, created_at, updated_at
+- UNIQUE(usuario_id, mes_referencia)
+
+### transacoes_creditos
+- id, usuario_id → perfis
+- tipo: 'uso' | 'recarga' | 'bonus'
+- quantidade, feature, descricao, created_at
+
 ### looks (arsenal de maquiagem)
 - id, nome, descricao_visual, imagem_referencia_url
-- **prompt_tecnico** — NUNCA exposto no frontend
+- prompt_tecnico — NUNCA exposto no frontend
 - categoria: social/noiva/formatura/dia/balada/natural/dramatico
 - tags (jsonb), ativo, ordem
 
 ### geracoes (histórico de try-ons)
-- id, usuario_id, look_id, foto_original_url, foto_gerada_url, provider_usado
-
-### servicos_beleza (alertas de intervalo)
-- id, usuario_id, nome, ultimo_procedimento (date)
-- frequencia_dias, lembrete_ativo, observacoes
-
-### profissionais (caderneta de profissionais)
-- id, usuario_id, nome, especialidades (text[])
-- telefone, instagram, avaliacao (1-5), valor_medio
-- fotos_urls (text[]), observacoes, ativo
-
-### agendamentos_rotina
-- id, usuario_id, profissional_id, servico_nome
-- data_hora (timestamptz), valor, status: agendado/concluido/cancelado
-- observacoes, foto_resultado_url
-- Label visual: "agendado"→"Agendado", "concluido"→"Realizado", "cancelado"→"Cancelado"
-
-### fotos_referencia (inspirações da usuária)
-- id, usuario_id, foto_url, titulo, tags (text[])
+- id, usuario_id, look_id
+- foto_original_url, foto_gerada_url, provider_usado
 
 ### analise_facial (visagismo + colorimetria)
 - id, usuario_id
@@ -74,165 +106,162 @@ Foco: mulheres entre 18–45 anos, alta recorrência em serviços de beleza.
 - terce_dominante, caracteristicas_marcantes (text[])
 - subtom: quente/frio/neutro
 - estacao (das 12 estações de colorimetria)
-- paleta_cores, cores_evitar (jsonb arrays com HEX)
-- tons_batom, tons_sombra, tons_blush (jsonb arrays com HEX + nome)
+- paleta_cores, cores_evitar (jsonb)
+- tons_batom, tons_sombra, tons_blush (jsonb)
 - subtom_base, estilos_delineado (text[])
-- looks_recomendados (uuid[] → looks)
+- looks_recomendados (uuid[])
 - formatos_corte_recomendados, cortes_evitar (jsonb — futuro)
-- relatorio_texto (texto completo para exibir)
-- dados_brutos (jsonb — resposta raw da IA)
-- foto_url, provider_usado, mes_referencia
-- Controle: 1 análise completa (com imagens) por mês no plano premium
+- relatorio_texto, dados_brutos (jsonb — resposta completa da IA)
+- foto_url, provider_usado
+- mes_referencia (formato 'YYYY-MM')
+
+### servicos_beleza (alertas de intervalo)
+- id, usuario_id, nome
+- ultimo_procedimento (date), frequencia_dias
+- lembrete_ativo, observacoes
+
+### profissionais
+- id, usuario_id, nome, especialidades (text[])
+- telefone, instagram, avaliacao (1-5), valor_medio
+- fotos_urls (text[]), observacoes, ativo
+
+### agendamentos_rotina
+- id, usuario_id, profissional_id
+- servico_nome, data_hora (timestamptz), valor
+- status: agendado/concluido/cancelado
+- observacoes, foto_resultado_url
+- Label visual: agendado→"Agendado", concluido→"Realizado", cancelado→"Cancelado"
+
+### fotos_referencia
+- id, usuario_id, foto_url, titulo, tags (text[])
 
 ### push_subscriptions
 - id, usuario_id, subscription_json (jsonb)
 
+### Funções SQL
+- usar_creditos(usuario_id, quantidade, feature, descricao) → boolean
+  Chamar via supabase.rpc() sempre server-side
+
 ---
 
-## Motor de IA
-**Status: EM AVALIAÇÃO — provider abstraído em lib/ai/**
+## Motor de IA — abstraído em lib/ai/
 
-Candidatos:
-- **Gemini** (Google AI Studio) — gratuito, bom para análise de visão e texto
-- **FLUX Kontext Pro** (fal.ai) — $0.04/imagem, melhor para geração de maquiagem
-- **Claude/Gemini Vision** — para análise facial do visagismo
+**Status: EM AVALIAÇÃO — provider pode ser trocado sem refatorar**
 
-Arquivos de abstração:
-- `lib/ai/generateMakeup.ts` — geração de look no rosto (Try-On)
-- `lib/ai/analyzeVisagismo.ts` — análise facial e colorimetria
-- `lib/ai/generateHairstyle.ts` — ideias de corte de cabelo (futuro)
+- lib/ai/analyzeVisagismo.ts — análise facial e colorimetria (Gemini)
+- lib/ai/generateMakeup.ts — geração de look no rosto (FLUX Kontext Pro)
+- lib/ai/generateHairstyle.ts — ideias de corte (futuro)
+
+### Custo estimado por operação
+- Análise visagismo (Gemini 2.0 Flash): ~$0.001 (R$0,01)
+- Imagem gerada (FLUX Kontext Pro via fal.ai): ~$0.04 (R$0,23)
+- Análise completa com 3 imagens: ~$0.12 (R$0,70)
+
+### Gemini 2.0 Flash — análise visagismo
+URL: https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent
+Enviar foto como inline_data (base64) + prompt estruturado
+generationConfig: temperature 0.3, response_mime_type "application/json"
+
+### FLUX Kontext Pro — geração de imagens
+Via fal.ai: fal-ai/flux-pro/kontext
+Preservação de identidade obrigatória no prompt
+Seed fixo para consistência, guidance_scale 8
 
 ---
 
 ## Features do Produto
 
-### MVP (implementado)
-- ✅ Autenticação (Supabase Auth)
-- ✅ Tab bar com 4 abas: Início, Try-On, Rotina, Profissionais
-- ✅ Módulo Rotina: agendamentos, alertas, histórico, gasto mensal
-- ✅ Módulo Profissionais: caderneta, galeria de fotos, WhatsApp, compartilhar
-- ✅ Ação rápida WhatsApp nos cards de agendamento
+### Implementado
+- Autenticação (Supabase Auth)
+- Tab bar 5 abas: Início | Try-On | Visagismo | Rotina | Profissionais
+- Módulo Rotina: agendamentos, alertas, histórico, gasto mensal
+- Módulo Profissionais: caderneta, galeria, WhatsApp, compartilhar
+- Ação rápida WhatsApp nos cards de agendamento
+- Sistema de planos e créditos (banco criado)
+- Design system com paleta Chiqueteza
 
-### V2 — Visagismo + Colorimetria (próximo)
-Pipeline: foto → lib/ai/analyzeVisagismo.ts → JSON estruturado → relatório
+### Em desenvolvimento (V2)
+- Visagismo + Colorimetria
+- Try-On de maquiagem
+- PremiumGate (componente de bloqueio de features)
 
-**Análise entregue:**
-1. Formato do rosto + proporções
-2. Colorimetria — estação (12 estações), subtom de pele
-3. Paleta de cores pessoal (30+ cores com HEX)
-4. Aplicado à maquiagem: tons de batom, sombra, blush, base
-5. Estilos de delineado que valorizam o olho
-6. 3 looks recomendados do arsenal (badge "✦ Para você")
-7. Relatório completo em português em linguagem acessível
+### Roadmap V3
+- Ideias de corte de cabelo (usa dados do visagismo)
+- Matching de base colaborativo (após base de usuárias)
 
-**Modelo de acesso:**
-- Grátis: relatório textual apenas
-- Premium: relatório + 2-3 imagens geradas mostrando looks no rosto
-- Limite: 1 análise completa por mês (mes_referencia controla isso)
-- Pode refazer se mudou o visual (ex: corte de cabelo novo)
-
-**Referência de mercado:** PandaMi (pandami.com.br) — analisar o produto
-deles como benchmark, especialmente a seção de colorimetria com 10 seções.
-O diferencial do Chiqueteza vs PandaMi é fechar o ciclo completo:
-análise → ver como fica (try-on) → agendar com profissional.
-
-### V2 — Try-On de Maquiagem
-Pipeline: foto + look selecionado → lib/ai/generateMakeup.ts → resultado
-
-**Arsenal de looks:**
-- Cada look: imagem de referência (visual) + prompt_tecnico (server-side)
-- Prompt técnico nunca exposto no frontend
-- Looks marcados como "✦ Para você" baseado no visagismo da usuária
-- Variações de cor: modelo leve para preview, modelo pesado para HD final
-
-### V3 — Corte de Cabelo (ideias)
-Pipeline: dados do visagismo → lib/ai/generateHairstyle.ts → imagens de referência
-- Usa formato_rosto e caracteristicas_marcantes da analise_facial
-- Gera referências visuais de cortes recomendados
-- NÃO aplica no rosto (difícil de fazer bem) — mostra referências externas
-- Pipeline específico a definir quando implementar
-
-### V3 — Matching de Base
-- Sistema colaborativo de equivalência entre bases de marcas
-- Só após base de usuárias real (problema do ovo e da galinha)
-
-### Futuro — Marketplace
-- Perfis de profissionais e salões
-- Integração com Âmbar Beauty Studio e similares
+### Roadmap futuro
+- Marketplace de profissionais
+- Integração com Âmbar Beauty Studio
 
 ---
 
-## Modelo de Negócio (freemium)
-
-**Grátis:**
-- Rotina e agendamentos (completo)
-- Caderneta de profissionais (completo)
-- Visagismo — apenas relatório textual
-- Try-On — X gerações por mês (a definir)
-
-**Premium:**
-- Visagismo completo com imagens geradas
-- Try-On ilimitado ou limite maior
-- Corte de cabelo (quando implementado)
-- Histórico completo e insights
-
----
-
-## Pipeline do Visagismo (V2)
+## Pipeline do Visagismo
 
 ```
-1. Tela de instrução
-   "Use foto frontal, boa iluminação, sem filtros, cabelo atrás das orelhas"
+1. Verificar se já tem análise este mês
+   → Se sim: mostrar existente, oferecer refazer (custa 5 créditos premium)
 
 2. Upload da foto
-   → Validação básica (tem rosto? boa iluminação?)
+   → Instrução: frontal, rosto próximo, boa iluminação, sem filtros
    → Salvar no Supabase Storage bucket 'analises-faciais'
 
-3. Verificação de uso mensal
-   → Checar analise_facial WHERE usuario_id = X AND mes_referencia = 'YYYY-MM'
-   → Se já tem e é premium: perguntar se quer refazer
-   → Se é free: entregar só o relatório textual
+3. Chamada server-side: lib/ai/analyzeVisagismo.ts
+   → Gemini recebe foto em base64 + prompt estruturado
+   → Retorna JSON com analise_facial, colorimetria, paleta,
+     maquiagem, cabelo, relatorio
 
-4. Chamada server-side: lib/ai/analyzeVisagismo.ts
-   → Gemini Vision analisa a foto
-   → Retorna JSON estruturado (ver campos da tabela analise_facial)
-   → Prompt engenheirado para retornar sempre o mesmo formato
+4. Salvar em analise_facial (dados_brutos = JSON completo)
 
-5. Salvar JSON no banco (tabela analise_facial)
+5. Tela de resultado — sempre visível (grátis):
+   → Perfil: estação + formato + subtom
+   → Paleta de cores ideais e a evitar
+   → Maquiagem: batom, sombra, blush, delineado (visual com círculos HEX)
+   → Cabelo: cortes recomendados e a evitar
+   → Relatório: resumo, o que valoriza, o que evitar, dica especial
 
-6. Para premium: gerar 2-3 looks recomendados via lib/ai/generateMakeup.ts
-   → Usa os tons recomendados pelo visagismo como base dos prompts
-
-7. Tela de resultado
-   → Seções: formato do rosto, colorimetria, paleta, maquiagem recomendada
-   → Looks gerados (se premium) com slider antes/depois
-   → Badge "✦ Para você" nos looks do arsenal
-
-8. Perfil da usuária
-   → Dados do visagismo salvos e consultáveis a qualquer hora
-   → Looks do arsenal filtrados pelas recomendações
+6. Botões PremiumGate em cada seção (premium):
+   → "Experimentar este batom no meu rosto" → 10 créditos
+   → "Testar este look de olho" → 10 créditos
+   → Chama lib/ai/generateMakeup.ts com o tom específico
 ```
 
----
-
-## Pipeline do Try-On (V2)
+## Pipeline do Try-On
 
 ```
-1. Upload da foto (validação: frontal, rosto próximo, boa iluminação)
+1. Upload da foto (validação: frontal, rosto próximo, boa luz)
 
 2. Arsenal de looks navegável por categoria
-   → Buscar looks WHERE ativo = true
    → Looks marcados como recomendados aparecem primeiro (se tiver visagismo)
    → Cada look: imagem de referência + nome + categoria
 
-3. Seleção do look → chamada server-side
-   → Sistema busca prompt_tecnico do look (NUNCA exposto)
-   → Chamada para lib/ai/generateMakeup.ts
+3. Seleção → chamada server-side
+   → Verificar créditos (15 créditos premium ou contador free)
+   → Buscar prompt_tecnico do look (NUNCA exposto)
+   → Chamar lib/ai/generateMakeup.ts
 
-4. Preview rápido (modelo leve) → confirmar → resultado HD (modelo pesado)
-
-5. Salvar em geracoes → histórico da usuária
+4. Resultado: slider antes/depois
+   → Salvar em geracoes
 ```
+
+---
+
+## Componentes UI importantes
+
+### PremiumGate (components/ui/PremiumGate.tsx)
+- Props: feature, creditCost, children, fallback
+- Se premium com créditos: renderiza children
+- Se free ou sem créditos: renderiza botão bloqueado com cadeado
+- Ao clicar: bottom sheet com descrição + custo + botão "Assinar Premium"
+- Botão assinar: por enquanto toast "Em breve disponível"
+
+### ActionSheet (components/ui/ActionSheet.tsx)
+- Props: isOpen, onClose, title, actions[]
+- Reutilizável para menus de ação em agendamentos e outros
+
+### ProfissionalActions (components/ui/ProfissionalActions.tsx)
+- Props: profissional
+- Renderiza 3 botões: WhatsApp, Instagram, Compartilhar
+- Reutilizado na lista e no perfil da profissional
 
 ---
 
@@ -252,13 +281,12 @@ VAPID_PRIVATE_KEY
 
 ## Notas de Privacidade (LGPD)
 - Fotos de rosto são dados biométricos sensíveis
-- Consentimento explícito obrigatório antes do upload
-- Política de privacidade clara na tela de upload
-- Usar providers com política de não retenção de dados
-- Imagens armazenadas no Supabase Storage deste projeto
-- Buckets: 'analises-faciais', 'profissionais-fotos', 'looks-gerados'
+- Consentimento explícito obrigatório antes de qualquer upload de foto
+- Política de privacidade visível na tela de upload
+- Buckets Supabase Storage: analises-faciais, profissionais-fotos, looks-gerados
+- Providers com política de não retenção de dados
 
 ## Sinergias com Âmbar Beauty Studio
-- Projetos completamente separados por ora
+- Projetos completamente separados agora
 - Futuro: cliente Chiqueteza descobre o Âmbar como profissional
-- Futuro: resultado do try-on vira referência para agendamento
+- Futuro: resultado do try-on vira referência para agendamento no Âmbar
