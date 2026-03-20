@@ -1,7 +1,44 @@
+'use client'
+
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Button from '@/components/ui/Button'
+import { createClient } from '@/lib/supabase/client'
 
 export default function CadastroPage() {
+  const router = useRouter()
+  const [nome, setNome] = useState('')
+  const [email, setEmail] = useState('')
+  const [senha, setSenha] = useState('')
+  const [erro, setErro] = useState('')
+  const [carregando, setCarregando] = useState(false)
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setErro('')
+    setCarregando(true)
+
+    const supabase = createClient()
+    const { error } = await supabase.auth.signUp({
+      email,
+      password: senha,
+      options: {
+        data: { nome },
+      },
+    })
+
+    if (error) {
+      setErro(error.message === 'User already registered'
+        ? 'Este e-mail já está cadastrado. Tente fazer login.'
+        : 'Erro ao criar conta. Verifique os dados e tente novamente.')
+      setCarregando(false)
+      return
+    }
+
+    router.push('/app')
+  }
+
   return (
     <main className="min-h-screen bg-silver-platter flex flex-col items-center justify-center px-6 py-12">
 
@@ -16,9 +53,16 @@ export default function CadastroPage() {
         </div>
 
         {/* Card do formulário */}
-        <div className="bg-white rounded-3xl shadow-sm px-6 py-8 flex flex-col gap-5">
+        <form onSubmit={handleSubmit} className="bg-white rounded-3xl shadow-sm px-6 py-8 flex flex-col gap-5">
 
           <h2 className="text-xl font-semibold text-gray-800">Criar conta</h2>
+
+          {/* Mensagem de erro */}
+          {erro && (
+            <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+              {erro}
+            </p>
+          )}
 
           {/* Campo nome */}
           <div className="flex flex-col gap-1.5">
@@ -30,6 +74,9 @@ export default function CadastroPage() {
               type="text"
               placeholder="Seu nome"
               autoComplete="name"
+              required
+              value={nome}
+              onChange={(e) => setNome(e.target.value)}
               className="w-full rounded-xl border border-gray-200 px-4 py-3 text-base text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-ever-green focus:border-transparent transition"
             />
           </div>
@@ -44,6 +91,9 @@ export default function CadastroPage() {
               type="email"
               placeholder="seu@email.com"
               autoComplete="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               className="w-full rounded-xl border border-gray-200 px-4 py-3 text-base text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-ever-green focus:border-transparent transition"
             />
           </div>
@@ -58,16 +108,20 @@ export default function CadastroPage() {
               type="password"
               placeholder="••••••••"
               autoComplete="new-password"
+              required
+              minLength={6}
+              value={senha}
+              onChange={(e) => setSenha(e.target.value)}
               className="w-full rounded-xl border border-gray-200 px-4 py-3 text-base text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-ever-green focus:border-transparent transition"
             />
           </div>
 
           {/* Botão criar conta */}
-          <Button variant="secondary" fullWidth type="submit">
-            Criar conta
+          <Button variant="secondary" fullWidth type="submit" disabled={carregando}>
+            {carregando ? 'Criando conta...' : 'Criar conta'}
           </Button>
 
-        </div>
+        </form>
 
         {/* Link já tenho conta */}
         <p className="text-center text-sm text-gray-500">
