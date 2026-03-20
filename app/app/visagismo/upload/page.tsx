@@ -48,7 +48,6 @@ export default function VisagismoUploadPage() {
         maxSizeMB: 2,
         maxWidthOrHeight: 1200,
         useWebWorker: true,
-        exifOrientation: true,
       })
       setArquivoComprimido(compressed)
       const reader = new FileReader()
