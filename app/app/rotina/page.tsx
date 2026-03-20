@@ -44,7 +44,7 @@ export default async function RotinaPage() {
       .not('ultimo_procedimento', 'is', null),
     supabase
       .from('agendamentos_rotina')
-      .select('*, profissional:profissionais(nome)')
+      .select('*, profissional:profissionais(nome, telefone)')
       .eq('usuario_id', user.id)
       .eq('status', 'agendado')
       .gte('data_hora', new Date().toISOString())
@@ -57,7 +57,7 @@ export default async function RotinaPage() {
       .gte('data_hora', inicioDoMes()),
     supabase
       .from('agendamentos_rotina')
-      .select('*, profissional:profissionais(nome)')
+      .select('*, profissional:profissionais(nome, telefone)')
       .eq('usuario_id', user.id)
       .in('status', ['concluido', 'cancelado'])
       .order('data_hora', { ascending: false })
