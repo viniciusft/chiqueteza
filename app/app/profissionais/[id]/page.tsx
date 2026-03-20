@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import AppHeader from '@/components/ui/AppHeader'
 import PageContainer from '@/components/ui/PageContainer'
-import BotoesAcao from './_components/BotoesAcao'
+import ProfissionalActions from '@/components/ui/ProfissionalActions'
 import GaleriaFotos from './_components/GaleriaFotos'
 
 function Estrelas({ avaliacao }: { avaliacao: number | null }) {
@@ -97,12 +97,13 @@ export default async function ProfissionalPerfilPage({
         </div>
 
         {/* Botões de ação */}
-        <BotoesAcao
+        <ProfissionalActions
           nome={profissional.nome}
           especialidades={profissional.especialidades}
           avaliacao={profissional.avaliacao}
           telefone={profissional.telefone}
           instagram={profissional.instagram}
+          variant="profile"
         />
 
         {profissional.observacoes && (
