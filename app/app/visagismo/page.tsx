@@ -28,7 +28,7 @@ export default async function VisagismoPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: analise }, premium] = await Promise.all([
+  const [{ data: analise }, premium, { data: geracoes }] = await Promise.all([
     supabase
       .from('analise_facial')
       .select('*')
@@ -36,6 +36,13 @@ export default async function VisagismoPage() {
       .eq('mes_referencia', mesAtual())
       .maybeSingle(),
     isPremium(user.id),
+    supabase
+      .from('geracoes_visagismo')
+      .select('id, foto_gerada_url, batom_nome, sombra_nome, created_at')
+      .eq('usuario_id', user.id)
+      .eq('status', 'concluido')
+      .order('created_at', { ascending: false })
+      .limit(12),
   ])
 
   if (analise) {
@@ -130,6 +137,31 @@ export default async function VisagismoPage() {
               </Link>
             </PremiumGate>
           </div>
+
+          {/* Minhas gerações */}
+          {geracoes && geracoes.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <p style={{ fontWeight: 700, fontSize: 13, color: '#555', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                Minhas gerações
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                {geracoes.map((g) => (
+                  <Link
+                    key={g.id}
+                    href={`/app/visagismo/resultado-imagem/${g.id}`}
+                    style={{ display: 'block', borderRadius: 12, overflow: 'hidden', textDecoration: 'none' }}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={g.foto_gerada_url}
+                      alt={g.batom_nome ?? 'Look gerado'}
+                      style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', display: 'block' }}
+                    />
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
 
         </main>
       </PageContainer>

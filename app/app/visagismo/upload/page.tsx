@@ -2,6 +2,7 @@
 
 import { useRef, useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import imageCompression from 'browser-image-compression'
 import AppHeader from '@/components/ui/AppHeader'
 import PageContainer from '@/components/ui/PageContainer'
 
@@ -22,10 +23,11 @@ export default function VisagismoUploadPage() {
   const router = useRouter()
   const inputRef = useRef<HTMLInputElement>(null)
   const [preview, setPreview] = useState<string | null>(null)
-  const [arquivo, setArquivo] = useState<File | null>(null)
+  const [arquivoComprimido, setArquivoComprimido] = useState<File | null>(null)
   const [analisando, setAnalisando] = useState(false)
   const [mensagemIdx, setMensagemIdx] = useState(0)
   const [erro, setErro] = useState('')
+  const [comprimindo, setComprimindo] = useState(false)
 
   useEffect(() => {
     if (!analisando) return
@@ -35,23 +37,36 @@ export default function VisagismoUploadPage() {
     return () => clearInterval(interval)
   }, [analisando])
 
-  function handleArquivoSelecionado(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleArquivoSelecionado(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    setArquivo(file)
     setErro('')
-    const reader = new FileReader()
-    reader.onload = () => { setPreview(reader.result as string) }
-    reader.readAsDataURL(file)
+    setComprimindo(true)
+
+    try {
+      const compressed = await imageCompression(file, {
+        maxSizeMB: 2,
+        maxWidthOrHeight: 1200,
+        useWebWorker: true,
+      })
+      setArquivoComprimido(compressed)
+      const reader = new FileReader()
+      reader.onload = () => { setPreview(reader.result as string) }
+      reader.readAsDataURL(compressed)
+    } catch {
+      setErro('Erro ao processar a foto. Tente outra.')
+    } finally {
+      setComprimindo(false)
+    }
   }
 
   async function handleAnalisar() {
-    if (!arquivo) { setErro('Selecione uma foto primeiro.'); return }
+    if (!arquivoComprimido) { setErro('Selecione uma foto primeiro.'); return }
     setErro('')
     setAnalisando(true)
 
     const reader = new FileReader()
-    reader.readAsDataURL(arquivo)
+    reader.readAsDataURL(arquivoComprimido)
     reader.onload = async () => {
       const result = reader.result as string
       const [header, base64] = result.split(',')
@@ -76,6 +91,8 @@ export default function VisagismoUploadPage() {
       }
     }
   }
+
+  const carregando = comprimindo || analisando
 
   return (
     <PageContainer>
@@ -111,17 +128,17 @@ export default function VisagismoUploadPage() {
 
         {/* Área de upload */}
         <div
-          onClick={() => !analisando && inputRef.current?.click()}
+          onClick={() => !carregando && inputRef.current?.click()}
           style={{
             borderRadius: 20,
             border: `2px dashed ${preview ? '#1B5E5A' : '#D0D0D0'}`,
             backgroundColor: preview ? '#E8F5F4' : '#F9F9F9',
-            minHeight: 240,
+            height: 300,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            cursor: analisando ? 'default' : 'pointer',
+            cursor: carregando ? 'default' : 'pointer',
             overflow: 'hidden',
             position: 'relative',
           }}
@@ -131,8 +148,20 @@ export default function VisagismoUploadPage() {
             <img
               src={preview}
               alt="Preview"
-              style={{ width: '100%', height: 240, objectFit: 'cover' }}
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
             />
+          ) : comprimindo ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: 24 }}>
+              <div
+                style={{
+                  width: 36, height: 36, border: '3px solid #1B5E5A',
+                  borderTopColor: 'transparent', borderRadius: '50%',
+                  animation: 'spin 0.8s linear infinite',
+                }}
+              />
+              <p style={{ fontSize: 13, color: '#1B5E5A', fontWeight: 600 }}>Processando foto...</p>
+              <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+            </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: 24 }}>
               <span style={{ fontSize: 48 }}>📷</span>
@@ -163,7 +192,7 @@ export default function VisagismoUploadPage() {
           </p>
         )}
 
-        {/* Loading */}
+        {/* Loading análise */}
         {analisando && (
           <div
             style={{
@@ -181,19 +210,18 @@ export default function VisagismoUploadPage() {
             <p style={{ fontSize: 14, color: '#1B5E5A', fontWeight: 600, textAlign: 'center' }}>
               {MENSAGENS_LOADING[mensagemIdx]}
             </p>
-            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
           </div>
         )}
 
-        {!analisando && (
+        {!carregando && (
           <button
             onClick={handleAnalisar}
-            disabled={!arquivo}
+            disabled={!arquivoComprimido}
             style={{
               width: '100%', padding: '16px', borderRadius: 14, border: 'none',
-              backgroundColor: arquivo ? '#1B5E5A' : '#E0E0E0',
-              color: arquivo ? '#fff' : '#999',
-              fontSize: 16, fontWeight: 700, cursor: arquivo ? 'pointer' : 'not-allowed',
+              backgroundColor: arquivoComprimido ? '#1B5E5A' : '#E0E0E0',
+              color: arquivoComprimido ? '#fff' : '#999',
+              fontSize: 16, fontWeight: 700, cursor: arquivoComprimido ? 'pointer' : 'not-allowed',
             }}
           >
             Analisar meu rosto ✦

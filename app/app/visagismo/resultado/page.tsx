@@ -8,6 +8,7 @@ import PageContainer from '@/components/ui/PageContainer'
 import PremiumGate from '@/components/ui/PremiumGate'
 import type { VisagismoResponse } from '@/lib/ai/analyzeVisagismo'
 
+
 function Circulo({ hex, size = 40, opacity = 1 }: { hex: string; size?: number; opacity?: number }) {
   return (
     <div
@@ -375,6 +376,44 @@ export default async function ResultadoPage() {
                 {dados.relatorio.dica_especial}
               </p>
             </div>
+          </div>
+        </section>
+
+        {/* ── CTA: Gerar imagem personalizada ── */}
+        <section>
+          <div
+            style={{
+              backgroundColor: '#1B5E5A', borderRadius: 20,
+              padding: '28px 20px', display: 'flex', flexDirection: 'column',
+              alignItems: 'center', gap: 12, textAlign: 'center',
+            }}
+          >
+            <span style={{ fontSize: 36, color: '#D4A843' }}>✦</span>
+            <p style={{ fontWeight: 800, fontSize: 20, color: '#fff', lineHeight: 1.2 }}>
+              Veja como você ficaria
+            </p>
+            <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.8)', lineHeight: 1.5 }}>
+              Gere uma imagem com os looks recomendados para o seu rosto
+            </p>
+            <PremiumGate
+              isPremium={premium}
+              feature="VISAGISMO_IMAGEM"
+              creditCost={CREDIT_COSTS.VISAGISMO_IMAGEM}
+              label="Criar minha imagem"
+              description="Gere uma imagem personalizada com os tons recomendados para o seu tipo de rosto e colorimetria."
+            >
+              <Link
+                href="/app/visagismo/gerar"
+                style={{
+                  display: 'block', padding: '14px 32px', borderRadius: 14,
+                  backgroundColor: '#fff', color: '#1B5E5A',
+                  fontSize: 15, fontWeight: 700, textDecoration: 'none',
+                  marginTop: 4,
+                }}
+              >
+                Criar minha imagem
+              </Link>
+            </PremiumGate>
           </div>
         </section>
 
