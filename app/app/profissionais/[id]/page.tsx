@@ -3,7 +3,8 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import AppHeader from '@/components/ui/AppHeader'
 import PageContainer from '@/components/ui/PageContainer'
-import UploadFotoButton from './_components/UploadFotoButton'
+import BotoesAcao from './_components/BotoesAcao'
+import GaleriaFotos from './_components/GaleriaFotos'
 
 function Estrelas({ avaliacao }: { avaliacao: number | null }) {
   const total = avaliacao ?? 0
@@ -61,7 +62,7 @@ export default async function ProfissionalPerfilPage({
 
       <main className="flex flex-col gap-5 px-5 py-6 pb-10">
 
-        {/* Cabeçalho da profissional */}
+        {/* Cabeçalho */}
         <div className="flex flex-col gap-2">
           <Link href="/app/profissionais" className="text-gray-400 text-sm">← Voltar</Link>
           <h1 className="font-extrabold tracking-tight" style={{ fontSize: 24, color: '#171717' }}>
@@ -95,43 +96,14 @@ export default async function ProfissionalPerfilPage({
           )}
         </div>
 
-        {/* Ações de contato */}
-        <div className="flex gap-3">
-          {profissional.telefone && (
-            <a
-              href={`tel:${profissional.telefone}`}
-              className="flex items-center gap-2 font-semibold"
-              style={{
-                backgroundColor: '#fff',
-                borderRadius: 12,
-                padding: '10px 16px',
-                fontSize: 14,
-                color: '#1B5E5A',
-                border: '1.5px solid #E8E8E8',
-              }}
-            >
-              📞 Ligar
-            </a>
-          )}
-          {profissional.instagram && (
-            <a
-              href={`https://instagram.com/${profissional.instagram.replace('@', '')}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 font-semibold"
-              style={{
-                backgroundColor: '#fff',
-                borderRadius: 12,
-                padding: '10px 16px',
-                fontSize: 14,
-                color: '#F472A0',
-                border: '1.5px solid #E8E8E8',
-              }}
-            >
-              📸 Instagram
-            </a>
-          )}
-        </div>
+        {/* Botões de ação */}
+        <BotoesAcao
+          nome={profissional.nome}
+          especialidades={profissional.especialidades}
+          avaliacao={profissional.avaliacao}
+          telefone={profissional.telefone}
+          instagram={profissional.instagram}
+        />
 
         {profissional.observacoes && (
           <div
@@ -147,25 +119,9 @@ export default async function ProfissionalPerfilPage({
           <h2 className="font-bold text-gray-500 uppercase tracking-widest" style={{ fontSize: 11 }}>
             Fotos dos serviços
           </h2>
-          {(profissional.fotos_urls ?? []).length > 0 ? (
-            <div className="grid grid-cols-3 gap-2">
-              {(profissional.fotos_urls as string[]).map((url: string, i: number) => (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  key={i}
-                  src={url}
-                  alt={`Foto ${i + 1} de ${profissional.nome}`}
-                  className="object-cover w-full"
-                  style={{ borderRadius: 10, aspectRatio: '1/1' }}
-                />
-              ))}
-            </div>
-          ) : (
-            <p className="text-gray-400" style={{ fontSize: 14 }}>Nenhuma foto ainda.</p>
-          )}
-          <UploadFotoButton
+          <GaleriaFotos
             profissionalId={profissional.id}
-            fotosAtuais={profissional.fotos_urls ?? []}
+            fotosIniciais={profissional.fotos_urls ?? []}
           />
         </section>
 
@@ -215,7 +171,6 @@ export default async function ProfissionalPerfilPage({
           )}
         </section>
 
-        {/* Total gasto */}
         {totalGasto > 0 && (
           <div
             className="flex items-center justify-between px-4 py-4"
