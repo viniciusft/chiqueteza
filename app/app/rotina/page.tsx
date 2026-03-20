@@ -19,6 +19,12 @@ function inicioDoMes(): string {
   return new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString()
 }
 
+const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
+  concluido: { label: 'Realizado', color: '#1B5E5A', bg: '#E8F5F4' },
+  cancelado: { label: 'Cancelado', color: '#9ca3af', bg: '#F5F5F5' },
+  agendado:  { label: 'Agendado',  color: '#A8C5CC', bg: '#EFF7F8' },
+}
+
 export default async function RotinaPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -28,6 +34,7 @@ export default async function RotinaPage() {
     { data: servicos },
     { data: agendamentos },
     { data: gastosMes },
+    { data: historico },
   ] = await Promise.all([
     supabase
       .from('servicos_beleza')
@@ -48,6 +55,13 @@ export default async function RotinaPage() {
       .eq('usuario_id', user.id)
       .eq('status', 'concluido')
       .gte('data_hora', inicioDoMes()),
+    supabase
+      .from('agendamentos_rotina')
+      .select('*, profissional:profissionais(nome)')
+      .eq('usuario_id', user.id)
+      .in('status', ['concluido', 'cancelado'])
+      .order('data_hora', { ascending: false })
+      .limit(10),
   ])
 
   const alertas = (servicos ?? []).filter(
@@ -121,7 +135,7 @@ export default async function RotinaPage() {
           )}
         </section>
 
-        {/* Resumo financeiro */}
+        {/* Gasto este mês */}
         <div
           className="flex items-center justify-between px-4 py-4"
           style={{ borderRadius: 16, backgroundColor: '#fff', border: '1.5px solid #E8E8E8' }}
@@ -131,6 +145,59 @@ export default async function RotinaPage() {
             {totalMes.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
           </span>
         </div>
+
+        {/* Histórico */}
+        {(historico ?? []).length > 0 && (
+          <section className="flex flex-col gap-2">
+            <h2 className="font-bold text-gray-500 uppercase tracking-widest" style={{ fontSize: 11 }}>
+              Histórico
+            </h2>
+            {(historico ?? []).map((ag) => {
+              const cfg = statusConfig[ag.status] ?? statusConfig.agendado
+              const dataFmt = new Date(ag.data_hora).toLocaleDateString('pt-BR', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+              })
+              return (
+                <div
+                  key={ag.id}
+                  className="flex items-center justify-between px-4 py-3 bg-white"
+                  style={{ borderRadius: 14, border: '1.5px solid #E8E8E8' }}
+                >
+                  <div className="flex flex-col gap-0.5 flex-1 min-w-0 pr-2">
+                    <p className="font-bold text-gray-800 truncate" style={{ fontSize: 14 }}>
+                      {ag.servico_nome}
+                    </p>
+                    <p className="text-gray-400" style={{ fontSize: 12 }}>
+                      {dataFmt}
+                      {ag.profissional?.nome ? ` · ${ag.profissional.nome}` : ''}
+                    </p>
+                  </div>
+                  <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                    <span
+                      className="font-bold uppercase tracking-wide"
+                      style={{
+                        fontSize: 10,
+                        color: cfg.color,
+                        backgroundColor: cfg.bg,
+                        borderRadius: 6,
+                        padding: '2px 8px',
+                      }}
+                    >
+                      {cfg.label}
+                    </span>
+                    {ag.valor && (
+                      <span className="text-gray-500" style={{ fontSize: 12 }}>
+                        {Number(ag.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </section>
+        )}
 
       </main>
 

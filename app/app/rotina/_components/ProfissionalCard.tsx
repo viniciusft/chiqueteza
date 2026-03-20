@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import ProfissionalActions from '@/components/ui/ProfissionalActions'
 
 interface Profissional {
   id: string
@@ -35,8 +36,8 @@ export default function ProfissionalCard({ profissional, baseHref = '/app/profis
         style={{ borderRadius: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
       >
         <div className="flex items-start justify-between">
-          <div className="flex flex-col gap-1">
-            <p className="font-extrabold text-gray-800" style={{ fontSize: 15 }}>
+          <div className="flex flex-col gap-1 flex-1 min-w-0 pr-2">
+            <p className="font-extrabold text-gray-800 truncate" style={{ fontSize: 15 }}>
               {profissional.nome}
             </p>
             {profissional.avaliacao && <Estrelas avaliacao={profissional.avaliacao} />}
@@ -47,42 +48,14 @@ export default function ProfissionalCard({ profissional, baseHref = '/app/profis
               </p>
             )}
           </div>
-          <div className="flex gap-2">
-            {profissional.telefone && (
-              <a
-                href={`tel:${profissional.telefone}`}
-                onClick={(e) => e.stopPropagation()}
-                className="flex items-center justify-center"
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 10,
-                  backgroundColor: '#F5F5F5',
-                  fontSize: 18,
-                }}
-              >
-                📞
-              </a>
-            )}
-            {profissional.instagram && (
-              <a
-                href={`https://instagram.com/${profissional.instagram.replace('@', '')}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="flex items-center justify-center"
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 10,
-                  backgroundColor: '#F5F5F5',
-                  fontSize: 18,
-                }}
-              >
-                📸
-              </a>
-            )}
-          </div>
+          <ProfissionalActions
+            nome={profissional.nome}
+            especialidades={profissional.especialidades}
+            avaliacao={profissional.avaliacao}
+            telefone={profissional.telefone}
+            instagram={profissional.instagram}
+            variant="list"
+          />
         </div>
         {(profissional.especialidades ?? []).length > 0 && (
           <div className="flex flex-wrap gap-1">
