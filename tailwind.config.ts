@@ -11,6 +11,11 @@ const config: Config = {
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
+        "ever-green": "#1B5E5A",
+        "pink-peony": "#F472A0",
+        "silver-platter": "#E8E8E8",
+        "wedding-band": "#D4A843",
+        "something-blue": "#A8C5CC",
       },
     },
   },
