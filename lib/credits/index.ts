@@ -12,6 +12,11 @@ interface PlanData {
 }
 
 export async function getUserPlan(userId: string): Promise<PlanData | null> {
+  // Bypass para desenvolvimento/testes
+  if (process.env.NEXT_PUBLIC_PREMIUM_BYPASS_USER === userId) {
+    return { plano_id: 'premium', creditos_disponiveis: 999, mes_referencia: '' }
+  }
+
   const supabase = await createClient()
   const mes = mesAtual()
 
@@ -34,6 +39,10 @@ export async function getUserPlan(userId: string): Promise<PlanData | null> {
 }
 
 export async function isPremium(userId: string): Promise<boolean> {
+  // Bypass para desenvolvimento/testes
+  if (process.env.NEXT_PUBLIC_PREMIUM_BYPASS_USER === userId) {
+    return true
+  }
   const plan = await getUserPlan(userId)
   return plan?.plano_id === 'premium'
 }
