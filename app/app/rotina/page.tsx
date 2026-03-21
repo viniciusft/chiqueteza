@@ -5,6 +5,8 @@ import PageContainer from '@/components/ui/PageContainer'
 import LogoutButton from '../LogoutButton'
 import AgendamentoCard from './_components/AgendamentoCard'
 import RotinaSeedFAB from './_components/RotinaSeedFAB'
+import { PageTransition } from '@/components/ui/PageTransition'
+import { PullToRefresh } from '@/components/ui/PullToRefresh'
 
 function diasAtraso(ultimoProcedimento: string, frequenciaDias: number): number {
   const ultimo = new Date(ultimoProcedimento)
@@ -74,6 +76,8 @@ export default async function RotinaPage() {
   )
 
   return (
+    <PageTransition>
+    <PullToRefresh>
     <PageContainer>
       <AppHeader actions={<LogoutButton />} />
 
@@ -203,5 +207,7 @@ export default async function RotinaPage() {
 
       <RotinaSeedFAB />
     </PageContainer>
+    </PullToRefresh>
+    </PageTransition>
   )
 }

@@ -7,6 +7,7 @@ import AppHeader from '@/components/ui/AppHeader'
 import PageContainer from '@/components/ui/PageContainer'
 import LogoutButton from '../LogoutButton'
 import PremiumGate from '@/components/ui/PremiumGate'
+import { PageTransition } from '@/components/ui/PageTransition'
 
 function mesAtual(): string {
   const hoje = new Date()
@@ -48,6 +49,7 @@ export default async function VisagismoPage() {
   if (analise) {
     // Tela de résumé
     return (
+      <PageTransition>
       <PageContainer>
         <AppHeader actions={<LogoutButton />} />
         <main className="flex flex-col px-5 py-6 gap-5">
@@ -165,11 +167,13 @@ export default async function VisagismoPage() {
 
         </main>
       </PageContainer>
+      </PageTransition>
     )
   }
 
   // Tela de instrução (sem análise)
   return (
+    <PageTransition>
     <PageContainer>
       <AppHeader actions={<LogoutButton />} />
       <main className="flex flex-col px-5 py-6 gap-6">
@@ -233,5 +237,6 @@ export default async function VisagismoPage() {
 
       </main>
     </PageContainer>
+    </PageTransition>
   )
 }

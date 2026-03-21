@@ -4,6 +4,8 @@ import { createClient } from '@/lib/supabase/server'
 import AppHeader from '@/components/ui/AppHeader'
 import PageContainer from '@/components/ui/PageContainer'
 import ProfissionalCard from '../rotina/_components/ProfissionalCard'
+import { PageTransition } from '@/components/ui/PageTransition'
+import { PullToRefresh } from '@/components/ui/PullToRefresh'
 
 export default async function ProfissionaisPage() {
   const supabase = await createClient()
@@ -18,6 +20,8 @@ export default async function ProfissionaisPage() {
     .order('nome')
 
   return (
+    <PageTransition>
+    <PullToRefresh>
     <PageContainer>
       <AppHeader />
 
@@ -77,5 +81,7 @@ export default async function ProfissionaisPage() {
         +
       </Link>
     </PageContainer>
+    </PullToRefresh>
+    </PageTransition>
   )
 }
