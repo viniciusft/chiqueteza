@@ -1,15 +1,13 @@
 'use client'
 
-import { useRef, useState, useEffect, useCallback } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import dynamic from 'next/dynamic'
+import Cropper, { Area as CropArea } from 'react-easy-crop'
 import imageCompression from 'browser-image-compression'
 import AppHeader from '@/components/ui/AppHeader'
 import PageContainer from '@/components/ui/PageContainer'
-import { getCroppedImg, type CropArea } from './cropUtils'
+import { getCroppedImg } from './cropUtils'
 import { playSuccess, playError } from '@/lib/sound'
-
-const Cropper = dynamic(() => import('react-easy-crop'), { ssr: false })
 
 type ViewMode = 'select' | 'crop' | 'uploading'
 
@@ -50,10 +48,6 @@ export default function VisagismoUploadPage() {
     setZoom(1)
     setViewMode('crop')
   }
-
-  const onCropComplete = useCallback((_: unknown, pixels: CropArea) => {
-    setCroppedAreaPixels(pixels)
-  }, [])
 
   async function handleConfirmarCrop() {
     if (!imageSrc || !croppedAreaPixels) return
@@ -143,9 +137,16 @@ export default function VisagismoUploadPage() {
               crop={crop}
               zoom={zoom}
               aspect={1}
+              rotation={0}
+              minZoom={0.5}
+              maxZoom={3}
+              cropShape="rect"
+              showGrid={false}
+              restrictPosition={false}
+              objectFit="contain"
               onCropChange={setCrop}
               onZoomChange={setZoom}
-              onCropComplete={onCropComplete}
+              onCropComplete={(_: unknown, pixels: CropArea) => setCroppedAreaPixels(pixels)}
             />
           )}
         </div>
