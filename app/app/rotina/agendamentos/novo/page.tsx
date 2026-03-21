@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 import AppHeader from '@/components/ui/AppHeader'
 import Button from '@/components/ui/Button'
 import PageContainer from '@/components/ui/PageContainer'
 import { createClient } from '@/lib/supabase/client'
+import { playSuccess, playError } from '@/lib/sound'
 
 interface Profissional {
   id: string
@@ -36,6 +38,8 @@ export default function NovoAgendamentoPage() {
   const [observacoes, setObservacoes] = useState('')
 
   useEffect(() => {
+    const controller = new AbortController()
+
     async function carregarProfissionais() {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
@@ -46,9 +50,12 @@ export default function NovoAgendamentoPage() {
         .eq('usuario_id', user.id)
         .eq('ativo', true)
         .order('nome')
+        .limit(50)
+        .abortSignal(controller.signal)
       setProfissionais(data ?? [])
     }
     carregarProfissionais()
+    return () => controller.abort()
   }, [])
 
   async function handleSubmit(e: React.FormEvent) {
@@ -76,10 +83,14 @@ export default function NovoAgendamentoPage() {
     })
 
     if (error) {
+      playError()
+      toast.error('Erro ao salvar. Tente novamente.')
       setErro('Erro ao salvar. Tente novamente.')
       setSalvando(false)
       return
     }
+    playSuccess()
+    toast.success('Agendamento criado!')
     router.push('/app/rotina')
   }
 

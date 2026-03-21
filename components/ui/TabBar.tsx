@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { playClick } from '@/lib/sound'
 
 interface Tab {
   label: string
@@ -97,6 +98,7 @@ export default function TabBar() {
             <Link
               key={tab.href}
               href={tab.href}
+              onClick={playClick}
               style={{
                 flex: 1,
                 display: 'flex',
@@ -107,8 +109,23 @@ export default function TabBar() {
                 color: active ? '#1B5E5A' : '#999',
                 textDecoration: 'none',
                 fontWeight: active ? 700 : 400,
+                position: 'relative',
+                transition: 'color 0.2s ease',
               }}
             >
+              {active && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: '25%',
+                    right: '25%',
+                    height: 3,
+                    backgroundColor: '#1B5E5A',
+                    borderRadius: '0 0 3px 3px',
+                  }}
+                />
+              )}
               {tab.icon}
               <span style={{ fontSize: 9 }}>{tab.label}</span>
             </Link>

@@ -13,8 +13,13 @@ export default function Button({
   className = '',
   children,
   disabled,
+  onClick,
   ...props
 }: ButtonProps) {
+  function handleClick(e: React.MouseEvent<HTMLButtonElement>) {
+    if (navigator.vibrate) navigator.vibrate(10)
+    onClick?.(e)
+  }
   const base =
     'inline-flex items-center justify-center font-bold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]'
 
@@ -35,6 +40,7 @@ export default function Button({
       className={`${base} ${variants[variant]} ${outlineBorder} ${width} ${className}`}
       style={{ borderRadius: 14, padding: '14px 20px' }}
       disabled={disabled || loading}
+      onClick={handleClick}
       {...props}
     >
       {loading ? (

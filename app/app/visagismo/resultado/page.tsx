@@ -7,6 +7,7 @@ import AppHeader from '@/components/ui/AppHeader'
 import PageContainer from '@/components/ui/PageContainer'
 import PremiumGate from '@/components/ui/PremiumGate'
 import type { VisagismoResponse } from '@/lib/ai/analyzeVisagismo'
+import { PageTransition } from '@/components/ui/PageTransition'
 
 
 function Circulo({ hex, size = 40, opacity = 1 }: { hex: string; size?: number; opacity?: number }) {
@@ -68,6 +69,7 @@ export default async function ResultadoPage() {
   const dados = analise.dados_brutos as VisagismoResponse
 
   return (
+    <PageTransition>
     <PageContainer>
       <AppHeader
         actions={
@@ -419,5 +421,6 @@ export default async function ResultadoPage() {
 
       </main>
     </PageContainer>
+    </PageTransition>
   )
 }

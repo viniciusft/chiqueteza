@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import AppHeader from '@/components/ui/AppHeader'
 import PageContainer from '@/components/ui/PageContainer'
 import LogoutButton from './LogoutButton'
+import { PageTransition } from '@/components/ui/PageTransition'
 
 function inicioDoMes(): string {
   const hoje = new Date()
@@ -68,6 +69,7 @@ export default async function AppPage() {
     : null
 
   return (
+    <PageTransition>
     <PageContainer>
       <AppHeader actions={<LogoutButton />} />
 
@@ -223,5 +225,6 @@ export default async function AppPage() {
 
       </main>
     </PageContainer>
+    </PageTransition>
   )
 }
