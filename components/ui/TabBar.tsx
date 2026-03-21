@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { playClick } from '@/lib/sound'
 
 interface Tab {
   label: string
@@ -97,6 +98,7 @@ export default function TabBar() {
             <Link
               key={tab.href}
               href={tab.href}
+              onClick={playClick}
               style={{
                 flex: 1,
                 display: 'flex',

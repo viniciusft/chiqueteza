@@ -7,6 +7,7 @@ import imageCompression from 'browser-image-compression'
 import AppHeader from '@/components/ui/AppHeader'
 import PageContainer from '@/components/ui/PageContainer'
 import { getCroppedImg, type CropArea } from './cropUtils'
+import { playSuccess, playError } from '@/lib/sound'
 
 const Cropper = dynamic(() => import('react-easy-crop'), { ssr: false })
 
@@ -87,13 +88,16 @@ export default function VisagismoUploadPage() {
             throw new Error(data.error ?? 'Erro na análise')
           }
 
+          playSuccess()
           router.push('/app/visagismo/resultado')
         } catch (err) {
+          playError()
           setErro(err instanceof Error ? err.message : 'Erro ao analisar. Tente novamente.')
           setViewMode('crop')
         }
       }
     } catch {
+      playError()
       setErro('Erro ao processar a foto. Tente outra.')
       setViewMode('crop')
     }

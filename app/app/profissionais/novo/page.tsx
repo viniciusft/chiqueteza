@@ -2,10 +2,12 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 import AppHeader from '@/components/ui/AppHeader'
 import Button from '@/components/ui/Button'
 import PageContainer from '@/components/ui/PageContainer'
 import { createClient } from '@/lib/supabase/client'
+import { playSuccess, playError } from '@/lib/sound'
 
 const ESPECIALIDADES = ['Cabelo', 'Maquiagem', 'Unha', 'Sobrancelha', 'Depilação', 'Estética']
 
@@ -67,10 +69,14 @@ export default function NovaProfissionalPage() {
     })
 
     if (error) {
+      playError()
+      toast.error('Erro ao salvar. Tente novamente.')
       setErro('Erro ao salvar. Tente novamente.')
       setSalvando(false)
       return
     }
+    playSuccess()
+    toast.success('Profissional salva!')
     router.push('/app/profissionais')
   }
 
