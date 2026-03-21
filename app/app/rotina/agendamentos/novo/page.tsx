@@ -36,6 +36,8 @@ export default function NovoAgendamentoPage() {
   const [observacoes, setObservacoes] = useState('')
 
   useEffect(() => {
+    const controller = new AbortController()
+
     async function carregarProfissionais() {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
@@ -46,9 +48,12 @@ export default function NovoAgendamentoPage() {
         .eq('usuario_id', user.id)
         .eq('ativo', true)
         .order('nome')
+        .limit(50)
+        .abortSignal(controller.signal)
       setProfissionais(data ?? [])
     }
     carregarProfissionais()
+    return () => controller.abort()
   }, [])
 
   async function handleSubmit(e: React.FormEvent) {
