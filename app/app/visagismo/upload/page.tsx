@@ -81,8 +81,9 @@ function VisagismoUploadContent() {
         })
 
         if (!response.ok) {
-          const data = await response.json()
-          throw new Error((data as { error?: string }).error ?? 'Erro na análise')
+          const data = await response.json() as { error?: string; details?: string }
+          const msg = [data.error, data.details].filter(Boolean).join(' — ')
+          throw new Error(msg || 'Erro na análise')
         }
 
         playSuccess()
