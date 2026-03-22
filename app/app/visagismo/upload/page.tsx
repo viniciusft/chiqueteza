@@ -12,7 +12,7 @@ import PageContainer from '@/components/ui/PageContainer'
 import { getCroppedImg } from './cropUtils'
 import { playSuccess, playError } from '@/lib/sound'
 
-type ViewMode = 'select' | 'crop' | 'uploading'
+type ViewMode = 'select' | 'preview' | 'crop' | 'uploading'
 
 const MENSAGENS_LOADING = [
   'Analisando proporções faciais...',
@@ -27,13 +27,15 @@ function VisagismoUploadContent() {
   const searchParams = useSearchParams()
   const force = searchParams.get('force') === 'true'
   const [userId, setUserId] = useState<string | null>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const cameraRef = useRef<HTMLInputElement>(null)
+  const galeriaRef = useRef<HTMLInputElement>(null)
   const [viewMode, setViewMode] = useState<ViewMode>('select')
   const [imageSrc, setImageSrc] = useState<string | null>(null)
   const [crop, setCrop] = useState({ x: 0, y: 0 })
   const [zoom, setZoom] = useState(1)
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<CropArea | null>(null)
   const [mensagemIdx, setMensagemIdx] = useState(0)
+  const [erro, setErro] = useState('')
 
   useEffect(() => {
     void (async () => {
@@ -42,7 +44,6 @@ function VisagismoUploadContent() {
       setUserId(user?.id ?? null)
     })()
   }, [])
-  const [erro, setErro] = useState('')
 
   useEffect(() => {
     if (viewMode !== 'uploading') return
@@ -58,9 +59,62 @@ function VisagismoUploadContent() {
     setErro('')
     const url = URL.createObjectURL(file)
     setImageSrc(url)
+    setViewMode('preview')
+    // Reset crop state for if user goes to crop mode
     setCrop({ x: 0, y: 0 })
     setZoom(1)
-    setViewMode('crop')
+  }
+
+  async function enviarImagem(compressed: File) {
+    const reader = new FileReader()
+    reader.readAsDataURL(compressed)
+    reader.onload = async () => {
+      const result = reader.result as string
+      const [header, base64] = result.split(',')
+      const mimeType = header.split(':')[1].split(';')[0]
+
+      try {
+        const response = await fetch('/api/visagismo/analisar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ foto_base64: base64, mime_type: mimeType, force }),
+        })
+
+        if (!response.ok) {
+          const data = await response.json()
+          throw new Error((data as { error?: string }).error ?? 'Erro na análise')
+        }
+
+        playSuccess()
+        if (userId) invalidateCache(CACHE_KEYS.analise(userId))
+        router.push('/app/visagismo/resultado')
+      } catch (err) {
+        playError()
+        setErro(err instanceof Error ? err.message : 'Erro ao analisar. Tente novamente.')
+        setViewMode('preview')
+      }
+    }
+  }
+
+  async function handleUsarDireto() {
+    if (!imageSrc) return
+    setErro('')
+    setViewMode('uploading')
+
+    try {
+      const blob = await fetch(imageSrc).then((r) => r.blob())
+      const file = new File([blob], 'foto.jpg', { type: 'image/jpeg' })
+      const compressed = await imageCompression(file, {
+        maxSizeMB: 1,
+        maxWidthOrHeight: 1000,
+        useWebWorker: true,
+      })
+      await enviarImagem(compressed)
+    } catch {
+      playError()
+      setErro('Erro ao processar a foto. Tente outra.')
+      setViewMode('preview')
+    }
   }
 
   async function handleConfirmarCrop() {
@@ -76,35 +130,7 @@ function VisagismoUploadContent() {
         maxWidthOrHeight: 1000,
         useWebWorker: true,
       })
-
-      const reader = new FileReader()
-      reader.readAsDataURL(compressed)
-      reader.onload = async () => {
-        const result = reader.result as string
-        const [header, base64] = result.split(',')
-        const mimeType = header.split(':')[1].split(';')[0]
-
-        try {
-          const response = await fetch('/api/visagismo/analisar', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ foto_base64: base64, mime_type: mimeType, force }),
-          })
-
-          if (!response.ok) {
-            const data = await response.json()
-            throw new Error(data.error ?? 'Erro na análise')
-          }
-
-          playSuccess()
-          if (userId) invalidateCache(CACHE_KEYS.analise(userId))
-          router.push('/app/visagismo/resultado')
-        } catch (err) {
-          playError()
-          setErro(err instanceof Error ? err.message : 'Erro ao analisar. Tente novamente.')
-          setViewMode('crop')
-        }
-      }
+      await enviarImagem(compressed)
     } catch {
       playError()
       setErro('Erro ao processar a foto. Tente outra.')
@@ -137,6 +163,81 @@ function VisagismoUploadContent() {
           </p>
         </main>
       </PageContainer>
+    )
+  }
+
+  // Modo preview
+  if (viewMode === 'preview') {
+    return (
+      <div style={{ position: 'fixed', inset: 0, backgroundColor: '#000', zIndex: 50, display: 'flex', flexDirection: 'column' }}>
+        {/* Foto */}
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+          {imageSrc && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={imageSrc}
+              alt="Pré-visualização"
+              style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+            />
+          )}
+        </div>
+
+        {/* Controles */}
+        <div
+          style={{
+            backgroundColor: '#111', padding: '20px 24px 40px',
+            display: 'flex', flexDirection: 'column', gap: 16,
+          }}
+        >
+          <p style={{ fontSize: 16, color: '#fff', fontWeight: 700, textAlign: 'center' }}>
+            Esta foto está boa?
+          </p>
+          <p style={{ fontSize: 13, color: '#999', textAlign: 'center', marginTop: -8 }}>
+            Rosto frontal, bem iluminado e sem filtros
+          </p>
+
+          {erro && (
+            <p style={{ fontSize: 13, color: '#f87171', textAlign: 'center' }}>{erro}</p>
+          )}
+
+          <div style={{ display: 'flex', gap: 12 }}>
+            <button
+              onClick={() => {
+                setViewMode('crop')
+                setCroppedAreaPixels(null)
+              }}
+              style={{
+                flex: 1, padding: '14px', borderRadius: 14,
+                border: '1.5px solid #555', backgroundColor: 'transparent',
+                color: '#fff', fontSize: 15, fontWeight: 600, cursor: 'pointer',
+              }}
+            >
+              Ajustar / Recortar
+            </button>
+            <button
+              onClick={handleUsarDireto}
+              style={{
+                flex: 2, padding: '14px', borderRadius: 14, border: 'none',
+                backgroundColor: '#1B5E5A', color: '#fff',
+                fontSize: 15, fontWeight: 700, cursor: 'pointer',
+              }}
+            >
+              ✓ Usar esta foto
+            </button>
+          </div>
+
+          <button
+            onClick={() => { setViewMode('select'); setImageSrc(null) }}
+            style={{
+              padding: '12px', borderRadius: 14,
+              border: 'none', backgroundColor: 'transparent',
+              color: '#888', fontSize: 14, cursor: 'pointer',
+            }}
+          >
+            ← Escolher outra foto
+          </button>
+        </div>
+      </div>
     )
   }
 
@@ -194,7 +295,7 @@ function VisagismoUploadContent() {
 
           <div style={{ display: 'flex', gap: 12 }}>
             <button
-              onClick={() => { setViewMode('select'); setImageSrc(null) }}
+              onClick={() => setViewMode('preview')}
               style={{
                 flex: 1, padding: '14px', borderRadius: 14,
                 border: '1.5px solid #555', backgroundColor: 'transparent',
@@ -211,7 +312,7 @@ function VisagismoUploadContent() {
                 fontSize: 15, fontWeight: 700, cursor: 'pointer',
               }}
             >
-              Usar esta foto →
+              ✓ Confirmar e analisar
             </button>
           </div>
         </div>
@@ -232,31 +333,6 @@ function VisagismoUploadContent() {
           </h1>
         </div>
 
-        {/* Área clicável */}
-        <div
-          onClick={() => inputRef.current?.click()}
-          style={{
-            borderRadius: 20,
-            border: '2px dashed #D0D0D0',
-            backgroundColor: '#F9F9F9',
-            height: 280,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            gap: 10,
-          }}
-        >
-          <span style={{ fontSize: 48 }}>📷</span>
-          <p style={{ fontSize: 15, fontWeight: 700, color: '#333' }}>
-            Toque para escolher uma foto
-          </p>
-          <p style={{ fontSize: 13, color: '#999' }}>
-            Use uma foto frontal com boa iluminação
-          </p>
-        </div>
-
         {/* Chips de regras */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {CHIPS.map((chip) => (
@@ -273,11 +349,65 @@ function VisagismoUploadContent() {
           ))}
         </div>
 
+        {/* Dois cards de escolha */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {/* Câmera */}
+          <button
+            onClick={() => cameraRef.current?.click()}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 16,
+              borderRadius: 20, border: '2px solid #1B5E5A',
+              backgroundColor: '#1B5E5A',
+              padding: '20px 24px',
+              cursor: 'pointer', textAlign: 'left',
+            }}
+          >
+            <span style={{ fontSize: 36 }}>📷</span>
+            <div>
+              <p style={{ fontSize: 16, fontWeight: 700, color: '#fff', marginBottom: 2 }}>
+                Tirar foto agora
+              </p>
+              <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)' }}>
+                Use a câmera do celular
+              </p>
+            </div>
+          </button>
+
+          {/* Galeria */}
+          <button
+            onClick={() => galeriaRef.current?.click()}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 16,
+              borderRadius: 20, border: '2px solid #E8E8E8',
+              backgroundColor: '#fff',
+              padding: '20px 24px',
+              cursor: 'pointer', textAlign: 'left',
+            }}
+          >
+            <span style={{ fontSize: 36 }}>🖼️</span>
+            <div>
+              <p style={{ fontSize: 16, fontWeight: 700, color: '#171717', marginBottom: 2 }}>
+                Escolher da galeria
+              </p>
+              <p style={{ fontSize: 13, color: '#999' }}>
+                Selecione uma foto existente
+              </p>
+            </div>
+          </button>
+        </div>
+
         <input
-          ref={inputRef}
+          ref={cameraRef}
           type="file"
           accept="image/*"
           capture="user"
+          className="hidden"
+          onChange={handleArquivoSelecionado}
+        />
+        <input
+          ref={galeriaRef}
+          type="file"
+          accept="image/*"
           className="hidden"
           onChange={handleArquivoSelecionado}
         />
