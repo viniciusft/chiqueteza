@@ -41,15 +41,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ analise: existente, ja_existe: true })
   }
 
-  // Se force === true e existe: deletar a anterior
+  const supabaseAdmin = createAdminClient()
+
+  // Se force === true e existe: deletar a anterior via admin (bypass RLS)
   if (existente && force) {
-    await supabase
+    const { error: deleteError } = await supabaseAdmin
       .from('analise_facial')
       .delete()
       .eq('id', existente.id)
+    if (deleteError) console.error('[visagismo] Delete error:', deleteError)
   }
-
-  const supabaseAdmin = createAdminClient()
 
   // Criar bucket se não existir
   await supabaseAdmin.storage.createBucket('analises-faciais', {
@@ -59,9 +60,14 @@ export async function POST(req: NextRequest) {
   }).catch(() => {}) // ignora se já existe
 
   // Converter base64 para buffer e fazer upload
-  const base64Data = foto_base64.replace(/^data:image\/\w+;base64,/, '')
-  const buffer = Buffer.from(base64Data, 'base64')
-  const fileName = `${user.id}/${Date.now()}.jpg`
+  // Remove prefixo data URL e espaços/quebras de linha (fix "string did not match expected pattern")
+  const cleanBase64 = foto_base64
+    .replace(/^data:image\/[a-z]+;base64,/, '')
+    .replace(/\s/g, '')
+  const buffer = Buffer.from(cleanBase64, 'base64')
+  // Remove hífens do userId para compatibilidade com Storage paths
+  const userIdClean = user.id.replace(/-/g, '')
+  const fileName = `${userIdClean}/${Date.now()}.jpg`
 
   let fotoUrl: string | null = null
 
