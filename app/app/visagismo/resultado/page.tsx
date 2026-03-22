@@ -81,6 +81,27 @@ export default async function ResultadoPage() {
 
       <main className="flex flex-col gap-6 px-5 py-6 pb-10">
 
+        {/* Foto da análise */}
+        {analise.foto_url && (
+          <div style={{ textAlign: 'center', marginBottom: 0 }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={analise.foto_url}
+              alt="Foto da análise"
+              style={{
+                width: 80, height: 80,
+                borderRadius: '50%',
+                objectFit: 'cover',
+                border: '3px solid #1B5E5A',
+                display: 'inline-block',
+              }}
+            />
+            <p style={{ fontSize: 11, color: '#999', marginTop: 4 }}>
+              Análise de {new Date(analise.created_at as string).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+            </p>
+          </div>
+        )}
+
         {/* ── SEÇÃO 1: Perfil ── */}
         <section>
           <SecaoTitulo>Perfil</SecaoTitulo>

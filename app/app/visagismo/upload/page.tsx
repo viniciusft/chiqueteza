@@ -1,8 +1,11 @@
 'use client'
 
-import { useRef, useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRef, useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Cropper, { Area as CropArea } from 'react-easy-crop'
+import { createClient } from '@/lib/supabase/client'
+import { invalidateCache } from '@/lib/cache'
+import { CACHE_KEYS } from '@/lib/cache/keys'
 import imageCompression from 'browser-image-compression'
 import AppHeader from '@/components/ui/AppHeader'
 import PageContainer from '@/components/ui/PageContainer'
@@ -19,8 +22,11 @@ const MENSAGENS_LOADING = [
 
 const CHIPS = ['Frontal', 'Rosto próximo', 'Boa iluminação', 'Sem filtros']
 
-export default function VisagismoUploadPage() {
+function VisagismoUploadContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const force = searchParams.get('force') === 'true'
+  const [userId, setUserId] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const [viewMode, setViewMode] = useState<ViewMode>('select')
   const [imageSrc, setImageSrc] = useState<string | null>(null)
@@ -28,6 +34,14 @@ export default function VisagismoUploadPage() {
   const [zoom, setZoom] = useState(1)
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<CropArea | null>(null)
   const [mensagemIdx, setMensagemIdx] = useState(0)
+
+  useEffect(() => {
+    void (async () => {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      setUserId(user?.id ?? null)
+    })()
+  }, [])
   const [erro, setErro] = useState('')
 
   useEffect(() => {
@@ -74,7 +88,7 @@ export default function VisagismoUploadPage() {
           const response = await fetch('/api/visagismo/analisar', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ foto_base64: base64, mime_type: mimeType }),
+            body: JSON.stringify({ foto_base64: base64, mime_type: mimeType, force }),
           })
 
           if (!response.ok) {
@@ -83,6 +97,7 @@ export default function VisagismoUploadPage() {
           }
 
           playSuccess()
+          if (userId) invalidateCache(CACHE_KEYS.analise(userId))
           router.push('/app/visagismo/resultado')
         } catch (err) {
           playError()
@@ -269,5 +284,13 @@ export default function VisagismoUploadPage() {
 
       </main>
     </PageContainer>
+  )
+}
+
+export default function VisagismoUploadPage() {
+  return (
+    <Suspense>
+      <VisagismoUploadContent />
+    </Suspense>
   )
 }
