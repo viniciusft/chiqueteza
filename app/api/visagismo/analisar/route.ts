@@ -99,7 +99,14 @@ export async function POST(req: NextRequest) {
   }
 
   // Analisar com IA
-  const analiseData = await analyzeVisagismo(foto_base64, mime_type)
+  let analiseData
+  try {
+    analiseData = await analyzeVisagismo(foto_base64, mime_type)
+  } catch (aiError) {
+    const msg = aiError instanceof Error ? aiError.message : String(aiError)
+    console.error('[visagismo] Gemini error:', msg)
+    return NextResponse.json({ error: 'Erro na análise de IA', details: msg }, { status: 500 })
+  }
 
   const dadosParaSalvar = {
     usuario_id: user.id,
