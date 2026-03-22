@@ -5,6 +5,7 @@
 :root {
   --background: #F5F5F5;
   --foreground: #171717;
+  --font-inter: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
 body {

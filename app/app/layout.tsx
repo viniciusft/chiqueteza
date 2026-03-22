@@ -1,5 +1,5 @@
 import TabBar from '@/components/ui/TabBar'
-import { Toaster } from 'sonner'
+import { ToasterProvider } from '@/components/ui/ToasterProvider'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -8,7 +8,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {children}
       </div>
       <TabBar />
-      <Toaster position="top-center" richColors />
+      <ToasterProvider />
     </>
   )
 }
