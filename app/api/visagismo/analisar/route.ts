@@ -3,6 +3,9 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { analyzeVisagismo } from '@/lib/ai/analyzeVisagismo'
 
+// Vercel: aumenta o limite da função serverless para 60s (Gemini pode demorar)
+export const maxDuration = 60
+
 function mesAtual(): string {
   const hoje = new Date()
   return `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`

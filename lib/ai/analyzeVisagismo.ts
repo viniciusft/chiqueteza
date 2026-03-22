@@ -161,11 +161,22 @@ export async function analyzeVisagismo(
     },
   }
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 55_000)
+
+  let response: Response
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    })
+  } catch (err) {
+    throw new Error(`Gemini fetch falhou: ${err instanceof Error ? err.message : String(err)}`)
+  } finally {
+    clearTimeout(timeout)
+  }
 
   if (!response.ok) {
     const err = await response.text()

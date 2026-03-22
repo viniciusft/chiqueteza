@@ -2,5 +2,13 @@
   "framework": "nextjs",
   "buildCommand": "next build",
   "devCommand": "next dev",
-  "installCommand": "npm install"
+  "installCommand": "npm install",
+  "functions": {
+    "app/api/visagismo/analisar/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/visagismo/gerar-imagem/route.ts": {
+      "maxDuration": 60
+    }
+  }
 }
