@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { ServiceWorkerRegistration } from "@/components/ui/ServiceWorkerRegistration";
 
 export const metadata: Metadata = {
   title: "Chiqueteza",
@@ -28,6 +29,7 @@ export default function RootLayout({
   return (
     <html lang="pt-BR">
       <body className="font-sans antialiased" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+        <ServiceWorkerRegistration />
         {children}
       </body>
     </html>

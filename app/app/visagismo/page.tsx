@@ -1,13 +1,17 @@
-import { redirect } from 'next/navigation'
+'use client'
+
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
-import { isPremium } from '@/lib/credits'
+import { createClient } from '@/lib/supabase/client'
 import { CREDIT_COSTS } from '@/lib/credits/costs'
 import AppHeader from '@/components/ui/AppHeader'
 import PageContainer from '@/components/ui/PageContainer'
 import LogoutButton from '../LogoutButton'
 import PremiumGate from '@/components/ui/PremiumGate'
 import { PageTransition } from '@/components/ui/PageTransition'
+import { SkeletonList } from '@/components/ui/SkeletonCard'
+import { useCache } from '@/lib/cache/useCache'
+import { CACHE_KEYS } from '@/lib/cache/keys'
 
 function mesAtual(): string {
   const hoje = new Date()
@@ -24,27 +28,115 @@ function capitalizarEstacao(estacao: string): string {
   return estacao.replace(/\b\w/g, (l) => l.toUpperCase())
 }
 
-export default async function VisagismoPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+interface AnaliseFacial {
+  id: string
+  usuario_id: string
+  estacao: string | null
+  subtom: string | null
+  formato_rosto: string | null
+  mes_referencia: string
+}
 
-  const [{ data: analise }, premium, { data: geracoes }] = await Promise.all([
-    supabase
+interface GeracaoVisagismo {
+  id: string
+  foto_gerada_url: string
+  batom_nome: string | null
+  sombra_nome: string | null
+  created_at: string
+}
+
+function RevalidatingSpinner() {
+  return (
+    <>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <div
+        style={{
+          width: 16, height: 16,
+          border: '2px solid #fff',
+          borderTopColor: 'transparent',
+          borderRadius: '50%',
+          animation: 'spin 0.8s linear infinite',
+          opacity: 0.5,
+        }}
+      />
+    </>
+  )
+}
+
+// Componente interno: recebe userId já resolvido e usa useCache
+function VisagismoContent({ userId }: { userId: string }) {
+  const supabase = createClient()
+  const [premium, setPremium] = useState(false)
+  const [geracoes, setGeracoes] = useState<GeracaoVisagismo[]>([])
+
+  // Buscar status premium client-side
+  useEffect(() => {
+    if (process.env.NEXT_PUBLIC_PREMIUM_BYPASS_USER === userId) {
+      setPremium(true)
+      return
+    }
+    void (async () => {
+      const { data } = await supabase
+        .from('creditos_usuarios')
+        .select('plano_id')
+        .eq('usuario_id', userId)
+        .eq('mes_referencia', mesAtual())
+        .maybeSingle()
+      setPremium((data as { plano_id: string } | null)?.plano_id === 'premium')
+    })()
+  }, [userId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Buscar gerações
+  useEffect(() => {
+    void (async () => {
+      const { data } = await supabase
+        .from('geracoes_visagismo')
+        .select('id, foto_gerada_url, batom_nome, sombra_nome, created_at')
+        .eq('usuario_id', userId)
+        .eq('status', 'concluido')
+        .order('created_at', { ascending: false })
+        .limit(12)
+      setGeracoes((data ?? []) as GeracaoVisagismo[])
+    })()
+  }, [userId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Análise facial com cache (24h)
+  const analiseFetcher = useCallback(async (): Promise<AnaliseFacial | null> => {
+    const { data } = await supabase
       .from('analise_facial')
       .select('*')
-      .eq('usuario_id', user.id)
+      .eq('usuario_id', userId)
       .eq('mes_referencia', mesAtual())
-      .maybeSingle(),
-    isPremium(user.id),
-    supabase
-      .from('geracoes_visagismo')
-      .select('id, foto_gerada_url, batom_nome, sombra_nome, created_at')
-      .eq('usuario_id', user.id)
-      .eq('status', 'concluido')
-      .order('created_at', { ascending: false })
-      .limit(12),
-  ])
+      .maybeSingle()
+    return (data ?? null) as AnaliseFacial | null
+  }, [userId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const {
+    data: analise,
+    loading,
+  } = useCache<AnaliseFacial | null>(
+    CACHE_KEYS.analise(userId),
+    analiseFetcher,
+    CACHE_KEYS.ANALISE_TTL
+  )
+
+  const showSkeleton = loading && analise === undefined
+
+  if (showSkeleton) {
+    return (
+      <PageTransition>
+      <PageContainer>
+        <AppHeader actions={<LogoutButton />} />
+        <main className="flex flex-col px-5 py-6 gap-5">
+          <h1 className="font-extrabold tracking-tight" style={{ fontSize: 24, color: '#171717' }}>
+            Visagismo
+          </h1>
+          <SkeletonList count={2} height={96} />
+        </main>
+      </PageContainer>
+      </PageTransition>
+    )
+  }
 
   if (analise) {
     // Tela de résumé
@@ -67,21 +159,23 @@ export default async function VisagismoPage() {
               color: '#fff',
             }}
           >
-            <span
-              style={{
-                display: 'inline-block',
-                fontSize: 10,
-                fontWeight: 700,
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-                backgroundColor: 'rgba(255,255,255,0.2)',
-                borderRadius: 6,
-                padding: '3px 8px',
-                marginBottom: 12,
-              }}
-            >
-              Análise de {nomeMes(analise.mes_referencia)}
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <span
+                style={{
+                  display: 'inline-block',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  backgroundColor: 'rgba(255,255,255,0.2)',
+                  borderRadius: 6,
+                  padding: '3px 8px',
+                }}
+              >
+                Análise de {nomeMes(analise.mes_referencia)}
+              </span>
+              {loading && <RevalidatingSpinner />}
+            </div>
             <p style={{ fontWeight: 800, fontSize: 22, marginBottom: 12, lineHeight: 1.2 }}>
               {capitalizarEstacao(analise.estacao ?? '')}
             </p>
@@ -141,7 +235,7 @@ export default async function VisagismoPage() {
           </div>
 
           {/* Minhas gerações */}
-          {geracoes && geracoes.length > 0 && (
+          {geracoes.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <p style={{ fontWeight: 700, fontSize: 13, color: '#555', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                 Minhas gerações
@@ -239,4 +333,35 @@ export default async function VisagismoPage() {
     </PageContainer>
     </PageTransition>
   )
+}
+
+// Componente principal: resolve userId antes de renderizar o conteúdo
+export default function VisagismoPage() {
+  const [userId, setUserId] = useState<string | null>(null)
+
+  useEffect(() => {
+    void (async () => {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      setUserId(user?.id ?? null)
+    })()
+  }, [])
+
+  if (!userId) {
+    return (
+      <PageTransition>
+      <PageContainer>
+        <AppHeader actions={<LogoutButton />} />
+        <main className="flex flex-col px-5 py-6 gap-5">
+          <h1 className="font-extrabold tracking-tight" style={{ fontSize: 24, color: '#171717' }}>
+            Visagismo
+          </h1>
+          <SkeletonList count={2} height={96} />
+        </main>
+      </PageContainer>
+      </PageTransition>
+    )
+  }
+
+  return <VisagismoContent userId={userId} />
 }

@@ -1,5 +1,7 @@
-import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+'use client'
+
+import { useState, useEffect, useCallback } from 'react'
+import { createClient } from '@/lib/supabase/client'
 import AppHeader from '@/components/ui/AppHeader'
 import PageContainer from '@/components/ui/PageContainer'
 import LogoutButton from '../LogoutButton'
@@ -7,6 +9,9 @@ import AgendamentoCard from './_components/AgendamentoCard'
 import RotinaSeedFAB from './_components/RotinaSeedFAB'
 import { PageTransition } from '@/components/ui/PageTransition'
 import { PullToRefresh } from '@/components/ui/PullToRefresh'
+import { SkeletonList } from '@/components/ui/SkeletonCard'
+import { useCache } from '@/lib/cache/useCache'
+import { CACHE_KEYS } from '@/lib/cache/keys'
 
 function diasAtraso(ultimoProcedimento: string, frequenciaDias: number): number {
   const ultimo = new Date(ultimoProcedimento)
@@ -27,53 +32,108 @@ const statusConfig: Record<string, { label: string; color: string; bg: string }>
   agendado:  { label: 'Agendado',  color: '#A8C5CC', bg: '#EFF7F8' },
 }
 
-export default async function RotinaPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+interface ServicoBeleza {
+  id: string
+  nome: string
+  ultimo_procedimento: string
+  frequencia_dias: number
+  lembrete_ativo: boolean
+}
 
-  const [
-    { data: servicos },
-    { data: agendamentos },
-    { data: gastosMes },
-    { data: historico },
-  ] = await Promise.all([
-    supabase
-      .from('servicos_beleza')
-      .select('*')
-      .eq('usuario_id', user.id)
-      .eq('lembrete_ativo', true)
-      .not('ultimo_procedimento', 'is', null),
-    supabase
+interface Agendamento {
+  id: string
+  servico_nome: string
+  data_hora: string
+  status: string
+  valor: number | null
+  observacoes: string | null
+  foto_resultado_url: string | null
+  profissional: { nome: string; telefone: string | null } | null
+}
+
+function RevalidatingSpinner() {
+  return (
+    <>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <div
+        style={{
+          width: 16, height: 16,
+          border: '2px solid #1B5E5A',
+          borderTopColor: 'transparent',
+          borderRadius: '50%',
+          animation: 'spin 0.8s linear infinite',
+          opacity: 0.5,
+        }}
+      />
+    </>
+  )
+}
+
+// Componente interno: recebe userId já resolvido e usa useCache
+function RotinaContent({ userId }: { userId: string }) {
+  const supabase = createClient()
+  const [servicos, setServicos] = useState<ServicoBeleza[]>([])
+  const [gastosMes, setGastosMes] = useState<number>(0)
+  const [historico, setHistorico] = useState<Agendamento[]>([])
+
+  // Dados secundários (sem cache por enquanto)
+  useEffect(() => {
+    void (async () => {
+      const mes = inicioDoMes()
+      const [{ data: sv }, { data: gm }, { data: hist }] = await Promise.all([
+        supabase
+          .from('servicos_beleza')
+          .select('*')
+          .eq('usuario_id', userId)
+          .eq('lembrete_ativo', true)
+          .not('ultimo_procedimento', 'is', null),
+        supabase
+          .from('agendamentos_rotina')
+          .select('valor')
+          .eq('usuario_id', userId)
+          .eq('status', 'concluido')
+          .gte('data_hora', mes),
+        supabase
+          .from('agendamentos_rotina')
+          .select('*, profissional:profissionais(nome, telefone)')
+          .eq('usuario_id', userId)
+          .in('status', ['concluido', 'cancelado'])
+          .order('data_hora', { ascending: false })
+          .limit(10),
+      ])
+      setServicos((sv ?? []) as ServicoBeleza[])
+      setGastosMes(((gm ?? []) as { valor: number | null }[]).reduce((acc, g) => acc + (Number(g.valor) || 0), 0))
+      setHistorico((hist ?? []) as Agendamento[])
+    })()
+  }, [userId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Agendamentos futuros com cache (stale-while-revalidate)
+  const agendamentosFetcher = useCallback(async (): Promise<Agendamento[]> => {
+    const { data } = await supabase
       .from('agendamentos_rotina')
       .select('*, profissional:profissionais(nome, telefone)')
-      .eq('usuario_id', user.id)
+      .eq('usuario_id', userId)
       .eq('status', 'agendado')
       .gte('data_hora', new Date().toISOString())
-      .order('data_hora', { ascending: true }),
-    supabase
-      .from('agendamentos_rotina')
-      .select('valor')
-      .eq('usuario_id', user.id)
-      .eq('status', 'concluido')
-      .gte('data_hora', inicioDoMes()),
-    supabase
-      .from('agendamentos_rotina')
-      .select('*, profissional:profissionais(nome, telefone)')
-      .eq('usuario_id', user.id)
-      .in('status', ['concluido', 'cancelado'])
-      .order('data_hora', { ascending: false })
-      .limit(10),
-  ])
+      .order('data_hora', { ascending: true })
+      .limit(20)
+    return (data ?? []) as Agendamento[]
+  }, [userId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const alertas = (servicos ?? []).filter(
+  const {
+    data: agendamentos,
+    loading: loadingAgendamentos,
+  } = useCache<Agendamento[]>(
+    CACHE_KEYS.agendamentos(userId),
+    agendamentosFetcher,
+    CACHE_KEYS.AGENDAMENTOS_TTL
+  )
+
+  const alertas = servicos.filter(
     (s) => s.ultimo_procedimento && diasAtraso(s.ultimo_procedimento, s.frequencia_dias) > 0
   )
 
-  const totalMes = (gastosMes ?? []).reduce(
-    (acc, g) => acc + (Number(g.valor) || 0),
-    0
-  )
+  const showSkeleton = loadingAgendamentos && agendamentos === null
 
   return (
     <PageTransition>
@@ -121,10 +181,15 @@ export default async function RotinaPage() {
 
         {/* Próximos agendamentos */}
         <section className="flex flex-col gap-2">
-          <h2 className="font-bold text-gray-500 uppercase tracking-widest" style={{ fontSize: 11 }}>
-            Próximos agendamentos
-          </h2>
-          {(agendamentos ?? []).length === 0 ? (
+          <div className="flex items-center justify-between">
+            <h2 className="font-bold text-gray-500 uppercase tracking-widest" style={{ fontSize: 11 }}>
+              Próximos agendamentos
+            </h2>
+            {loadingAgendamentos && agendamentos !== null && <RevalidatingSpinner />}
+          </div>
+          {showSkeleton ? (
+            <SkeletonList count={3} height={76} />
+          ) : (agendamentos ?? []).length === 0 ? (
             <div
               className="flex flex-col items-center gap-2 py-8"
               style={{ borderRadius: 16, backgroundColor: '#fff', border: '1.5px solid #E8E8E8' }}
@@ -146,17 +211,17 @@ export default async function RotinaPage() {
         >
           <span className="font-semibold text-gray-500" style={{ fontSize: 14 }}>Gasto este mês</span>
           <span className="font-extrabold" style={{ fontSize: 18, color: '#1B5E5A' }}>
-            {totalMes.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+            {gastosMes.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
           </span>
         </div>
 
         {/* Histórico */}
-        {(historico ?? []).length > 0 && (
+        {historico.length > 0 && (
           <section className="flex flex-col gap-2">
             <h2 className="font-bold text-gray-500 uppercase tracking-widest" style={{ fontSize: 11 }}>
               Histórico
             </h2>
-            {(historico ?? []).map((ag) => {
+            {historico.map((ag) => {
               const cfg = statusConfig[ag.status] ?? statusConfig.agendado
               const dataFmt = new Date(ag.data_hora).toLocaleDateString('pt-BR', {
                 day: 'numeric',
@@ -210,4 +275,35 @@ export default async function RotinaPage() {
     </PullToRefresh>
     </PageTransition>
   )
+}
+
+// Componente principal: resolve userId antes de renderizar o conteúdo
+export default function RotinaPage() {
+  const [userId, setUserId] = useState<string | null>(null)
+
+  useEffect(() => {
+    void (async () => {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      setUserId(user?.id ?? null)
+    })()
+  }, [])
+
+  if (!userId) {
+    return (
+      <PageTransition>
+      <PageContainer>
+        <AppHeader actions={<LogoutButton />} />
+        <main className="flex flex-col gap-5 px-5 py-6 pb-24">
+          <h1 className="font-extrabold tracking-tight" style={{ fontSize: 24, color: '#171717' }}>
+            Rotina
+          </h1>
+          <SkeletonList count={3} height={76} />
+        </main>
+      </PageContainer>
+      </PageTransition>
+    )
+  }
+
+  return <RotinaContent userId={userId} />
 }

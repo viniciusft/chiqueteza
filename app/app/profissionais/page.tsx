@@ -1,23 +1,73 @@
-import { redirect } from 'next/navigation'
+'use client'
+
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/client'
 import AppHeader from '@/components/ui/AppHeader'
 import PageContainer from '@/components/ui/PageContainer'
 import ProfissionalCard from '../rotina/_components/ProfissionalCard'
 import { PageTransition } from '@/components/ui/PageTransition'
 import { PullToRefresh } from '@/components/ui/PullToRefresh'
+import { SkeletonList } from '@/components/ui/SkeletonCard'
+import { useCache } from '@/lib/cache/useCache'
+import { CACHE_KEYS } from '@/lib/cache/keys'
 
-export default async function ProfissionaisPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+interface Profissional {
+  id: string
+  usuario_id: string
+  nome: string
+  especialidades: string[]
+  telefone: string | null
+  instagram: string | null
+  avaliacao: number | null
+  valor_medio: number | null
+  fotos_urls: string[]
+  observacoes: string | null
+  ativo: boolean
+}
 
-  const { data: profissionais } = await supabase
-    .from('profissionais')
-    .select('*')
-    .eq('usuario_id', user.id)
-    .eq('ativo', true)
-    .order('nome')
+function RevalidatingSpinner() {
+  return (
+    <>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <div
+        style={{
+          width: 16, height: 16,
+          border: '2px solid #1B5E5A',
+          borderTopColor: 'transparent',
+          borderRadius: '50%',
+          animation: 'spin 0.8s linear infinite',
+          opacity: 0.5,
+        }}
+      />
+    </>
+  )
+}
+
+// Componente interno: recebe userId já resolvido e usa useCache
+function ProfissionaisContent({ userId }: { userId: string }) {
+  const supabase = createClient()
+
+  const profissionaisFetcher = useCallback(async (): Promise<Profissional[]> => {
+    const { data } = await supabase
+      .from('profissionais')
+      .select('*')
+      .eq('usuario_id', userId)
+      .eq('ativo', true)
+      .order('nome')
+    return (data ?? []) as Profissional[]
+  }, [userId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const {
+    data: profissionais,
+    loading,
+  } = useCache<Profissional[]>(
+    CACHE_KEYS.profissionais(userId),
+    profissionaisFetcher,
+    CACHE_KEYS.PROFISSIONAIS_TTL
+  )
+
+  const showSkeleton = loading && profissionais === null
 
   return (
     <PageTransition>
@@ -27,11 +77,16 @@ export default async function ProfissionaisPage() {
 
       <main className="flex flex-col gap-4 px-5 py-6">
 
-        <h1 className="font-extrabold tracking-tight" style={{ fontSize: 24, color: '#171717' }}>
-          Profissionais
-        </h1>
+        <div className="flex items-center justify-between">
+          <h1 className="font-extrabold tracking-tight" style={{ fontSize: 24, color: '#171717' }}>
+            Profissionais
+          </h1>
+          {loading && profissionais !== null && <RevalidatingSpinner />}
+        </div>
 
-        {(profissionais ?? []).length === 0 ? (
+        {showSkeleton ? (
+          <SkeletonList count={3} height={88} />
+        ) : (profissionais ?? []).length === 0 ? (
           <div
             className="flex flex-col items-center gap-3 py-16"
             style={{ borderRadius: 20, backgroundColor: '#fff', border: '1.5px solid #E8E8E8' }}
@@ -84,4 +139,35 @@ export default async function ProfissionaisPage() {
     </PullToRefresh>
     </PageTransition>
   )
+}
+
+// Componente principal: resolve userId antes de renderizar o conteúdo
+export default function ProfissionaisPage() {
+  const [userId, setUserId] = useState<string | null>(null)
+
+  useEffect(() => {
+    void (async () => {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      setUserId(user?.id ?? null)
+    })()
+  }, [])
+
+  if (!userId) {
+    return (
+      <PageTransition>
+      <PageContainer>
+        <AppHeader />
+        <main className="flex flex-col gap-4 px-5 py-6">
+          <h1 className="font-extrabold tracking-tight" style={{ fontSize: 24, color: '#171717' }}>
+            Profissionais
+          </h1>
+          <SkeletonList count={3} height={88} />
+        </main>
+      </PageContainer>
+      </PageTransition>
+    )
+  }
+
+  return <ProfissionaisContent userId={userId} />
 }
