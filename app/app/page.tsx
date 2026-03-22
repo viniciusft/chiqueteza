@@ -1,9 +1,14 @@
-import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+'use client'
+
+import { useState, useEffect } from 'react'
+import { createClient } from '@/lib/supabase/client'
 import AppHeader from '@/components/ui/AppHeader'
 import PageContainer from '@/components/ui/PageContainer'
 import LogoutButton from './LogoutButton'
 import { PageTransition } from '@/components/ui/PageTransition'
+import { SkeletonList } from '@/components/ui/SkeletonCard'
+import { setCache } from '@/lib/cache'
+import { CACHE_KEYS } from '@/lib/cache/keys'
 
 function inicioDoMes(): string {
   const hoje = new Date()
@@ -26,43 +31,84 @@ function IconWA() {
   )
 }
 
-export default async function AppPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+interface ServicoBeleza {
+  id: string
+  nome: string
+  ultimo_procedimento: string
+  frequencia_dias: number
+  lembrete_ativo: boolean
+}
 
-  if (!user) {
-    redirect('/login')
-  }
+interface Agendamento {
+  id: string
+  servico_nome: string
+  data_hora: string
+  status: string
+  valor: number | null
+  profissional: { nome: string; telefone: string | null } | null
+}
 
-  const nome = user.user_metadata?.nome ?? user.email?.split('@')[0] ?? 'usuária'
+interface HomeData {
+  nome: string
+  proximo: Agendamento | null
+  alertas: ServicoBeleza[]
+}
 
-  const [
-    { data: proximosAgendamentos },
-    { data: servicos },
-  ] = await Promise.all([
-    supabase
-      .from('agendamentos_rotina')
-      .select('*, profissional:profissionais(nome, telefone)')
-      .eq('usuario_id', user.id)
-      .eq('status', 'agendado')
-      .gte('data_hora', new Date().toISOString())
-      .order('data_hora', { ascending: true })
-      .limit(1),
-    supabase
-      .from('servicos_beleza')
-      .select('*')
-      .eq('usuario_id', user.id)
-      .eq('lembrete_ativo', true)
-      .not('ultimo_procedimento', 'is', null),
-  ])
+function HomeContent({ userId, nome: nomeInicial }: { userId: string; nome: string }) {
+  const supabase = createClient()
+  const [homeData, setHomeData] = useState<HomeData>({
+    nome: nomeInicial,
+    proximo: null,
+    alertas: [],
+  })
+  const [loading, setLoading] = useState(true)
 
-  const proximo = (proximosAgendamentos ?? [])[0] ?? null
+  useEffect(() => {
+    void (async () => {
+      const [{ data: proximos }, { data: servicos }] = await Promise.all([
+        supabase
+          .from('agendamentos_rotina')
+          .select('*, profissional:profissionais(nome, telefone)')
+          .eq('usuario_id', userId)
+          .eq('status', 'agendado')
+          .gte('data_hora', new Date().toISOString())
+          .order('data_hora', { ascending: true })
+          .limit(1),
+        supabase
+          .from('servicos_beleza')
+          .select('*')
+          .eq('usuario_id', userId)
+          .eq('lembrete_ativo', true)
+          .not('ultimo_procedimento', 'is', null),
+      ])
+      const proximo = ((proximos ?? []) as Agendamento[])[0] ?? null
+      const alertas = ((servicos ?? []) as ServicoBeleza[]).filter(
+        (s) => s.ultimo_procedimento && diasAtraso(s.ultimo_procedimento, s.frequencia_dias) > 0
+      )
+      setHomeData({ nome: nomeInicial, proximo, alertas })
+      setLoading(false)
+    })()
 
-  const alertas = (servicos ?? []).filter(
-    (s) => s.ultimo_procedimento && diasAtraso(s.ultimo_procedimento, s.frequencia_dias) > 0
-  )
+    // Prefetch em background sem bloquear a UI
+    setTimeout(async () => {
+      const { data: prefetchData } = await supabase
+        .from('agendamentos_rotina')
+        .select('id, servico_nome, data_hora, status, valor, profissional:profissionais(nome, telefone)')
+        .eq('usuario_id', userId)
+        .eq('status', 'agendado')
+        .gte('data_hora', new Date().toISOString())
+        .order('data_hora', { ascending: true })
+        .limit(20)
+      if (prefetchData) setCache(
+        CACHE_KEYS.agendamentos(userId),
+        prefetchData as Agendamento[],
+        CACHE_KEYS.AGENDAMENTOS_TTL
+      )
+    }, 1000) // 1s após carregar a home, sem competir com o render inicial
+  }, [userId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const tudoEmDia = !proximo && alertas.length === 0
+  const { nome, proximo, alertas } = homeData
+  const tudoEmDia = !loading && !proximo && alertas.length === 0
 
   const waTelefone = proximo?.profissional?.telefone
     ? proximo.profissional.telefone.replace(/\D/g, '')
@@ -82,6 +128,10 @@ export default async function AppPage() {
             {nome} ✦
           </span>
         </div>
+
+        {loading && (
+          <SkeletonList count={2} height={80} />
+        )}
 
         {/* Tudo em dia */}
         {tudoEmDia && (
@@ -227,4 +277,39 @@ export default async function AppPage() {
     </PageContainer>
     </PageTransition>
   )
+}
+
+// Componente principal: resolve userId antes de renderizar o conteúdo
+export default function AppPage() {
+  const [user, setUser] = useState<{ id: string; nome: string } | null>(null)
+
+  useEffect(() => {
+    const supabase = createClient()
+    void (async () => {
+      const { data: { user: u } } = await supabase.auth.getUser()
+      if (u) {
+        const nome = (u.user_metadata?.nome as string | undefined) ?? u.email?.split('@')[0] ?? 'usuária'
+        setUser({ id: u.id, nome })
+      }
+    })()
+  }, [])
+
+  if (!user) {
+    return (
+      <PageTransition>
+      <PageContainer>
+        <AppHeader actions={<LogoutButton />} />
+        <main className="flex flex-col px-5 py-8 gap-6">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-gray-500" style={{ fontSize: 14 }}>Olá,</span>
+            <div style={{ height: 32, width: 120, borderRadius: 8, backgroundColor: '#e0e0e0' }} />
+          </div>
+          <SkeletonList count={2} height={80} />
+        </main>
+      </PageContainer>
+      </PageTransition>
+    )
+  }
+
+  return <HomeContent userId={user.id} nome={user.nome} />
 }

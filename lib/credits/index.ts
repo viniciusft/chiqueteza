@@ -1,4 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
+import { getCache, setCache } from '@/lib/cache'
+import { CACHE_KEYS } from '@/lib/cache/keys'
 
 function mesAtual(): string {
   const hoje = new Date()
@@ -17,6 +19,9 @@ export async function getUserPlan(userId: string): Promise<PlanData | null> {
     return { plano_id: 'premium', creditos_disponiveis: 999, mes_referencia: '' }
   }
 
+  const cached = getCache<PlanData>(CACHE_KEYS.plano(userId))
+  if (cached) return cached
+
   const supabase = await createClient()
   const mes = mesAtual()
 
@@ -27,7 +32,10 @@ export async function getUserPlan(userId: string): Promise<PlanData | null> {
     .eq('mes_referencia', mes)
     .maybeSingle()
 
-  if (existing) return existing
+  if (existing) {
+    setCache(CACHE_KEYS.plano(userId), existing, CACHE_KEYS.PLANO_TTL)
+    return existing
+  }
 
   const { data: novo } = await supabase
     .from('creditos_usuarios')
@@ -35,6 +43,7 @@ export async function getUserPlan(userId: string): Promise<PlanData | null> {
     .select('plano_id, creditos_disponiveis, mes_referencia')
     .single()
 
+  if (novo) setCache(CACHE_KEYS.plano(userId), novo, CACHE_KEYS.PLANO_TTL)
   return novo
 }
 
