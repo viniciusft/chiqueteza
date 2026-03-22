@@ -99,34 +99,52 @@ export async function POST(req: NextRequest) {
   }
 
   // Analisar com IA
-  const analise = await analyzeVisagismo(foto_base64, mime_type)
+  const analiseData = await analyzeVisagismo(foto_base64, mime_type)
 
-  const { data: saved, error: dbError } = await supabase
+  const dadosParaSalvar = {
+    usuario_id: user.id,
+    formato_rosto: analiseData?.analise_facial?.formato_rosto ?? null,
+    terce_dominante: analiseData?.analise_facial?.terce_dominante ?? null,
+    // ARRAY de texto — deve ser array JS, não jsonb
+    caracteristicas_marcantes: Array.isArray(analiseData?.analise_facial?.caracteristicas_marcantes)
+      ? analiseData.analise_facial.caracteristicas_marcantes
+      : [],
+    subtom: analiseData?.colorimetria?.subtom ?? null,
+    estacao: analiseData?.colorimetria?.estacao ?? null,
+    // JSONB — objetos e arrays de objetos
+    paleta_cores: analiseData?.paleta_cores?.cores_ideais ?? [],
+    cores_evitar: analiseData?.paleta_cores?.cores_evitar ?? [],
+    tons_batom: analiseData?.maquiagem?.batom ?? [],
+    tons_sombra: analiseData?.maquiagem?.sombra ?? [],
+    tons_blush: analiseData?.maquiagem?.blush ?? [],
+    subtom_base: analiseData?.maquiagem?.base?.subtom_ideal ?? null,
+    // ARRAY de texto
+    estilos_delineado: Array.isArray(analiseData?.maquiagem?.delineado?.formatos_recomendados)
+      ? analiseData.maquiagem.delineado.formatos_recomendados
+      : [],
+    // JSONB
+    formatos_corte_recomendados: analiseData?.cabelo?.cortes_recomendados ?? [],
+    cortes_evitar: analiseData?.cabelo?.cortes_evitar ?? [],
+    relatorio_texto: analiseData?.relatorio?.resumo_perfil ?? '',
+    dados_brutos: analiseData ?? {},
+    foto_url: fotoUrl ?? null,
+    mes_referencia: mes,
+    provider_usado: 'gemini',
+    imagens_geradas: [],
+  }
+
+  const { data: saved, error: saveError } = await supabaseAdmin
     .from('analise_facial')
-    .insert({
-      usuario_id: user.id,
-      formato_rosto: analise.analise_facial.formato_rosto,
-      terce_dominante: analise.analise_facial.terce_dominante,
-      caracteristicas_marcantes: analise.analise_facial.caracteristicas_marcantes,
-      subtom: analise.colorimetria.subtom,
-      estacao: analise.colorimetria.estacao,
-      paleta_cores: analise.paleta_cores.cores_ideais,
-      cores_evitar: analise.paleta_cores.cores_evitar,
-      tons_batom: analise.maquiagem.batom,
-      tons_sombra: analise.maquiagem.sombra,
-      tons_blush: analise.maquiagem.blush,
-      estilos_delineado: analise.maquiagem.delineado.formatos_recomendados,
-      formatos_corte_recomendados: analise.cabelo.cortes_recomendados,
-      relatorio_texto: analise.relatorio.resumo_perfil,
-      dados_brutos: analise,
-      foto_url: fotoUrl,
-      mes_referencia: mes,
-    })
+    .insert(dadosParaSalvar)
     .select()
     .single()
 
-  if (dbError) {
-    return NextResponse.json({ error: 'Erro ao salvar análise' }, { status: 500 })
+  if (saveError) {
+    console.error('Save error:', saveError.message, saveError.details, saveError.hint)
+    return NextResponse.json({
+      error: 'Erro ao salvar',
+      details: saveError.message,
+    }, { status: 500 })
   }
 
   return NextResponse.json(
