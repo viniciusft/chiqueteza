@@ -35,6 +35,7 @@ interface AnaliseFacial {
   subtom: string | null
   formato_rosto: string | null
   mes_referencia: string
+  foto_url: string | null
 }
 
 interface GeracaoVisagismo {
@@ -159,6 +160,22 @@ function VisagismoContent({ userId }: { userId: string }) {
               color: '#fff',
             }}
           >
+            {/* Foto miniatura */}
+            {analise.foto_url && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={analise.foto_url}
+                alt="Sua foto"
+                style={{
+                  width: 48, height: 48,
+                  borderRadius: '50%',
+                  objectFit: 'cover',
+                  border: '2px solid rgba(255,255,255,0.4)',
+                  marginBottom: 12,
+                  display: 'block',
+                }}
+              />
+            )}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
               <span
                 style={{
@@ -221,7 +238,7 @@ function VisagismoContent({ userId }: { userId: string }) {
               description="Refaça sua análise com uma nova foto. Custa 5 créditos Premium."
             >
               <Link
-                href="/app/visagismo/upload"
+                href="/app/visagismo/upload?force=true"
                 style={{
                   display: 'block', width: '100%', padding: '14px',
                   borderRadius: 14, border: '1.5px solid #1B5E5A',

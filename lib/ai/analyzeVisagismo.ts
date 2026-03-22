@@ -9,6 +9,7 @@ export interface VisagismoResponse {
       mandibula: string
       comprimento: string
     }
+    justificativa_formato: string
   }
   colorimetria: {
     subtom: string
@@ -27,7 +28,11 @@ export interface VisagismoResponse {
     batom: Array<{ nome: string; hex: string; acabamento: string }>
     sombra: Array<{ nome: string; hex: string; ocasiao: string }>
     blush: Array<{ nome: string; hex: string; tecnica: string }>
-    delineado: { formatos_recomendados: string[]; estilos_evitar: string[] }
+    delineado: {
+      formatos_recomendados: string[]
+      motivo: string
+      estilos_evitar: string[]
+    }
   }
   cabelo: {
     cortes_recomendados: Array<{ nome: string; motivo: string }>
@@ -42,19 +47,42 @@ export interface VisagismoResponse {
   }
 }
 
-const PROMPT_VISAGISMO = `Você é um especialista em visagismo e colorimetria pessoal com formação baseada na metodologia de Phillip Hallawell e no sistema de 12 estações de colorimetria.
-Analise esta foto com precisão técnica e retorne APENAS um JSON válido.
+const PROMPT_VISAGISMO = `Você é um especialista certificado em visagismo baseado na metodologia de Phillip Hallawell e colorimetria pelo sistema de 12 estações.
+
+Analise esta foto com rigor técnico seguindo estas etapas obrigatórias:
+
+ETAPA 1 - ANÁLISE GEOMÉTRICA (faça as medições mentais antes de classificar):
+* Meça mentalmente: largura da testa, largura dos zigomáticos, largura da mandíbula
+* Meça: comprimento total do rosto (testa ao mento)
+* Compare: é mais largo que comprimento (redondo), similar (oval), comprimento maior que 1.5x a largura (oblongo)?
+* Observe: mandíbula reta/angular (quadrado), pontuda (coração), mais larga que testa (triângulo invertido), zigomáticos proeminentes (diamante)
+* Só classifique APÓS essas observações
+
+ETAPA 2 - COLORIMETRIA (analise com cuidado a foto):
+* Tom de pele: observe se há tendência amarelada (quente), rosada/azulada (frio) ou equilibrada (neutro) — escolha UM: quente, frio ou neutro
+* Temperatura geral: quente ou frio
+* Contraste entre pele, olhos e cabelo: alto, medio ou baixo
+* Saturação da pele: alta, media ou baixa
+* Com base em tudo isso, classifique em uma das 12 estações
+
+ETAPA 3 - RELATÓRIO PERSONALIZADO:
+* resumo_perfil: 2-3 frases descrevendo a harmonia do rosto desta pessoa especificamente, com base nas medições. Não use frases genéricas.
+* o_que_te_valoriza: baseado no formato real do rosto identificado
+* dica_especial: dica específica para O formato de rosto desta pessoa
+
+Retorne APENAS JSON válido sem markdown, com esta estrutura exata:
 {
   "analise_facial": {
     "formato_rosto": "",
     "terce_dominante": "",
     "caracteristicas_marcantes": [],
     "proporcoes": {
-      "testa": "",
-      "zigomatico": "",
-      "mandibula": "",
-      "comprimento": ""
-    }
+      "testa": "larga|media|estreita",
+      "zigomatico": "proeminente|medio|suave",
+      "mandibula": "angular|oval|pontuda",
+      "comprimento": "longo|medio|curto"
+    },
+    "justificativa_formato": ""
   },
   "colorimetria": {
     "subtom": "",
@@ -73,7 +101,11 @@ Analise esta foto com precisão técnica e retorne APENAS um JSON válido.
     "batom": [{"nome": "", "hex": "", "acabamento": ""}],
     "sombra": [{"nome": "", "hex": "", "ocasiao": ""}],
     "blush": [{"nome": "", "hex": "", "tecnica": ""}],
-    "delineado": {"formatos_recomendados": [], "estilos_evitar": []}
+    "delineado": {
+      "formatos_recomendados": [],
+      "motivo": "",
+      "estilos_evitar": []
+    }
   },
   "cabelo": {
     "cortes_recomendados": [{"nome": "", "motivo": ""}],
@@ -87,21 +119,23 @@ Analise esta foto com precisão técnica e retorne APENAS um JSON válido.
     "dica_especial": ""
   }
 }
-Regras:
-- formato_rosto: APENAS: oval, redondo, quadrado, coracao, diamante, oblongo, triangular
-- subtom: APENAS: quente, frio, neutro
-- temperatura: APENAS: quente, frio
-- contraste: APENAS: alto, medio, baixo
-- saturacao: APENAS: alta, media, baixa
-- estacao: uma das 12 (True Spring, Light Spring, Bright Spring, True Summer, Light Summer, Soft Summer, True Autumn, Soft Autumn, Dark Autumn, True Winter, Dark Winter, Bright Winter)
-- paleta_cores.cores_ideais: 8 a 12 cores
-- paleta_cores.cores_evitar: 4 a 6 cores
-- maquiagem.batom: 4 a 6 opções
-- maquiagem.sombra: 3 a 5 opções
-- maquiagem.blush: 2 ou 3 opções
-- cabelo.cortes_recomendados: 3 a 5 opções
-- Todos os textos em português brasileiro informal e acolhedor
-- HEX sempre #RRGGBB`
+
+Regras OBRIGATÓRIAS:
+* formato_rosto: APENAS oval, redondo, quadrado, coracao, diamante, oblongo, triangular
+* subtom: APENAS quente, frio, neutro (NUNCA use hífen ou combinações)
+* temperatura: APENAS quente, frio
+* contraste: APENAS alto, medio, baixo
+* saturacao: APENAS alta, media, baixa
+* estacao: uma das 12 estações em inglês (True Spring, Light Spring, Bright Spring, True Summer, Light Summer, Soft Summer, True Autumn, Soft Autumn, Dark Autumn, True Winter, Dark Winter, Bright Winter)
+* paleta_cores.cores_ideais: 8 a 12 cores com HEX
+* paleta_cores.cores_evitar: 4 a 6 cores com HEX
+* maquiagem.batom: 4 a 6 opções do mais neutro ao mais ousado
+* maquiagem.sombra: 3 a 5 opções
+* maquiagem.blush: 2 ou 3 opções
+* cabelo.cortes_recomendados: 3 a 5 opções COM motivo específico ao formato de rosto
+* justificativa_formato: obrigatório — explicar POR QUE classificou como esse formato
+* Todos os textos do relatório em português brasileiro informal e acolhedor
+* HEX sempre no formato #RRGGBB`
 
 export async function analyzeVisagismo(
   imageBase64: string,
@@ -110,7 +144,7 @@ export async function analyzeVisagismo(
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) throw new Error('GEMINI_API_KEY não configurada')
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`
 
   const body = {
     contents: [
@@ -122,7 +156,7 @@ export async function analyzeVisagismo(
       },
     ],
     generationConfig: {
-      temperature: 0.3,
+      temperature: 0.2,
       response_mime_type: 'application/json',
     },
   }
