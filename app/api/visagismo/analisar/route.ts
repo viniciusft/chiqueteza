@@ -59,15 +59,23 @@ export async function POST(req: NextRequest) {
     fileSizeLimit: 5242880, // 5MB
   }).catch(() => {}) // ignora se já existe
 
-  // Converter base64 para buffer e fazer upload
-  // Remove prefixo data URL e espaços/quebras de linha (fix "string did not match expected pattern")
-  const cleanBase64 = foto_base64
-    .replace(/^data:image\/[a-z]+;base64,/, '')
-    .replace(/\s/g, '')
+  // Limpar base64: remover prefixo data:image/...;base64, e whitespace
+  let cleanBase64 = foto_base64
+  if (cleanBase64.includes(',')) {
+    cleanBase64 = cleanBase64.split(',')[1]
+  }
+  cleanBase64 = cleanBase64.replace(/[\r\n\s]/g, '')
   const buffer = Buffer.from(cleanBase64, 'base64')
-  // Remove hífens do userId para compatibilidade com Storage paths
-  const userIdClean = user.id.replace(/-/g, '')
-  const fileName = `${userIdClean}/${Date.now()}.jpg`
+
+  // UUID original com hífens — exatamente como vem do auth
+  const fileName = `${user.id}/${Date.now()}.jpg`
+
+  console.log('Upload attempt:', {
+    fileName,
+    userId: user.id,
+    bufferSize: buffer.length,
+    base64Length: cleanBase64.length,
+  })
 
   let fotoUrl: string | null = null
 
@@ -75,11 +83,14 @@ export async function POST(req: NextRequest) {
     .storage
     .from('analises-faciais')
     .upload(fileName, buffer, {
-      contentType: mime_type || 'image/jpeg',
+      contentType: 'image/jpeg',
       upsert: true,
     })
 
-  if (!uploadError) {
+  if (uploadError) {
+    console.error('Upload error detalhado:', JSON.stringify(uploadError))
+    // NÃO bloquear a análise — continuar sem a foto
+  } else {
     const { data: urlData } = supabaseAdmin
       .storage
       .from('analises-faciais')
