@@ -4,6 +4,7 @@ export interface VisagismoResponse {
     justificativa_formato: string
     terce_dominante: string
     terce_dominante_descricao?: string
+    tom_pele: string
     proporcoes: {
       testa: string
       zigomatico: string
@@ -18,13 +19,6 @@ export interface VisagismoResponse {
     boca: { tamanho: string; labios: string; comunicacao: string }
     nariz: { tamanho: string; comunicacao: string }
     queixo: { formato: string; comunicacao: string }
-  }
-  temperamento?: {
-    dominante: string
-    secundario: string
-    justificativa: string
-    como_isso_afeta_sua_imagem: string
-    dica_para_objetivo: string
   }
   colorimetria: {
     subtom: string
@@ -70,10 +64,8 @@ export interface VisagismoResponse {
   }
   relatorio: {
     resumo_perfil: string
-    temperamento_na_pratica?: string
     o_que_te_valoriza: string[]
     o_que_evitar: string[]
-    para_seu_objetivo?: string
     dica_especial: string
   }
 }
@@ -102,37 +94,6 @@ Sobrancelhas: retas horizontais (autoridade/pragmatismo — colérico), arqueada
 Boca: larga (generosidade/extroversão), pequena (contenção/elegância), lábios cheios (sensualidade/calor), finos (precisão/controle), cantos levantados (otimismo), cantos caídos (seriedade/profundidade)
 Nariz: proeminente (força vital/ação intensa), pequeno (ação sutil/refinamento), largo na base (praticidade), estreito (seletividade)
 Queixo: projetado (vontade forte), recuado (diplomacia/flexibilidade), quadrado (determinação), pontudo (sensibilidade/intuição), redondo (harmonia/conciliação)
-
-## OS 4 TEMPERAMENTOS
-
-### SANGUÍNEO
-Figura: triângulo | Cor: amarelo | Estação afinidade: primavera
-Sinais faciais: rosto oval/coração, olhos amendoados expressivos, sobrancelhas arqueadas com movimento, boca larga sorridente, queixo pontudo/suavizado, linhas diagonais e curvas dominantes
-Personalidade: extrovertida, comunicativa, otimista, criativa, impulsiva, gosta de novidades
-Imagem ideal: cortes modernos com movimento, aceita mudanças ousadas, maquiagem expressiva e harmônica, cores vibrantes da paleta
-Maquiagem: leveza + criatividade + alegria
-
-### COLÉRICO
-Figura: quadrado/retângulo | Cor: vermelho | Estação afinidade: outono
-Sinais faciais: rosto quadrado/retangular/diamante, traços fortes e marcados, olhos médios/grandes bem abertos, sobrancelhas retas ou diagonal crescente e espessas, nariz com narinas largas, boca reta e larga, queixo angular, linhas retas e horizontais
-Personalidade: determinada, líder, proativa, decisiva, objetiva, pode parecer autoritária
-Imagem ideal: cortes que transmitam poder e praticidade, linhas definidas, evitar estilos românticos
-Maquiagem: impacto + autenticidade, realça o que existe, sem transformação excessiva
-
-### MELANCÓLICO
-Figura: linha vertical fina | Cor: azul | Estação afinidade: verão
-Dois perfis: artístico (sensível, romântico, criativo) / científico (lógico, organizado, detalhista)
-Sinais faciais: rosto oblongo/coração/oval esguio, feições agrupadas pequenas e delicadas, olhos maiores arredondados ou levemente caídos, sobrancelha fina curva ou diagonal leve decrescente, nariz pequeno/delicado, boca pequena/fina ou com arco do cupido
-Personalidade: introspectiva, perfeccionista, sensível, leal, conservadora, detesta ser centro das atenções
-Imagem ideal: cortes com elegância e suavidade sem ângulos agressivos, camadas suaves, maquiagem que sugere
-Maquiagem: sensibilidade + sutileza, esfumados discretos
-
-### FLEUMÁTICO
-Figura: círculo | Cor: roxo | Estação afinidade: inverno neutro
-Sinais faciais: rosto redondo ou oval pleno, feições suaves sem ângulos, olhos pequenos/médios e serenos, sobrancelha suave horizontal ou levemente arqueada, nariz equilibrado, boca neutra, "cara de paz", linhas retas horizontais
-Personalidade: calma, paciente, diplomática, empática, adaptativa, tende à discrição
-Imagem ideal: looks básicos e clássicos, cortes com linhas suaves, maquiagem minimalista e natural
-Maquiagem: natural + harmoniosa
 
 ## AS 12 ESTAÇÕES DE COLORIMETRIA
 As 3 dimensões que determinam a estação:
@@ -166,13 +127,6 @@ Summers: rosado, malva suave, berry suave
 Autumns: bronze, pêssego escuro, terracota suave
 Winters: berry, rosado frio intenso, vinho suave
 
-## CRUZAMENTO TEMPERAMENTO × COLORIMETRIA
-Sanguíneo: valorizar a vivacidade — cores que vibrem, maquiagem com expressão
-Colérico: reforçar a autoridade — cores ricas, maquiagem com presença
-Melancólico: respeitar a sutileza — cores suaves, maquiagem que sugere
-Fleumático: valorizar a harmonia — looks equilibrados, maquiagem natural
-Quando há conflito (ex: sanguíneo + inverno): priorizar colorimetria para roupas/cabelo, usar energia do temperamento no estilo e acessórios
-
 ## SÍMBOLOS DA LINGUAGEM VISUAL
 Vertical = força, poder | Horizontal = estabilidade, calma | Diagonal = dinamismo, energia
 Curva = suavidade, sensualidade | Quadrado = solidez | Círculo = harmonia, mistério
@@ -188,14 +142,14 @@ Analise a foto enviada com rigor técnico usando toda a base de conhecimento aci
 SIGA ESTA SEQUÊNCIA OBRIGATÓRIA ANTES DE RESPONDER:
 1. Observe as três terças — qual é a dominante?
 2. Analise cada feição individualmente — olho, sobrancelha, boca, nariz, queixo
-3. Com base nas feições, identifique o temperamento dominante E o secundário
-4. Analise as 3 dimensões da cor: temperatura → profundidade → intensidade → contraste
+3. Analise as 3 dimensões da cor: temperatura → profundidade → intensidade → contraste
+4. Identifique o tom de pele
 5. Só então determine a estação de colorimetria
-6. Cruze temperamento + colorimetria + objetivo nas recomendações práticas
+6. Sintetize formato + feições + colorimetria nas recomendações práticas
 
 REGRAS OBRIGATÓRIAS:
 - formato_rosto: APENAS oval, redondo, quadrado, coracao, diamante, oblongo, triangular
-- temperamento.dominante e secundario: APENAS sanguineo, colerico, melancolico, fleumatico
+- tom_pele: APENAS clara (pele branca/bege/rosada clara), media (pele morena/parda/amarela/oliva), escura (pele negra/marrom escura/ébano)
 - subtom: APENAS quente, frio, neutro
 - temperatura: APENAS quente, frio
 - contraste_pessoal: APENAS alto, medio, baixo
@@ -208,7 +162,6 @@ REGRAS OBRIGATÓRIAS:
 - Todos os textos do relatorio em português brasileiro informal e acolhedor
 - NUNCA use respostas genéricas — tudo deve ser específico para ESTE rosto
 - justificativa_formato: obrigatório, explique POR QUÊ é esse formato
-- temperamento.justificativa: citar as feições específicas que indicaram o temperamento
 - HEX sempre #RRGGBB
 
 Retorne APENAS JSON válido sem markdown, seguindo exatamente esta estrutura:
@@ -218,6 +171,7 @@ Retorne APENAS JSON válido sem markdown, seguindo exatamente esta estrutura:
     "justificativa_formato": "",
     "terce_dominante": "",
     "terce_dominante_descricao": "",
+    "tom_pele": "",
     "proporcoes": { "testa": "", "zigomatico": "", "mandibula": "", "comprimento": "" },
     "caracteristicas_marcantes": []
   },
@@ -227,13 +181,6 @@ Retorne APENAS JSON válido sem markdown, seguindo exatamente esta estrutura:
     "boca": { "tamanho": "", "labios": "", "comunicacao": "" },
     "nariz": { "tamanho": "", "comunicacao": "" },
     "queixo": { "formato": "", "comunicacao": "" }
-  },
-  "temperamento": {
-    "dominante": "",
-    "secundario": "",
-    "justificativa": "",
-    "como_isso_afeta_sua_imagem": "",
-    "dica_para_objetivo": ""
   },
   "colorimetria": {
     "temperatura": "",
@@ -271,10 +218,8 @@ Retorne APENAS JSON válido sem markdown, seguindo exatamente esta estrutura:
   },
   "relatorio": {
     "resumo_perfil": "",
-    "temperamento_na_pratica": "",
     "o_que_te_valoriza": [],
     "o_que_evitar": [],
-    "para_seu_objetivo": "",
     "dica_especial": ""
   }
 }`
