@@ -280,7 +280,7 @@ Retorne APENAS JSON válido sem markdown, seguindo exatamente esta estrutura:
 }`
 
 // Ordem de preferência: tentar o mais capaz primeiro, fallback para o mais leve
-const MODELS = ['gemini-2.5-flash', 'gemini-2.5-flash-lite']
+const MODELS = ['gemini-3-flash-preview', 'gemini-2.5-flash']
 
 export async function analyzeVisagismo(
   imageBase64: string,
@@ -351,7 +351,10 @@ export async function analyzeVisagismo(
     }
 
     const data = await response.json()
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text
+    const parts = data?.candidates?.[0]?.content?.parts ?? []
+    const text = parts.find((p: { text?: string }) =>
+      p.text && p.text.trim().startsWith('{')
+    )?.text
 
     if (!text) throw new Error(`Resposta inválida da IA (${model})`)
 
