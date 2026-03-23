@@ -158,11 +158,37 @@ com alta recorrência em serviços de beleza.
 - Análise completa com 3 imagens: custo a confirmar após escolha de provider de imagem
 
 ### Gemini 2.5 Flash — análise visagismo (provider atual)
-Models em uso (fallback automático): gemini-2.5-flash → gemini-2.5-flash-lite
+Models em uso (fallback automático): gemini-3-flash-preview → gemini-2.5-flash
 URL: https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent
 Enviar foto como inline_data (base64 limpo, sem prefixo data URL) + prompt estruturado
 generationConfig: temperature 0.2, response_mime_type "application/json"
 Timeout: 55s via AbortController
+
+## Gemini API — Atenção
+
+### Model atual em uso
+- Principal: `gemini-3-flash-preview`
+- Fallback: `gemini-2.5-flash`
+
+### REGRA MAIS IMPORTANTE
+Antes de trocar qualquer model do Gemini, verificar no Google AI Studio
+qual model está configurado/funcionando no projeto. Trocar o model
+sem verificar é a causa mais comum de quebrar o visagismo.
+
+### Erro recorrente — "The String did not match the expected pattern"
+Causas conhecidas:
+1. Model retorna bloco de "thinking" antes do JSON — `parts[0]` não é o JSON
+2. Model errado (ex: gemini-2.0-flash está deprecated)
+
+Solução aplicada em lib/ai/analyzeVisagismo.ts:
+- Extração robusta usando .find() em vez de parts[0]:
+  const parts = data?.candidates?.[0]?.content?.parts ?? []
+  const text = parts.find((p) => p.text?.trim().startsWith('{'))?.text
+- Se usar model com thinking ativo, adicionar no generationConfig:
+  thinkingConfig: { thinkingBudget: 0 }
+
+### Models a evitar
+- `gemini-2.0-flash` — deprecated, causa erro 429
 
 ### Geração de imagens — EM AVALIAÇÃO
 FLUX Kontext Pro via fal.ai (fal-ai/flux-pro/kontext) está listado como opção
