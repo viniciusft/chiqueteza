@@ -131,7 +131,7 @@ export default async function ResultadoPage() {
                 backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20,
                 padding: '4px 12px', fontSize: 13, fontWeight: 600,
               }}>
-                contraste {dados.colorimetria.contraste}
+                contraste {dados.colorimetria.contraste_pessoal ?? dados.colorimetria.contraste}
               </span>
             </div>
             {dados.colorimetria.descricao_estacao && (
