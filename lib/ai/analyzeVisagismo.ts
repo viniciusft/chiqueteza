@@ -137,6 +137,9 @@ Regras OBRIGATÓRIAS:
 * Todos os textos do relatório em português brasileiro informal e acolhedor
 * HEX sempre no formato #RRGGBB`
 
+// Ordem de preferência: tentar o mais capaz primeiro, fallback para o mais leve
+const MODELS = ['gemini-2.5-flash', 'gemini-2.5-flash-lite']
+
 export async function analyzeVisagismo(
   imageBase64: string,
   mimeType: string
@@ -144,13 +147,18 @@ export async function analyzeVisagismo(
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) throw new Error('GEMINI_API_KEY não configurada')
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`
+  // Limpar base64: remover prefixo data URL e whitespace
+  let cleanBase64 = imageBase64
+  if (cleanBase64.includes(',')) {
+    cleanBase64 = cleanBase64.split(',')[1]
+  }
+  cleanBase64 = cleanBase64.replace(/[\r\n\s]/g, '')
 
-  const body = {
+  const bodyBase = {
     contents: [
       {
         parts: [
-          { inline_data: { mime_type: mimeType, data: imageBase64 } },
+          { inline_data: { mime_type: mimeType, data: cleanBase64 } },
           { text: PROMPT_VISAGISMO },
         ],
       },
@@ -161,32 +169,52 @@ export async function analyzeVisagismo(
     },
   }
 
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 55_000)
+  let lastError: Error = new Error('Nenhum model disponível')
 
-  let response: Response
-  try {
-    response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-      signal: controller.signal,
-    })
-  } catch (err) {
-    throw new Error(`Gemini fetch falhou: ${err instanceof Error ? err.message : String(err)}`)
-  } finally {
-    clearTimeout(timeout)
+  for (let i = 0; i < MODELS.length; i++) {
+    const model = MODELS[i]
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
+
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 55_000)
+
+    let response: Response
+    try {
+      response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(bodyBase),
+        signal: controller.signal,
+      })
+    } catch (err) {
+      clearTimeout(timeoutId)
+      lastError = new Error(`Gemini fetch falhou (${model}): ${err instanceof Error ? err.message : String(err)}`)
+      // Rede/timeout: tentar próximo model
+      continue
+    } finally {
+      clearTimeout(timeoutId)
+    }
+
+    // 429 quota excedida ou 503 indisponível: tentar próximo model
+    if (response.status === 429 || response.status === 503) {
+      const body = await response.text()
+      lastError = new Error(`Gemini ${response.status} (${model}): ${body.slice(0, 200)}`)
+      console.warn(`[analyzeVisagismo] ${model} retornou ${response.status}, tentando próximo...`)
+      continue
+    }
+
+    if (!response.ok) {
+      const body = await response.text()
+      throw new Error(`Gemini API error ${response.status} (${model}): ${body.slice(0, 500)}`)
+    }
+
+    const data = await response.json()
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text
+
+    if (!text) throw new Error(`Resposta inválida da IA (${model})`)
+
+    return JSON.parse(text) as VisagismoResponse
   }
 
-  if (!response.ok) {
-    const err = await response.text()
-    throw new Error(`Gemini API error ${response.status}: ${err}`)
-  }
-
-  const data = await response.json()
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text
-
-  if (!text) throw new Error('Resposta inválida da IA')
-
-  return JSON.parse(text) as VisagismoResponse
+  throw lastError
 }
