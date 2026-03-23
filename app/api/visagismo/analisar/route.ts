@@ -141,6 +141,13 @@ export async function POST(req: NextRequest) {
     mes_referencia: mes,
     provider_usado: 'gemini',
     imagens_geradas: [],
+    // Campos V2
+    temperamento_dominante: analiseData?.temperamento?.dominante ?? null,
+    temperamento_secundario: analiseData?.temperamento?.secundario ?? null,
+    feicoes_analise: analiseData?.feicoes ?? {},
+    terce_dominante_descricao: analiseData?.analise_facial?.terce_dominante_descricao ?? null,
+    acessorios_recomendados: analiseData?.acessorios ?? {},
+    versao_analise: 2,
   }
 
   const { data: saved, error: saveError } = await supabaseAdmin
