@@ -153,19 +153,20 @@ com alta recorrência em serviços de beleza.
 - lib/ai/generateHairstyle.ts — ideias de corte (futuro)
 
 ### Custo estimado por operação
-- Análise visagismo (Gemini 2.0 Flash): ~$0.001 (R$0,01)
-- Imagem gerada (FLUX Kontext Pro via fal.ai): ~$0.04 (R$0,23)
-- Análise completa com 3 imagens: ~$0.12 (R$0,70)
+- Análise visagismo (Gemini 2.5 Flash): ~$0.001 (R$0,01)
+- Imagem gerada: EM AVALIAÇÃO — não implementado ainda
+- Análise completa com 3 imagens: custo a confirmar após escolha de provider de imagem
 
-### Gemini 2.0 Flash — análise visagismo
-URL: https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent
-Enviar foto como inline_data (base64) + prompt estruturado
-generationConfig: temperature 0.3, response_mime_type "application/json"
+### Gemini 2.5 Flash — análise visagismo (provider atual)
+Models em uso (fallback automático): gemini-2.5-flash → gemini-2.5-flash-lite
+URL: https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent
+Enviar foto como inline_data (base64 limpo, sem prefixo data URL) + prompt estruturado
+generationConfig: temperature 0.2, response_mime_type "application/json"
+Timeout: 55s via AbortController
 
-### FLUX Kontext Pro — geração de imagens
-Via fal.ai: fal-ai/flux-pro/kontext
-Preservação de identidade obrigatória no prompt
-Seed fixo para consistência, guidance_scale 8
+### Geração de imagens — EM AVALIAÇÃO
+FLUX Kontext Pro via fal.ai (fal-ai/flux-pro/kontext) está listado como opção
+mas NÃO está implementado ainda. Provider será escolhido na V2.
 
 ---
 
@@ -179,9 +180,12 @@ Seed fixo para consistência, guidance_scale 8
 - Ação rápida WhatsApp nos cards de agendamento
 - Sistema de planos e créditos (banco criado)
 - Design system com paleta Chiqueteza
+- Cache stale-while-revalidate (lib/cache/ + useCache hook)
+- Service Worker PWA (public/sw.js)
+- Visagismo + Colorimetria: upload, análise Gemini, resultado, foto salva no Storage
+- Upload com preview mode e dois inputs separados (câmera / galeria)
 
 ### Em desenvolvimento (V2)
-- Visagismo + Colorimetria
 - Try-On de maquiagem
 - PremiumGate (componente de bloqueio de features)
 
