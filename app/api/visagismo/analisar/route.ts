@@ -115,6 +115,7 @@ export async function POST(req: NextRequest) {
     usuario_id: user.id,
     formato_rosto: analiseData?.analise_facial?.formato_rosto ?? null,
     terce_dominante: analiseData?.analise_facial?.terce_dominante ?? null,
+    tom_pele: analiseData?.analise_facial?.tom_pele ?? null,
     // ARRAY de texto — deve ser array JS, não jsonb
     caracteristicas_marcantes: Array.isArray(analiseData?.analise_facial?.caracteristicas_marcantes)
       ? analiseData.analise_facial.caracteristicas_marcantes
@@ -142,8 +143,8 @@ export async function POST(req: NextRequest) {
     provider_usado: 'gemini',
     imagens_geradas: [],
     // Campos V2
-    temperamento_dominante: analiseData?.temperamento?.dominante ?? null,
-    temperamento_secundario: analiseData?.temperamento?.secundario ?? null,
+    temperamento_dominante: null,
+    temperamento_secundario: null,
     feicoes_analise: analiseData?.feicoes ?? {},
     terce_dominante_descricao: analiseData?.analise_facial?.terce_dominante_descricao ?? null,
     acessorios_recomendados: analiseData?.acessorios ?? {},
