@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import Masonry from 'react-masonry-css'
 import { createClient } from '@/lib/supabase/client'
 import AppHeader from '@/components/ui/AppHeader'
 import PageContainer from '@/components/ui/PageContainer'
@@ -15,14 +16,16 @@ interface LookDiario {
   descricao: string | null
   publico: boolean
   curtidas: number
+  largura: number | null
+  altura: number | null
   created_at: string
 }
 
 const CONTEXTO_LABELS: Record<string, string> = {
-  dia_casual: '☀️ Dia casual',
-  dia_formal: '👔 Dia formal',
-  noite_casual: '🌙 Noite casual',
-  noite_especial: '✨ Noite especial',
+  dia_casual: '☀️ Dia',
+  dia_formal: '👔 Formal',
+  noite_casual: '🌙 Noite',
+  noite_especial: '✨ Especial',
 }
 
 const AVALIACAO_EMOJIS: Record<string, string> = {
@@ -37,6 +40,7 @@ export default function LooksPage() {
   const [loading, setLoading] = useState(true)
   const [lookSelecionado, setLookSelecionado] = useState<LookDiario | null>(null)
   const [deletando, setDeletando] = useState(false)
+  const [confirmarDelete, setConfirmarDelete] = useState(false)
 
   const carregarLooks = useCallback(async () => {
     const supabase = createClient()
@@ -53,137 +57,207 @@ export default function LooksPage() {
     setLoading(false)
   }, [router])
 
-  useEffect(() => {
-    void carregarLooks()
-  }, [carregarLooks])
+  useEffect(() => { void carregarLooks() }, [carregarLooks])
 
   async function handleDeletar(look: LookDiario) {
+    if (!confirmarDelete) {
+      setConfirmarDelete(true)
+      return
+    }
     setDeletando(true)
     const supabase = createClient()
-    await supabase
-      .from('looks_diario')
-      .delete()
-      .eq('id', look.id)
-
+    await supabase.from('looks_diario').delete().eq('id', look.id)
     setLookSelecionado(null)
     setDeletando(false)
+    setConfirmarDelete(false)
     void carregarLooks()
   }
 
   async function handleTogglePublico(look: LookDiario) {
     const supabase = createClient()
-    await supabase
-      .from('looks_diario')
-      .update({ publico: !look.publico })
-      .eq('id', look.id)
-
-    const atualizado = { ...look, publico: !look.publico }
+    const novoValor = !look.publico
+    await supabase.from('looks_diario').update({ publico: novoValor }).eq('id', look.id)
+    const atualizado = { ...look, publico: novoValor }
     setLookSelecionado(atualizado)
     setLooks((prev) => prev.map((l) => l.id === look.id ? atualizado : l))
+  }
+
+  function fecharModal() {
+    setLookSelecionado(null)
+    setConfirmarDelete(false)
   }
 
   return (
     <PageContainer>
       <AppHeader />
-      <main className="flex flex-col px-5 py-6 gap-6" style={{ minHeight: '80vh', position: 'relative' }}>
+      <main style={{ padding: '24px 0 100px', minHeight: '80vh' }}>
 
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between px-5 mb-5">
           <h1 className="font-extrabold tracking-tight" style={{ fontSize: 22, color: '#171717' }}>
             Meus Looks
           </h1>
           <button
-            onClick={() => { router.push('/app/galeria') }}
+            onClick={() => router.push('/app/galeria')}
             style={{ fontSize: 13, color: '#1B5E5A', fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer' }}
           >
-            Ver galeria →
+            Galeria →
           </button>
         </div>
 
+        {/* Loading skeletons */}
         {loading && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} style={{ aspectRatio: '1', borderRadius: 16, backgroundColor: '#E8E8E8', animation: 'pulse 1.5s infinite' }} />
-            ))}
+          <div style={{ display: 'flex', gap: 8, padding: '0 8px' }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ height: 200, borderRadius: 12, backgroundColor: '#E8E8E8' }} />
+              <div style={{ height: 140, borderRadius: 12, backgroundColor: '#E8E8E8' }} />
+            </div>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8, marginTop: 20 }}>
+              <div style={{ height: 160, borderRadius: 12, backgroundColor: '#E8E8E8' }} />
+              <div style={{ height: 200, borderRadius: 12, backgroundColor: '#E8E8E8' }} />
+            </div>
           </div>
         )}
 
+        {/* Empty state */}
         {!loading && looks.length === 0 && (
-          <div className="flex flex-col items-center gap-3 py-16">
-            <span style={{ fontSize: 48 }}>📸</span>
-            <p className="font-bold text-gray-700" style={{ fontSize: 16 }}>Nenhum look ainda</p>
-            <p className="text-gray-400 text-center" style={{ fontSize: 13 }}>
-              Registre seus looks do dia a dia e acompanhe sua evolução
+          <div className="flex flex-col items-center gap-4 py-16 px-5">
+            <span style={{ fontSize: 56 }}>📸</span>
+            <p className="font-bold text-gray-700" style={{ fontSize: 17 }}>Nenhum look ainda</p>
+            <p className="text-gray-400 text-center" style={{ fontSize: 14 }}>
+              Registre seu primeiro look e acompanhe sua evolução!
             </p>
+            <button
+              onClick={() => router.push('/app/looks/novo')}
+              style={{
+                marginTop: 4,
+                padding: '14px 28px',
+                borderRadius: 14,
+                border: 'none',
+                backgroundColor: '#1B5E5A',
+                color: '#fff',
+                fontSize: 15,
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              Registrar primeiro look
+            </button>
           </div>
         )}
 
+        {/* Masonry grid */}
         {!loading && looks.length > 0 && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <Masonry
+            breakpointCols={2}
+            className="masonry-grid"
+            columnClassName="masonry-grid_column"
+          >
             {looks.map((look) => (
               <button
                 key={look.id}
                 onClick={() => { playClick(); setLookSelecionado(look) }}
                 style={{
                   position: 'relative',
-                  aspectRatio: '1',
-                  borderRadius: 16,
+                  borderRadius: 12,
                   overflow: 'hidden',
                   border: 'none',
                   cursor: 'pointer',
                   padding: 0,
+                  display: 'block',
+                  width: '100%',
+                  backgroundColor: '#F0F0F0',
                 }}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={look.foto_url}
                   alt="Look"
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  style={{ width: '100%', height: 'auto', display: 'block', borderRadius: 12 }}
                 />
-                {/* Badges */}
-                <div
-                  style={{
-                    position: 'absolute',
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    padding: '20px 8px 8px',
-                    background: 'linear-gradient(transparent, rgba(0,0,0,0.55))',
-                    display: 'flex',
-                    alignItems: 'flex-end',
-                    gap: 4,
-                    flexWrap: 'wrap',
-                  }}
-                >
-                  {look.avaliacao && (
-                    <span style={{ fontSize: 16 }}>{AVALIACAO_EMOJIS[look.avaliacao]}</span>
-                  )}
-                  {look.contexto && (
-                    <span
+
+                {/* Badges topo */}
+                {look.contexto && (
+                  <span
+                    style={{
+                      position: 'absolute',
+                      top: 7,
+                      left: 7,
+                      fontSize: 10,
+                      fontWeight: 700,
+                      color: '#fff',
+                      backgroundColor: 'rgba(0,0,0,0.45)',
+                      borderRadius: 8,
+                      padding: '3px 7px',
+                      backdropFilter: 'blur(4px)',
+                    }}
+                  >
+                    {CONTEXTO_LABELS[look.contexto] ?? look.contexto}
+                  </span>
+                )}
+                {look.avaliacao && (
+                  <span
+                    style={{
+                      position: 'absolute',
+                      top: 7,
+                      right: 7,
+                      fontSize: 16,
+                    }}
+                  >
+                    {AVALIACAO_EMOJIS[look.avaliacao]}
+                  </span>
+                )}
+
+                {/* Descrição em overlay */}
+                {look.descricao && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      padding: '20px 8px 8px',
+                      background: 'linear-gradient(transparent, rgba(0,0,0,0.6))',
+                      borderRadius: '0 0 12px 12px',
+                    }}
+                  >
+                    <p
                       style={{
-                        fontSize: 10,
-                        fontWeight: 700,
+                        fontSize: 11,
                         color: '#fff',
-                        backgroundColor: 'rgba(0,0,0,0.4)',
-                        borderRadius: 6,
-                        padding: '2px 6px',
+                        margin: 0,
+                        overflow: 'hidden',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
                       }}
                     >
-                      {CONTEXTO_LABELS[look.contexto]?.split(' ').slice(1).join(' ') ?? look.contexto}
-                    </span>
-                  )}
-                  {look.publico && (
-                    <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.8)', marginLeft: 'auto' }}>❤️ {look.curtidas}</span>
-                  )}
-                </div>
+                      {look.descricao}
+                    </p>
+                  </div>
+                )}
+
+                {/* Cadeado se privado */}
+                {!look.publico && (
+                  <span
+                    style={{
+                      position: 'absolute',
+                      bottom: look.descricao ? 30 : 7,
+                      right: 7,
+                      fontSize: 14,
+                      opacity: 0.8,
+                    }}
+                  >
+                    🔒
+                  </span>
+                )}
               </button>
             ))}
-          </div>
+          </Masonry>
         )}
-
       </main>
 
-      {/* FAB novo look */}
+      {/* FAB */}
       <button
         onClick={() => { playClick(); router.push('/app/looks/novo') }}
         style={{
@@ -201,86 +275,77 @@ export default function LooksPage() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          boxShadow: '0 4px 16px rgba(27,94,90,0.4)',
+          boxShadow: '0 4px 18px rgba(27,94,90,0.45)',
           zIndex: 20,
         }}
       >
         +
       </button>
 
-      {/* Modal look selecionado */}
+      {/* Modal bottom sheet */}
       {lookSelecionado && (
         <div
           style={{
             position: 'fixed',
             inset: 0,
-            backgroundColor: 'rgba(0,0,0,0.7)',
+            backgroundColor: 'rgba(0,0,0,0.65)',
             zIndex: 50,
             display: 'flex',
             alignItems: 'flex-end',
           }}
-          onClick={() => setLookSelecionado(null)}
+          onClick={fecharModal}
         >
           <div
             style={{
               backgroundColor: '#fff',
               borderRadius: '24px 24px 0 0',
-              padding: '24px 20px 40px',
+              padding: '20px 20px 40px',
               width: '100%',
               maxWidth: 430,
               margin: '0 auto',
+              maxHeight: '85vh',
+              overflowY: 'auto',
               display: 'flex',
               flexDirection: 'column',
-              gap: 16,
+              gap: 14,
             }}
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Handle */}
+            <div style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: '#E0E0E0', alignSelf: 'center', marginBottom: 4 }} />
+
             {/* Foto grande */}
-            <div style={{ borderRadius: 16, overflow: 'hidden', maxHeight: 300 }}>
+            <div style={{ borderRadius: 16, overflow: 'hidden' }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={lookSelecionado.foto_url}
                 alt="Look"
-                style={{ width: '100%', objectFit: 'cover' }}
+                style={{ width: '100%', height: 'auto', display: 'block' }}
               />
             </div>
 
             {/* Info */}
-            <div className="flex flex-col gap-2">
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {lookSelecionado.avaliacao && (
-                  <span
-                    style={{
-                      fontSize: 12, fontWeight: 700,
-                      backgroundColor: '#E8F5F4', color: '#1B5E5A',
-                      borderRadius: 20, padding: '4px 10px',
-                    }}
-                  >
-                    {AVALIACAO_EMOJIS[lookSelecionado.avaliacao]}{' '}
-                    {lookSelecionado.avaliacao === 'amei' ? 'Amei' : lookSelecionado.avaliacao === 'ok' ? 'Ok' : 'Não gostei'}
-                  </span>
-                )}
-                {lookSelecionado.contexto && (
-                  <span
-                    style={{
-                      fontSize: 12, fontWeight: 700,
-                      backgroundColor: '#F5F5F5', color: '#555',
-                      borderRadius: 20, padding: '4px 10px',
-                    }}
-                  >
-                    {CONTEXTO_LABELS[lookSelecionado.contexto] ?? lookSelecionado.contexto}
-                  </span>
-                )}
-              </div>
-              {lookSelecionado.descricao && (
-                <p style={{ fontSize: 14, color: '#444' }}>{lookSelecionado.descricao}</p>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {lookSelecionado.avaliacao && (
+                <span style={{ fontSize: 12, fontWeight: 700, backgroundColor: '#E8F5F4', color: '#1B5E5A', borderRadius: 20, padding: '4px 12px' }}>
+                  {AVALIACAO_EMOJIS[lookSelecionado.avaliacao]}{' '}
+                  {{ amei: 'Amei', ok: 'Ok', nao_gostei: 'Não gostei' }[lookSelecionado.avaliacao] ?? lookSelecionado.avaliacao}
+                </span>
               )}
-              <p style={{ fontSize: 11, color: '#999' }}>
-                {new Date(lookSelecionado.created_at).toLocaleDateString('pt-BR', {
-                  day: 'numeric', month: 'long', year: 'numeric',
-                })}
-              </p>
+              {lookSelecionado.contexto && (
+                <span style={{ fontSize: 12, fontWeight: 700, backgroundColor: '#F5F5F5', color: '#555', borderRadius: 20, padding: '4px 12px' }}>
+                  {CONTEXTO_LABELS[lookSelecionado.contexto] ?? lookSelecionado.contexto}
+                </span>
+              )}
             </div>
+
+            {lookSelecionado.descricao && (
+              <p style={{ fontSize: 14, color: '#444', margin: 0 }}>{lookSelecionado.descricao}</p>
+            )}
+
+            <p style={{ fontSize: 11, color: '#bbb', margin: 0 }}>
+              {new Date(lookSelecionado.created_at).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}
+            </p>
 
             {/* Toggle público */}
             <button
@@ -296,12 +361,17 @@ export default function LooksPage() {
                 cursor: 'pointer',
               }}
             >
-              <span style={{ fontSize: 13, fontWeight: 600, color: '#333' }}>
-                {lookSelecionado.publico ? `Público · ❤️ ${lookSelecionado.curtidas}` : 'Compartilhar na galeria pública'}
-              </span>
+              <div className="flex flex-col items-start gap-0.5">
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#333' }}>
+                  {lookSelecionado.publico ? 'Remover da galeria' : 'Compartilhar na galeria'}
+                </span>
+                {lookSelecionado.publico && (
+                  <span style={{ fontSize: 11, color: '#F472A0' }}>❤️ {lookSelecionado.curtidas} curtidas</span>
+                )}
+              </div>
               <div
                 style={{
-                  width: 40,
+                  width: 42,
                   height: 24,
                   borderRadius: 12,
                   backgroundColor: lookSelecionado.publico ? '#1B5E5A' : '#D0D0D0',
@@ -310,30 +380,19 @@ export default function LooksPage() {
                   flexShrink: 0,
                 }}
               >
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: 3,
-                    left: lookSelecionado.publico ? 19 : 3,
-                    width: 18,
-                    height: 18,
-                    borderRadius: '50%',
-                    backgroundColor: '#fff',
-                    transition: 'left 0.2s',
-                  }}
-                />
+                <div style={{ position: 'absolute', top: 3, left: lookSelecionado.publico ? 21 : 3, width: 18, height: 18, borderRadius: '50%', backgroundColor: '#fff', transition: 'left 0.2s' }} />
               </div>
             </button>
 
-            {/* Deletar */}
+            {/* Excluir */}
             <button
               onClick={() => handleDeletar(lookSelecionado)}
               disabled={deletando}
               style={{
-                padding: '12px',
+                padding: '13px',
                 borderRadius: 14,
-                border: '1.5px solid #fca5a5',
-                backgroundColor: 'transparent',
+                border: `1.5px solid ${confirmarDelete ? '#ef4444' : '#fca5a5'}`,
+                backgroundColor: confirmarDelete ? '#fef2f2' : 'transparent',
                 color: '#ef4444',
                 fontSize: 14,
                 fontWeight: 600,
@@ -341,7 +400,7 @@ export default function LooksPage() {
                 opacity: deletando ? 0.6 : 1,
               }}
             >
-              {deletando ? 'Deletando...' : 'Deletar look'}
+              {deletando ? 'Excluindo...' : confirmarDelete ? 'Confirmar exclusão' : 'Excluir look'}
             </button>
           </div>
         </div>

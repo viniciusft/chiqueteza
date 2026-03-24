@@ -12,12 +12,15 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json()
-  const { foto_base64, contexto, avaliacao, descricao, publico } = body as {
+  const { foto_base64, contexto, avaliacao, descricao, publico, largura, altura, aspect_ratio } = body as {
     foto_base64: string
     contexto: string | null
     avaliacao: string | null
     descricao: string | null
     publico: boolean
+    largura: number | null
+    altura: number | null
+    aspect_ratio: number | null
   }
 
   if (!foto_base64) {
@@ -34,6 +37,13 @@ export async function POST(req: NextRequest) {
 
   const fileName = `${user.id}/${randomUUID()}.jpg`
   const supabaseAdmin = createAdminClient()
+
+  // Verificar/criar bucket se não existir
+  const { data: buckets } = await supabaseAdmin.storage.listBuckets()
+  const existe = buckets?.find((b) => b.name === 'looks-diario')
+  if (!existe) {
+    await supabaseAdmin.storage.createBucket('looks-diario', { public: true })
+  }
 
   const { error: uploadError } = await supabaseAdmin
     .storage
@@ -62,6 +72,9 @@ export async function POST(req: NextRequest) {
       avaliacao: avaliacao ?? null,
       descricao: descricao ?? null,
       publico: publico ?? false,
+      largura: largura ?? null,
+      altura: altura ?? null,
+      aspect_ratio: aspect_ratio ?? null,
     })
     .select()
     .single()
