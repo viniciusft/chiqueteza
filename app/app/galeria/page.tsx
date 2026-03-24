@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import Masonry from 'react-masonry-css'
 import { createClient } from '@/lib/supabase/client'
 import AppHeader from '@/components/ui/AppHeader'
 import PageContainer from '@/components/ui/PageContainer'
@@ -18,7 +19,9 @@ interface LookPublico {
   usuario_id: string
 }
 
-type Ordenacao = 'recentes' | 'curtidos'
+type Ordenacao = 'em_alta' | 'recentes'
+
+const PAGE_SIZE = 20
 
 const AVALIACAO_EMOJIS: Record<string, string> = {
   amei: '😍',
@@ -26,64 +29,78 @@ const AVALIACAO_EMOJIS: Record<string, string> = {
   nao_gostei: '😕',
 }
 
-function pontuacao(look: LookPublico): number {
-  const agora = Date.now()
-  const criado = new Date(look.created_at).getTime()
-  const diffHoras = (agora - criado) / (1000 * 60 * 60)
-  // Recência: 1 em 0h, 0 em 168h (7 dias), linear
-  const recencia = Math.max(0, 1 - diffHoras / 168)
-  return look.curtidas * 0.7 + recencia * 0.3
-}
-
 export default function GaleriaPage() {
   const router = useRouter()
   const [looks, setLooks] = useState<LookPublico[]>([])
   const [loading, setLoading] = useState(true)
-  const [ordenacao, setOrdenacao] = useState<Ordenacao>('recentes')
+  const [carregandoMais, setCarregandoMais] = useState(false)
+  const [temMais, setTemMais] = useState(false)
+  const [ordenacao, setOrdenacao] = useState<Ordenacao>('em_alta')
   const [curtidas, setCurtidas] = useState<Set<string>>(new Set())
+  const [curtidosAnimando, setCurtidosAnimando] = useState<Set<string>>(new Set())
   const [userId, setUserId] = useState<string | null>(null)
+  const [pagina, setPagina] = useState(0)
 
-  const carregarGaleria = useCallback(async () => {
+  const carregarGaleria = useCallback(async (ord: Ordenacao, pag: number, append = false) => {
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    setUserId(user?.id ?? null)
+    if (!append) setUserId(user?.id ?? null)
 
-    const { data } = await supabase
+    const query = supabase
       .from('looks_diario')
       .select('id, foto_url, contexto, avaliacao, descricao, curtidas, created_at, usuario_id')
       .eq('publico', true)
-      .order('created_at', { ascending: false })
-      .limit(100)
+      .range(pag * PAGE_SIZE, (pag + 1) * PAGE_SIZE - 1)
 
-    const lista = (data as LookPublico[]) ?? []
-    setLooks(lista)
-
-    // Buscar curtidas do usuário atual
-    if (user && lista.length > 0) {
-      const ids = lista.map((l) => l.id)
-      const { data: minhasCurtidas } = await supabase
-        .from('looks_curtidas')
-        .select('look_id')
-        .eq('usuario_id', user.id)
-        .in('look_id', ids)
-
-      const set = new Set<string>((minhasCurtidas ?? []).map((c: { look_id: string }) => c.look_id))
-      setCurtidas(set)
+    if (ord === 'em_alta') {
+      query.order('curtidas', { ascending: false }).order('created_at', { ascending: false })
+    } else {
+      query.order('created_at', { ascending: false })
     }
 
-    setLoading(false)
+    const { data } = await query
+    const lista = (data as LookPublico[]) ?? []
+    setTemMais(lista.length === PAGE_SIZE)
+
+    if (append) {
+      setLooks((prev) => [...prev, ...lista])
+    } else {
+      setLooks(lista)
+
+      // Buscar curtidas do usuário
+      if (user && lista.length > 0) {
+        const ids = lista.map((l) => l.id)
+        const { data: minhasCurtidas } = await supabase
+          .from('looks_curtidas')
+          .select('look_id')
+          .eq('usuario_id', user.id)
+          .in('look_id', ids)
+        setCurtidas(new Set<string>((minhasCurtidas ?? []).map((c: { look_id: string }) => c.look_id)))
+      }
+    }
   }, [])
 
   useEffect(() => {
-    void carregarGaleria()
-  }, [carregarGaleria])
+    setLoading(true)
+    setPagina(0)
+    void carregarGaleria(ordenacao, 0, false).finally(() => setLoading(false))
+  }, [ordenacao, carregarGaleria])
+
+  async function handleVerMais() {
+    setCarregandoMais(true)
+    const proxPagina = pagina + 1
+    setPagina(proxPagina)
+    await carregarGaleria(ordenacao, proxPagina, true)
+    setCarregandoMais(false)
+  }
 
   async function handleCurtir(look: LookPublico) {
     if (!userId) { router.push('/login'); return }
     playClick()
 
-    // Otimistic update
     const jaCurtiu = curtidas.has(look.id)
+
+    // Optimistic update
     setCurtidas((prev) => {
       const next = new Set(prev)
       if (jaCurtiu) next.delete(look.id)
@@ -92,22 +109,31 @@ export default function GaleriaPage() {
     })
     setLooks((prev) =>
       prev.map((l) =>
-        l.id === look.id
-          ? { ...l, curtidas: jaCurtiu ? Math.max(0, l.curtidas - 1) : l.curtidas + 1 }
-          : l
+        l.id === look.id ? { ...l, curtidas: jaCurtiu ? Math.max(0, l.curtidas - 1) : l.curtidas + 1 } : l
       )
     )
+
+    // Animação no coração
+    if (!jaCurtiu) {
+      setCurtidosAnimando((prev) => new Set(prev).add(look.id))
+      setTimeout(() => {
+        setCurtidosAnimando((prev) => {
+          const next = new Set(prev)
+          next.delete(look.id)
+          return next
+        })
+      }, 400)
+    }
 
     try {
       const res = await fetch(`/api/galeria/curtir/${look.id}`, { method: 'POST' })
       if (!res.ok) throw new Error()
       const data = await res.json() as { curtidas: number; curtido: boolean }
-      // Sync com valor real do servidor
       setLooks((prev) =>
         prev.map((l) => l.id === look.id ? { ...l, curtidas: data.curtidas } : l)
       )
     } catch {
-      // Reverter se falhar
+      // Reverter
       setCurtidas((prev) => {
         const next = new Set(prev)
         if (jaCurtiu) next.add(look.id)
@@ -116,29 +142,21 @@ export default function GaleriaPage() {
       })
       setLooks((prev) =>
         prev.map((l) =>
-          l.id === look.id
-            ? { ...l, curtidas: jaCurtiu ? l.curtidas + 1 : Math.max(0, l.curtidas - 1) }
-            : l
+          l.id === look.id ? { ...l, curtidas: jaCurtiu ? l.curtidas + 1 : Math.max(0, l.curtidas - 1) } : l
         )
       )
     }
   }
 
-  const looksOrdenados = [...looks].sort((a, b) =>
-    ordenacao === 'curtidos'
-      ? b.curtidas - a.curtidas
-      : pontuacao(b) - pontuacao(a)
-  )
-
   return (
     <PageContainer>
       <AppHeader />
-      <main className="flex flex-col px-5 py-6 gap-5">
+      <main style={{ padding: '24px 0 100px', minHeight: '80vh' }}>
 
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between px-5 mb-5">
           <h1 className="font-extrabold tracking-tight" style={{ fontSize: 22, color: '#171717' }}>
-            Galeria de Looks
+            Galeria
           </h1>
           <button
             onClick={() => router.push('/app/looks')}
@@ -149,165 +167,212 @@ export default function GaleriaPage() {
         </div>
 
         {/* Toggle ordenação */}
-        <div
-          style={{
-            display: 'flex',
-            backgroundColor: '#F0F0F0',
-            borderRadius: 12,
-            padding: 4,
-            gap: 4,
-          }}
-        >
-          {(['recentes', 'curtidos'] as Ordenacao[]).map((op) => (
+        <div style={{ margin: '0 20px 20px', display: 'flex', backgroundColor: '#F0F0F0', borderRadius: 14, padding: 4 }}>
+          {([['em_alta', '✨ Em alta'], ['recentes', '🕐 Recentes']] as [Ordenacao, string][]).map(([val, label]) => (
             <button
-              key={op}
-              onClick={() => setOrdenacao(op)}
+              key={val}
+              onClick={() => setOrdenacao(val)}
               style={{
                 flex: 1,
-                padding: '8px',
-                borderRadius: 10,
+                padding: '9px',
+                borderRadius: 11,
                 border: 'none',
-                backgroundColor: ordenacao === op ? '#fff' : 'transparent',
-                color: ordenacao === op ? '#1B5E5A' : '#888',
+                backgroundColor: ordenacao === val ? '#fff' : 'transparent',
+                color: ordenacao === val ? '#1B5E5A' : '#888',
                 fontSize: 13,
-                fontWeight: ordenacao === op ? 700 : 500,
+                fontWeight: ordenacao === val ? 700 : 500,
                 cursor: 'pointer',
-                boxShadow: ordenacao === op ? '0 1px 4px rgba(0,0,0,0.1)' : 'none',
+                boxShadow: ordenacao === val ? '0 1px 4px rgba(0,0,0,0.1)' : 'none',
                 transition: 'all 0.15s',
               }}
             >
-              {op === 'recentes' ? 'Recentes' : 'Mais curtidos'}
+              {label}
             </button>
           ))}
         </div>
 
+        {/* Loading */}
         {loading && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} style={{ aspectRatio: '1', borderRadius: 16, backgroundColor: '#E8E8E8' }} />
-            ))}
+          <div style={{ display: 'flex', gap: 8, padding: '0 8px' }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ height: 200, borderRadius: 12, backgroundColor: '#E8E8E8' }} />
+              <div style={{ height: 150, borderRadius: 12, backgroundColor: '#E8E8E8' }} />
+            </div>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8, marginTop: 24 }}>
+              <div style={{ height: 170, borderRadius: 12, backgroundColor: '#E8E8E8' }} />
+              <div style={{ height: 200, borderRadius: 12, backgroundColor: '#E8E8E8' }} />
+            </div>
           </div>
         )}
 
-        {!loading && looksOrdenados.length === 0 && (
-          <div className="flex flex-col items-center gap-3 py-16">
-            <span style={{ fontSize: 48 }}>✨</span>
-            <p className="font-bold text-gray-700" style={{ fontSize: 16 }}>Nenhum look por aqui ainda</p>
-            <p className="text-gray-400 text-center" style={{ fontSize: 13 }}>
-              Seja a primeira a compartilhar seu look!
+        {/* Empty state */}
+        {!loading && looks.length === 0 && (
+          <div className="flex flex-col items-center gap-4 py-16 px-5">
+            <span style={{ fontSize: 56 }}>✨</span>
+            <p className="font-bold text-gray-700" style={{ fontSize: 17 }}>Nenhum look compartilhado ainda</p>
+            <p className="text-gray-400 text-center" style={{ fontSize: 14 }}>
+              Seja a primeira a compartilhar!
             </p>
             <button
-              onClick={() => router.push('/app/looks/novo')}
+              onClick={() => router.push('/app/looks/novo?publico=true')}
               style={{
-                marginTop: 8,
-                padding: '12px 24px',
+                marginTop: 4,
+                padding: '14px 28px',
                 borderRadius: 14,
                 border: 'none',
                 backgroundColor: '#1B5E5A',
                 color: '#fff',
-                fontSize: 14,
+                fontSize: 15,
                 fontWeight: 700,
                 cursor: 'pointer',
               }}
             >
-              Adicionar look
+              Compartilhar meu look
             </button>
           </div>
         )}
 
-        {!loading && looksOrdenados.length > 0 && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            {looksOrdenados.map((look) => {
-              const curtiu = curtidas.has(look.id)
-              return (
-                <div
-                  key={look.id}
-                  style={{
-                    borderRadius: 16,
-                    overflow: 'hidden',
-                    position: 'relative',
-                    backgroundColor: '#F5F5F5',
-                  }}
-                >
-                  {/* Foto */}
-                  <div style={{ aspectRatio: '1', position: 'relative' }}>
+        {/* Masonry grid */}
+        {!loading && looks.length > 0 && (
+          <>
+            <Masonry
+              breakpointCols={2}
+              className="masonry-grid"
+              columnClassName="masonry-grid_column"
+            >
+              {looks.map((look) => {
+                const curtiu = curtidas.has(look.id)
+                const animando = curtidosAnimando.has(look.id)
+                return (
+                  <div
+                    key={look.id}
+                    style={{
+                      position: 'relative',
+                      borderRadius: 12,
+                      overflow: 'hidden',
+                      backgroundColor: '#F0F0F0',
+                    }}
+                  >
+                    {/* Foto */}
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={look.foto_url}
                       alt="Look"
-                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                      style={{ width: '100%', height: 'auto', display: 'block' }}
                     />
+
                     {/* Badge avaliação */}
                     {look.avaliacao && (
                       <span
-                        style={{
-                          position: 'absolute',
-                          top: 8,
-                          left: 8,
-                          fontSize: 18,
-                        }}
+                        style={{ position: 'absolute', top: 7, left: 7, fontSize: 16 }}
                       >
                         {AVALIACAO_EMOJIS[look.avaliacao]}
                       </span>
                     )}
-                  </div>
 
-                  {/* Rodapé */}
-                  <div
-                    style={{
-                      padding: '8px 10px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      backgroundColor: '#fff',
-                    }}
-                  >
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      {look.descricao && (
+                    {/* Overlay descrição */}
+                    {look.descricao && (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          bottom: 36,
+                          left: 0,
+                          right: 0,
+                          padding: '20px 8px 6px',
+                          background: 'linear-gradient(transparent, rgba(0,0,0,0.6))',
+                        }}
+                      >
                         <p
                           style={{
-                            fontSize: 11, color: '#555',
-                            overflow: 'hidden', textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
+                            fontSize: 11,
+                            color: '#fff',
+                            margin: 0,
+                            overflow: 'hidden',
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
                           }}
                         >
                           {look.descricao}
                         </p>
-                      )}
-                      <p style={{ fontSize: 10, color: '#aaa' }}>
-                        {new Date(look.created_at).toLocaleDateString('pt-BR', {
-                          day: 'numeric', month: 'short',
-                        })}
-                      </p>
-                    </div>
+                      </div>
+                    )}
 
-                    {/* Botão curtir */}
-                    <button
-                      onClick={() => handleCurtir(look)}
+                    {/* Rodapé: data + coração */}
+                    <div
                       style={{
+                        position: 'absolute',
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        height: 36,
+                        backgroundColor: 'rgba(255,255,255,0.92)',
+                        backdropFilter: 'blur(8px)',
                         display: 'flex',
-                        flexDirection: 'column',
                         alignItems: 'center',
-                        gap: 1,
-                        border: 'none',
-                        backgroundColor: 'transparent',
-                        cursor: 'pointer',
-                        padding: '4px 6px',
-                        flexShrink: 0,
+                        justifyContent: 'space-between',
+                        padding: '0 8px 0 10px',
                       }}
                     >
-                      <span style={{ fontSize: 18, transition: 'transform 0.15s', transform: curtiu ? 'scale(1.2)' : 'scale(1)' }}>
-                        {curtiu ? '❤️' : '🤍'}
+                      <span style={{ fontSize: 10, color: '#aaa' }}>
+                        {new Date(look.created_at).toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' })}
                       </span>
-                      <span style={{ fontSize: 10, color: curtiu ? '#F472A0' : '#aaa', fontWeight: 600 }}>
-                        {look.curtidas}
-                      </span>
-                    </button>
+
+                      <button
+                        onClick={() => handleCurtir(look)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 3,
+                          border: 'none',
+                          backgroundColor: 'transparent',
+                          cursor: 'pointer',
+                          padding: '4px 2px',
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontSize: 16,
+                            transform: animando ? 'scale(1.3)' : 'scale(1)',
+                            transition: 'transform 0.2s ease',
+                            display: 'inline-block',
+                          }}
+                        >
+                          {curtiu ? '❤️' : '🤍'}
+                        </span>
+                        <span style={{ fontSize: 11, color: curtiu ? '#F472A0' : '#aaa', fontWeight: 600 }}>
+                          {look.curtidas}
+                        </span>
+                      </button>
+                    </div>
                   </div>
-                </div>
-              )
-            })}
-          </div>
+                )
+              })}
+            </Masonry>
+
+            {/* Ver mais */}
+            {temMais && (
+              <div style={{ padding: '20px 20px 0', display: 'flex', justifyContent: 'center' }}>
+                <button
+                  onClick={handleVerMais}
+                  disabled={carregandoMais}
+                  style={{
+                    padding: '12px 32px',
+                    borderRadius: 14,
+                    border: '1.5px solid #E8E8E8',
+                    backgroundColor: '#fff',
+                    color: '#1B5E5A',
+                    fontSize: 14,
+                    fontWeight: 700,
+                    cursor: carregandoMais ? 'not-allowed' : 'pointer',
+                    opacity: carregandoMais ? 0.6 : 1,
+                  }}
+                >
+                  {carregandoMais ? 'Carregando...' : 'Ver mais'}
+                </button>
+              </div>
+            )}
+          </>
         )}
 
       </main>

@@ -1,11 +1,15 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
+import Cropper, { Area as CropArea } from 'react-easy-crop'
 import AppHeader from '@/components/ui/AppHeader'
 import PageContainer from '@/components/ui/PageContainer'
+import { getCroppedImg } from '../cropUtils'
 import { playSuccess, playError } from '@/lib/sound'
+import { Suspense } from 'react'
 
+type ViewMode = 'select' | 'crop' | 'form'
 type Contexto = 'dia_casual' | 'dia_formal' | 'noite_casual' | 'noite_especial'
 type Avaliacao = 'amei' | 'ok' | 'nao_gostei'
 
@@ -22,68 +26,83 @@ const AVALIACOES: { value: Avaliacao; label: string; emoji: string }[] = [
   { value: 'nao_gostei', label: 'Não gostei', emoji: '😕' },
 ]
 
-async function compressImage(file: File, maxPx = 800, quality = 0.8): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const img = new Image()
-    const url = URL.createObjectURL(file)
-    img.onload = () => {
-      URL.revokeObjectURL(url)
-      const { width, height } = img
-      const scale = Math.min(1, maxPx / Math.max(width, height))
-      const canvas = document.createElement('canvas')
-      canvas.width = Math.round(width * scale)
-      canvas.height = Math.round(height * scale)
-      const ctx = canvas.getContext('2d')
-      if (!ctx) { reject(new Error('canvas context')); return }
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-      resolve(canvas.toDataURL('image/jpeg', quality))
-    }
-    img.onerror = reject
-    img.src = url
-  })
+interface FotoProcessada {
+  dataUrl: string
+  blob: Blob
+  largura: number
+  altura: number
+  aspect_ratio: number
 }
 
-export default function LooksNovoPage() {
+function LooksNovoContent({ publico: publicoInicial }: { publico: boolean }) {
   const router = useRouter()
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const [preview, setPreview] = useState<string | null>(null)
-  const [fotoBase64, setFotoBase64] = useState<string | null>(null)
+  const [viewMode, setViewMode] = useState<ViewMode>('select')
+  const [imageSrc, setImageSrc] = useState<string | null>(null)
+  const [crop, setCrop] = useState({ x: 0, y: 0 })
+  const [zoom, setZoom] = useState(1)
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<CropArea | null>(null)
+  const [foto, setFoto] = useState<FotoProcessada | null>(null)
+
   const [contexto, setContexto] = useState<Contexto | null>(null)
   const [avaliacao, setAvaliacao] = useState<Avaliacao | null>(null)
   const [descricao, setDescricao] = useState('')
-  const [publico, setPublico] = useState(false)
+  const [publico, setPublico] = useState(publicoInicial)
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState('')
 
-  async function handleArquivo(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleSelecionarFoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
     setErro('')
+    const url = URL.createObjectURL(file)
+    setImageSrc(url)
+    setCrop({ x: 0, y: 0 })
+    setZoom(1)
+    setViewMode('crop')
+    // Limpar input para permitir re-seleção
+    e.target.value = ''
+  }
+
+  async function handleConfirmarCrop() {
+    if (!imageSrc || !croppedAreaPixels) return
+    setErro('')
     try {
-      const dataUrl = await compressImage(file)
-      setPreview(dataUrl)
-      setFotoBase64(dataUrl)
+      const result = await getCroppedImg(imageSrc, croppedAreaPixels)
+      setFoto(result)
+      setViewMode('form')
     } catch {
       setErro('Erro ao processar a foto.')
     }
   }
 
   async function handleSalvar() {
-    if (!fotoBase64) { setErro('Selecione uma foto.'); return }
+    if (!foto) { setErro('Selecione uma foto.'); return }
     setSalvando(true)
     setErro('')
 
     try {
+      // Converter blob para base64
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(reader.result as string)
+        reader.onerror = reject
+        reader.readAsDataURL(foto.blob)
+      })
+
       const res = await fetch('/api/looks/novo', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          foto_base64: fotoBase64,
+          foto_base64: base64,
           contexto: contexto ?? null,
           avaliacao: avaliacao ?? null,
           descricao: descricao.trim() || null,
           publico,
+          largura: foto.largura,
+          altura: foto.altura,
+          aspect_ratio: foto.aspect_ratio,
         }),
       })
 
@@ -96,11 +115,144 @@ export default function LooksNovoPage() {
       router.push('/app/looks')
     } catch (err) {
       playError()
-      setErro(err instanceof Error ? err.message : 'Erro ao salvar. Tente novamente.')
+      setErro(err instanceof Error ? err.message : 'Erro ao salvar.')
       setSalvando(false)
     }
   }
 
+  // ── Tela: selecionar foto ─────────────────────────────────────────────
+  if (viewMode === 'select') {
+    return (
+      <PageContainer>
+        <AppHeader />
+        <main className="flex flex-col px-5 py-6 gap-6">
+          <div className="flex items-center gap-3">
+            <button onClick={() => router.back()} style={{ fontSize: 22, color: '#999', background: 'none', border: 'none', cursor: 'pointer' }}>←</button>
+            <h1 className="font-extrabold tracking-tight" style={{ fontSize: 22, color: '#171717' }}>
+              Novo look
+            </h1>
+          </div>
+
+          <button
+            onClick={() => inputRef.current?.click()}
+            style={{
+              width: '100%',
+              aspectRatio: '1',
+              borderRadius: 20,
+              border: '2px dashed #D0D0D0',
+              backgroundColor: '#F5F5F5',
+              cursor: 'pointer',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 12,
+            }}
+          >
+            <span style={{ fontSize: 48 }}>📸</span>
+            <p style={{ fontSize: 15, color: '#999', fontWeight: 600 }}>Toque para selecionar foto</p>
+            <p style={{ fontSize: 12, color: '#bbb' }}>Câmera ou galeria</p>
+          </button>
+
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleSelecionarFoto}
+          />
+
+          {erro && <p style={{ fontSize: 13, color: '#f87171', textAlign: 'center' }}>{erro}</p>}
+        </main>
+      </PageContainer>
+    )
+  }
+
+  // ── Tela: cropper ─────────────────────────────────────────────────────
+  if (viewMode === 'crop' && imageSrc) {
+    return (
+      <div style={{ position: 'fixed', inset: 0, backgroundColor: '#000', display: 'flex', flexDirection: 'column', zIndex: 100 }}>
+        {/* Área do cropper */}
+        <div style={{ flex: 1, position: 'relative' }}>
+          <Cropper
+            image={imageSrc}
+            crop={crop}
+            zoom={zoom}
+            // Sem aspect — crop livre
+            onCropChange={setCrop}
+            onZoomChange={setZoom}
+            onCropComplete={(_: CropArea, croppedPixels: CropArea) => setCroppedAreaPixels(croppedPixels)}
+            style={{
+              containerStyle: { backgroundColor: '#000' },
+              cropAreaStyle: { borderRadius: 8 },
+            }}
+          />
+        </div>
+
+        {/* Controles de zoom */}
+        <div style={{ padding: '12px 20px', backgroundColor: 'rgba(0,0,0,0.8)' }}>
+          <input
+            type="range"
+            min={1}
+            max={3}
+            step={0.01}
+            value={zoom}
+            onChange={(e) => setZoom(Number(e.target.value))}
+            style={{ width: '100%', accentColor: '#1B5E5A' }}
+          />
+        </div>
+
+        {/* Botões */}
+        <div
+          style={{
+            display: 'flex',
+            gap: 10,
+            padding: '12px 20px 32px',
+            backgroundColor: 'rgba(0,0,0,0.8)',
+          }}
+        >
+          <button
+            onClick={() => { setViewMode('select'); setImageSrc(null) }}
+            style={{
+              flex: 1,
+              padding: '14px',
+              borderRadius: 14,
+              border: '1.5px solid rgba(255,255,255,0.3)',
+              backgroundColor: 'transparent',
+              color: '#fff',
+              fontSize: 15,
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            ← Trocar foto
+          </button>
+          <button
+            onClick={handleConfirmarCrop}
+            style={{
+              flex: 2,
+              padding: '14px',
+              borderRadius: 14,
+              border: 'none',
+              backgroundColor: '#1B5E5A',
+              color: '#fff',
+              fontSize: 15,
+              fontWeight: 700,
+              cursor: 'pointer',
+            }}
+          >
+            ✓ Usar esta foto
+          </button>
+        </div>
+
+        {erro && (
+          <p style={{ padding: '0 20px 12px', fontSize: 13, color: '#f87171', textAlign: 'center' }}>{erro}</p>
+        )}
+      </div>
+    )
+  }
+
+  // ── Tela: formulário ──────────────────────────────────────────────────
   return (
     <PageContainer>
       <AppHeader />
@@ -108,68 +260,46 @@ export default function LooksNovoPage() {
 
         {/* Header */}
         <div className="flex items-center gap-3">
-          <button onClick={() => router.back()} className="text-gray-400 text-xl">←</button>
+          <button
+            onClick={() => setViewMode('crop')}
+            style={{ fontSize: 22, color: '#999', background: 'none', border: 'none', cursor: 'pointer' }}
+          >
+            ←
+          </button>
           <h1 className="font-extrabold tracking-tight" style={{ fontSize: 22, color: '#171717' }}>
             Novo look
           </h1>
         </div>
 
-        {/* Upload da foto */}
-        <button
-          onClick={() => inputRef.current?.click()}
-          style={{
-            width: '100%',
-            aspectRatio: '1',
-            borderRadius: 20,
-            border: preview ? 'none' : '2px dashed #D0D0D0',
-            backgroundColor: preview ? 'transparent' : '#F5F5F5',
-            overflow: 'hidden',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            position: 'relative',
-          }}
-        >
-          {preview ? (
-            // eslint-disable-next-line @next/next/no-img-element
+        {/* Preview foto */}
+        {foto && (
+          <div style={{ position: 'relative', borderRadius: 16, overflow: 'hidden' }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={preview}
-              alt="Preview do look"
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              src={foto.dataUrl}
+              alt="Preview"
+              style={{ width: '100%', height: 'auto', display: 'block' }}
             />
-          ) : (
-            <div className="flex flex-col items-center gap-2">
-              <span style={{ fontSize: 40 }}>📸</span>
-              <p style={{ fontSize: 14, color: '#999', fontWeight: 600 }}>Toque para adicionar foto</p>
-            </div>
-          )}
-          {preview && (
-            <div
+            <button
+              onClick={() => { setViewMode('select'); setFoto(null) }}
               style={{
                 position: 'absolute',
-                bottom: 12,
-                right: 12,
+                top: 10,
+                right: 10,
                 backgroundColor: 'rgba(0,0,0,0.55)',
+                color: '#fff',
+                border: 'none',
                 borderRadius: 10,
                 padding: '6px 12px',
                 fontSize: 12,
-                color: '#fff',
                 fontWeight: 600,
+                cursor: 'pointer',
               }}
             >
               Trocar foto
-            </div>
-          )}
-        </button>
-
-        <input
-          ref={inputRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={handleArquivo}
-        />
+            </button>
+          </div>
+        )}
 
         {/* Contexto */}
         <div className="flex flex-col gap-3">
@@ -218,7 +348,7 @@ export default function LooksNovoPage() {
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
-                    gap: 4,
+                    gap: 6,
                     padding: '12px 8px',
                     borderRadius: 14,
                     border: `1.5px solid ${ativo ? '#1B5E5A' : '#E8E8E8'}`,
@@ -227,7 +357,7 @@ export default function LooksNovoPage() {
                     transition: 'all 0.15s',
                   }}
                 >
-                  <span style={{ fontSize: 24 }}>{a.emoji}</span>
+                  <span style={{ fontSize: 26 }}>{a.emoji}</span>
                   <span style={{ fontSize: 12, fontWeight: ativo ? 700 : 500, color: ativo ? '#1B5E5A' : '#666' }}>
                     {a.label}
                   </span>
@@ -239,11 +369,10 @@ export default function LooksNovoPage() {
 
         {/* Legenda */}
         <div className="flex flex-col gap-2">
-          <p className="font-bold" style={{ fontSize: 14, color: '#171717' }}>Legenda <span style={{ color: '#999', fontWeight: 400 }}>(opcional)</span></p>
           <textarea
             value={descricao}
             onChange={(e) => setDescricao(e.target.value.slice(0, 200))}
-            placeholder="Adicione uma legenda..."
+            placeholder="Adicione uma legenda... (opcional)"
             rows={3}
             style={{
               width: '100%',
@@ -256,9 +385,10 @@ export default function LooksNovoPage() {
               outline: 'none',
               fontFamily: 'inherit',
               boxSizing: 'border-box',
+              backgroundColor: '#fff',
             }}
           />
-          <p style={{ fontSize: 11, color: '#999', textAlign: 'right' }}>{descricao.length}/200</p>
+          <p style={{ fontSize: 11, color: '#bbb', textAlign: 'right' }}>{descricao.length}/200</p>
         </div>
 
         {/* Toggle público */}
@@ -275,15 +405,15 @@ export default function LooksNovoPage() {
             cursor: 'pointer',
           }}
         >
-          <div className="flex flex-col items-start gap-0.5">
+          <div className="flex flex-col items-start gap-1">
             <span style={{ fontSize: 14, fontWeight: 700, color: '#171717' }}>Compartilhar na galeria pública</span>
-            <span style={{ fontSize: 12, color: '#999' }}>Outras usuárias poderão ver e curtir</span>
+            <span style={{ fontSize: 12, color: '#999' }}>Inspire outras mulheres com seu look</span>
           </div>
           <div
             style={{
-              width: 44,
-              height: 26,
-              borderRadius: 13,
+              width: 46,
+              height: 28,
+              borderRadius: 14,
               backgroundColor: publico ? '#1B5E5A' : '#D0D0D0',
               position: 'relative',
               transition: 'background-color 0.2s',
@@ -295,12 +425,12 @@ export default function LooksNovoPage() {
                 position: 'absolute',
                 top: 3,
                 left: publico ? 21 : 3,
-                width: 20,
-                height: 20,
+                width: 22,
+                height: 22,
                 borderRadius: '50%',
                 backgroundColor: '#fff',
                 transition: 'left 0.2s',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                boxShadow: '0 1px 4px rgba(0,0,0,0.2)',
               }}
             />
           </div>
@@ -313,17 +443,17 @@ export default function LooksNovoPage() {
         {/* Botão salvar */}
         <button
           onClick={handleSalvar}
-          disabled={salvando || !fotoBase64}
+          disabled={salvando}
           style={{
             width: '100%',
             padding: '16px',
             borderRadius: 16,
             border: 'none',
-            backgroundColor: salvando || !fotoBase64 ? '#A0C4C2' : '#1B5E5A',
+            backgroundColor: salvando ? '#A0C4C2' : '#1B5E5A',
             color: '#fff',
             fontSize: 16,
             fontWeight: 700,
-            cursor: salvando || !fotoBase64 ? 'not-allowed' : 'pointer',
+            cursor: salvando ? 'not-allowed' : 'pointer',
             marginBottom: 24,
           }}
         >
@@ -333,4 +463,18 @@ export default function LooksNovoPage() {
       </main>
     </PageContainer>
   )
+}
+
+export default function LooksNovoPage() {
+  return (
+    <Suspense fallback={null}>
+      <LooksNovoInner />
+    </Suspense>
+  )
+}
+
+function LooksNovoInner() {
+  const searchParams = useSearchParams()
+  const publicoInicial = searchParams.get('publico') === 'true'
+  return <LooksNovoContent publico={publicoInicial} />
 }
