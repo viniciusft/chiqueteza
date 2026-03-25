@@ -48,6 +48,9 @@ function LooksNovoContent({ publicoInicial }: { publicoInicial: boolean }) {
   const [contexto, setContexto] = useState<Contexto | null>(null)
   const [avaliacao, setAvaliacao] = useState<Avaliacao | null>(null)
   const [descricao, setDescricao] = useState('')
+  const [dataFoto, setDataFoto] = useState(() => new Date().toISOString().slice(0, 10))
+  const [hashtags, setHashtags] = useState<string[]>([])
+  const [hashtagInput, setHashtagInput] = useState('')
   const [isPublico, setIsPublico] = useState(publicoInicial)
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState('')
@@ -158,6 +161,8 @@ function LooksNovoContent({ publicoInicial }: { publicoInicial: boolean }) {
           contexto: contexto ?? null,
           avaliacao: avaliacao ?? null,
           descricao: descricao.trim() || null,
+          data_foto: dataFoto || null,
+          hashtags: hashtags.length > 0 ? hashtags : null,
           publico: isPublico,
           largura: imagemProcessada.width,
           altura: imagemProcessada.height,
@@ -421,9 +426,9 @@ function LooksNovoContent({ publicoInicial }: { publicoInicial: boolean }) {
         <div className="flex flex-col gap-2">
           <textarea
             value={descricao}
-            onChange={(e) => setDescricao(e.target.value.slice(0, 200))}
+            onChange={(e) => setDescricao(e.target.value.slice(0, 40))}
             placeholder="Adicione uma legenda... (opcional)"
-            rows={3}
+            rows={2}
             style={{
               width: '100%',
               borderRadius: 14,
@@ -438,7 +443,100 @@ function LooksNovoContent({ publicoInicial }: { publicoInicial: boolean }) {
               backgroundColor: '#fff',
             }}
           />
-          <p style={{ fontSize: 11, color: '#bbb', textAlign: 'right' }}>{descricao.length}/200</p>
+          <p style={{ fontSize: 11, color: '#bbb', textAlign: 'right' }}>{descricao.length}/40</p>
+        </div>
+
+        {/* Data da foto */}
+        <div className="flex flex-col gap-2">
+          <p className="font-bold" style={{ fontSize: 14, color: '#171717' }}>📅 Quando foi esse look?</p>
+          <input
+            type="date"
+            value={dataFoto}
+            max={new Date().toISOString().slice(0, 10)}
+            onChange={(e) => setDataFoto(e.target.value)}
+            style={{
+              width: '100%',
+              borderRadius: 14,
+              border: '1.5px solid #E8E8E8',
+              padding: '12px 14px',
+              fontSize: 14,
+              color: '#171717',
+              outline: 'none',
+              fontFamily: 'inherit',
+              boxSizing: 'border-box',
+              backgroundColor: '#fff',
+            }}
+          />
+        </div>
+
+        {/* Hashtags */}
+        <div className="flex flex-col gap-2">
+          <p className="font-bold" style={{ fontSize: 14, color: '#171717' }}>
+            # Hashtags
+            <span style={{ fontSize: 11, fontWeight: 400, color: '#bbb', marginLeft: 8 }}>
+              {hashtags.length}/10
+            </span>
+          </p>
+          {hashtags.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {hashtags.map((tag) => (
+                <span
+                  key={tag}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    backgroundColor: '#E8F5F4',
+                    color: '#1B5E5A',
+                    borderRadius: 20,
+                    padding: '5px 12px',
+                    fontSize: 13,
+                    fontWeight: 600,
+                  }}
+                >
+                  #{tag}
+                  <button
+                    onClick={() => setHashtags((prev) => prev.filter((t) => t !== tag))}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#1B5E5A', fontSize: 14, lineHeight: 1, padding: 0 }}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+          {hashtags.length < 10 && (
+            <input
+              type="text"
+              value={hashtagInput}
+              onChange={(e) => setHashtagInput(e.target.value.replace(/[^a-zA-Z0-9À-ú_]/g, '').slice(0, 20))}
+              onKeyDown={(e) => {
+                if (e.key === ' ' || e.key === 'Enter') {
+                  e.preventDefault()
+                  const tag = hashtagInput.trim()
+                  if (tag && !hashtags.includes(tag) && hashtags.length < 10) {
+                    setHashtags((prev) => [...prev, tag])
+                  }
+                  setHashtagInput('')
+                } else if (e.key === 'Backspace' && !hashtagInput && hashtags.length > 0) {
+                  setHashtags((prev) => prev.slice(0, -1))
+                }
+              }}
+              placeholder={hashtags.length === 0 ? 'ex: casual, inverno... (Espaço para adicionar)' : 'Mais hashtags...'}
+              style={{
+                width: '100%',
+                borderRadius: 14,
+                border: '1.5px solid #E8E8E8',
+                padding: '12px 14px',
+                fontSize: 14,
+                color: '#171717',
+                outline: 'none',
+                fontFamily: 'inherit',
+                boxSizing: 'border-box',
+                backgroundColor: '#fff',
+              }}
+            />
+          )}
         </div>
 
         {/* Toggle público */}

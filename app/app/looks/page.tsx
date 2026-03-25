@@ -19,6 +19,8 @@ interface LookDiario {
   largura: number | null
   altura: number | null
   created_at: string
+  data_foto: string | null
+  hashtags: string[] | null
 }
 
 const CONTEXTO_LABELS: Record<string, string> = {
@@ -41,23 +43,46 @@ export default function LooksPage() {
   const [lookSelecionado, setLookSelecionado] = useState<LookDiario | null>(null)
   const [deletando, setDeletando] = useState(false)
   const [confirmarDelete, setConfirmarDelete] = useState(false)
+  const [hashtagSelecionada, setHashtagSelecionada] = useState<string | null>(null)
+  const [todasHashtags, setTodasHashtags] = useState<string[]>([])
 
-  const carregarLooks = useCallback(async () => {
+  const carregarLooks = useCallback(async (filtroHashtag: string | null = null) => {
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { router.push('/login'); return }
 
-    const { data } = await supabase
+    let query = supabase
       .from('looks_diario')
       .select('*')
       .eq('usuario_id', user.id)
       .order('created_at', { ascending: false })
 
+    if (filtroHashtag) {
+      query = query.contains('hashtags', [filtroHashtag])
+    }
+
+    const { data } = await query
     setLooks((data as LookDiario[]) ?? [])
+
+    // Coletar todas as hashtags únicas para os filtros
+    if (!filtroHashtag) {
+      const todas = supabase
+        .from('looks_diario')
+        .select('hashtags')
+        .eq('usuario_id', user.id)
+        .not('hashtags', 'is', null)
+      const { data: hashData } = await todas
+      const set = new Set<string>()
+      ;(hashData ?? []).forEach((row: { hashtags: string[] | null }) => {
+        row.hashtags?.forEach((t) => set.add(t))
+      })
+      setTodasHashtags(Array.from(set).sort())
+    }
+
     setLoading(false)
   }, [router])
 
-  useEffect(() => { void carregarLooks() }, [carregarLooks])
+  useEffect(() => { void carregarLooks(null) }, [carregarLooks])
 
   async function handleDeletar(look: LookDiario) {
     if (!confirmarDelete) {
@@ -70,7 +95,7 @@ export default function LooksPage() {
     setLookSelecionado(null)
     setDeletando(false)
     setConfirmarDelete(false)
-    void carregarLooks()
+    void carregarLooks(null)
   }
 
   async function handleTogglePublico(look: LookDiario) {
@@ -80,6 +105,13 @@ export default function LooksPage() {
     const atualizado = { ...look, publico: novoValor }
     setLookSelecionado(atualizado)
     setLooks((prev) => prev.map((l) => l.id === look.id ? atualizado : l))
+  }
+
+  function handleFiltroHashtag(tag: string) {
+    const nova = hashtagSelecionada === tag ? null : tag
+    setHashtagSelecionada(nova)
+    setLoading(true)
+    void carregarLooks(nova).finally(() => setLoading(false))
   }
 
   function fecharModal() {
@@ -146,6 +178,35 @@ export default function LooksPage() {
           </div>
         )}
 
+        {/* Filtro por hashtag */}
+        {!loading && todasHashtags.length > 0 && (
+          <div style={{ overflowX: 'auto', paddingBottom: 4 }}>
+            <div style={{ display: 'flex', gap: 8, padding: '0 20px', whiteSpace: 'nowrap' }}>
+              {todasHashtags.map((tag) => (
+                <button
+                  key={tag}
+                  onClick={() => handleFiltroHashtag(tag)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    padding: '6px 14px',
+                    borderRadius: 20,
+                    border: `1.5px solid ${hashtagSelecionada === tag ? '#1B5E5A' : '#E8E8E8'}`,
+                    backgroundColor: hashtagSelecionada === tag ? '#E8F5F4' : '#fff',
+                    color: hashtagSelecionada === tag ? '#1B5E5A' : '#888',
+                    fontSize: 13,
+                    fontWeight: hashtagSelecionada === tag ? 700 : 500,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  #{tag}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Masonry grid */}
         {!loading && looks.length > 0 && (
           <Masonry
@@ -208,33 +269,23 @@ export default function LooksPage() {
                   </span>
                 )}
 
-                {/* Descrição em overlay */}
-                {look.descricao && (
-                  <div
+                {/* Data estilo foto revelada */}
+                {look.data_foto && (
+                  <span
                     style={{
                       position: 'absolute',
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
-                      padding: '20px 8px 8px',
-                      background: 'linear-gradient(transparent, rgba(0,0,0,0.6))',
-                      borderRadius: '0 0 12px 12px',
+                      bottom: 7,
+                      left: 7,
+                      fontSize: 10,
+                      fontFamily: 'monospace',
+                      color: '#D4A843',
+                      fontWeight: 700,
+                      letterSpacing: 0.5,
+                      textShadow: '0 1px 3px rgba(0,0,0,0.5)',
                     }}
                   >
-                    <p
-                      style={{
-                        fontSize: 11,
-                        color: '#fff',
-                        margin: 0,
-                        overflow: 'hidden',
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                      }}
-                    >
-                      {look.descricao}
-                    </p>
-                  </div>
+                    {new Date(look.data_foto + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })}
+                  </span>
                 )}
 
                 {/* Cadeado se privado */}
@@ -242,7 +293,7 @@ export default function LooksPage() {
                   <span
                     style={{
                       position: 'absolute',
-                      bottom: look.descricao ? 30 : 7,
+                      bottom: 7,
                       right: 7,
                       fontSize: 14,
                       opacity: 0.8,
