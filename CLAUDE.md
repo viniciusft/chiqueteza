@@ -346,6 +346,7 @@ VAPID_PRIVATE_KEY
 - Upload: `supabase.storage.from('looks-diario').upload(path, blob, { contentType: 'image/jpeg' })`
 - URL pública: `supabase.storage.from('looks-diario').getPublicUrl(path)`
 - Insert: `supabase.from('looks_diario').insert({...})`
+- `aspect_ratio` é coluna **GENERATED ALWAYS** — nunca incluir no insert; o banco calcula automaticamente a partir de `largura` e `altura`
 
 ### Layout
 - `react-masonry-css` — 2 colunas, proporção livre das fotos

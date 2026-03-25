@@ -161,7 +161,6 @@ function LooksNovoContent({ publicoInicial }: { publicoInicial: boolean }) {
           publico: isPublico,
           largura: imagemProcessada.width,
           altura: imagemProcessada.height,
-          aspect_ratio: parseFloat((imagemProcessada.width / imagemProcessada.height).toFixed(4)),
         })
         .select()
         .single()
