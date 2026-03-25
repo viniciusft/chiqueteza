@@ -17,6 +17,7 @@ interface LookPublico {
   curtidas: number
   created_at: string
   usuario_id: string
+  data_foto: string | null
 }
 
 type Ordenacao = 'em_alta' | 'recentes'
@@ -48,7 +49,7 @@ export default function GaleriaPage() {
 
     const query = supabase
       .from('looks_diario')
-      .select('id, foto_url, contexto, avaliacao, descricao, curtidas, created_at, usuario_id')
+      .select('id, foto_url, contexto, avaliacao, descricao, curtidas, created_at, usuario_id, data_foto')
       .eq('publico', true)
       .range(pag * PAGE_SIZE, (pag + 1) * PAGE_SIZE - 1)
 
@@ -270,35 +271,26 @@ export default function GaleriaPage() {
                       </span>
                     )}
 
-                    {/* Overlay descrição */}
-                    {look.descricao && (
-                      <div
+                    {/* Data estilo foto revelada */}
+                    {look.data_foto && (
+                      <span
                         style={{
                           position: 'absolute',
-                          bottom: 36,
-                          left: 0,
-                          right: 0,
-                          padding: '20px 8px 6px',
-                          background: 'linear-gradient(transparent, rgba(0,0,0,0.6))',
+                          bottom: 44,
+                          left: 7,
+                          fontSize: 10,
+                          fontFamily: 'monospace',
+                          color: '#D4A843',
+                          fontWeight: 700,
+                          letterSpacing: 0.5,
+                          textShadow: '0 1px 3px rgba(0,0,0,0.5)',
                         }}
                       >
-                        <p
-                          style={{
-                            fontSize: 11,
-                            color: '#fff',
-                            margin: 0,
-                            overflow: 'hidden',
-                            display: '-webkit-box',
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: 'vertical',
-                          }}
-                        >
-                          {look.descricao}
-                        </p>
-                      </div>
+                        {new Date(look.data_foto + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })}
+                      </span>
                     )}
 
-                    {/* Rodapé: data + coração */}
+                    {/* Rodapé: coração */}
                     <div
                       style={{
                         position: 'absolute',
@@ -310,14 +302,10 @@ export default function GaleriaPage() {
                         backdropFilter: 'blur(8px)',
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'space-between',
+                        justifyContent: 'flex-end',
                         padding: '0 8px 0 10px',
                       }}
                     >
-                      <span style={{ fontSize: 10, color: '#aaa' }}>
-                        {new Date(look.created_at).toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' })}
-                      </span>
-
                       <button
                         onClick={() => handleCurtir(look)}
                         style={{
