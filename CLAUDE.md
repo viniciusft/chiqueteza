@@ -331,10 +331,8 @@ VAPID_PRIVATE_KEY
 - Políticas RLS: INSERT apenas para usuária autenticada no próprio diretório
 
 ### Editor de imagem
-- **react-filerobot-image-editor** — crop livre mobile-friendly com bordas arrastáveis
-- Importar com `next/dynamic` + `ssr: false` (component client-only)
-- `TABS` e `TOOLS` podem ser importados estaticamente (são constantes)
-- `onSave(editedImage)` → usar `editedImage.imageBase64`
+- **react-image-crop** — crop livre, React 18 compatível, mobile-friendly
+- ⚠️ ATENÇÃO: NÃO usar `react-filerobot-image-editor` — incompatível com React 18 (exige React 19)
 - ⚠️ ATENÇÃO: `react-easy-crop` continua sendo usado APENAS no visagismo (`app/app/visagismo/upload/page.tsx`). Não remover.
 
 ### Processamento de imagem (client-side)

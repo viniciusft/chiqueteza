@@ -1,23 +1,13 @@
 'use client'
 
-import dynamic from 'next/dynamic'
-import { useRef, useState, Suspense } from 'react'
+import ReactCrop, { type Crop, type PixelCrop } from 'react-image-crop'
+import 'react-image-crop/dist/ReactCrop.css'
+import { useRef, useState, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import AppHeader from '@/components/ui/AppHeader'
 import PageContainer from '@/components/ui/PageContainer'
 import { playSuccess, playError } from '@/lib/sound'
-
-// Filerobot é client-only (acessa window) — SSR desativado
-// Importar TABS/TOOLS estaticamente puxaria o módulo no servidor e causaria
-// "window is not defined". Solução: dynamic import e strings inline.
-const FilerobotImageEditor = dynamic(
-  () => import('react-filerobot-image-editor').then((m) => m.default),
-  { ssr: false }
-)
-// Valores de TABS.ADJUST e TOOLS.CROP extraídos das tipagens do pacote
-const TAB_ADJUST = 'Adjust'
-const TOOL_CROP = 'Crop'
 
 type ViewMode = 'select' | 'form'
 type Contexto = 'dia_casual' | 'dia_formal' | 'noite_casual' | 'noite_especial'
@@ -36,68 +26,29 @@ const AVALIACOES: { value: Avaliacao; label: string; emoji: string }[] = [
   { value: 'nao_gostei', label: 'Não gostei', emoji: '😕' },
 ]
 
-interface FotoProcessada {
-  dataUrl: string
+interface ImagemProcessada {
   blob: Blob
-  largura: number
-  altura: number
-}
-
-/** Converte base64 (com ou sem prefixo data:) para Blob e redimensiona para máx 1080px */
-async function processarImagem(imageBase64: string): Promise<FotoProcessada> {
-  const base64Data = imageBase64.includes(',') ? imageBase64.split(',')[1] : imageBase64
-  const byteCharacters = atob(base64Data)
-  const byteNumbers = new Uint8Array(byteCharacters.length)
-  for (let i = 0; i < byteCharacters.length; i++) {
-    byteNumbers[i] = byteCharacters.charCodeAt(i)
-  }
-  const blob = new Blob([byteNumbers], { type: 'image/jpeg' })
-
-  // Redimensionar para máx 1080px no lado maior
-  const img = new Image()
-  img.src = URL.createObjectURL(blob)
-  await new Promise<void>((resolve) => { img.onload = () => resolve() })
-
-  const MAX = 1080
-  let { width, height } = img
-  if (width > MAX || height > MAX) {
-    if (width > height) {
-      height = Math.round(height * MAX / width)
-      width = MAX
-    } else {
-      width = Math.round(width * MAX / height)
-      height = MAX
-    }
-  }
-
-  const canvas = document.createElement('canvas')
-  canvas.width = width
-  canvas.height = height
-  canvas.getContext('2d')!.drawImage(img, 0, 0, width, height)
-  URL.revokeObjectURL(img.src)
-
-  const finalBlob = await new Promise<Blob>((resolve) => {
-    canvas.toBlob((b) => resolve(b!), 'image/jpeg', 0.85)
-  })
-
-  const dataUrl = canvas.toDataURL('image/jpeg', 0.85)
-
-  return { dataUrl, blob: finalBlob, largura: width, altura: height }
+  dataUrl: string
+  width: number
+  height: number
 }
 
 function LooksNovoContent({ publicoInicial }: { publicoInicial: boolean }) {
   const router = useRouter()
   const inputRef = useRef<HTMLInputElement>(null)
+  const imgRef = useRef<HTMLImageElement>(null)
 
   const [viewMode, setViewMode] = useState<ViewMode>('select')
   const [fotoOriginalUrl, setFotoOriginalUrl] = useState<string | null>(null)
   const [isEditorOpen, setIsEditorOpen] = useState(false)
-  const [foto, setFoto] = useState<FotoProcessada | null>(null)
+  const [crop, setCrop] = useState<Crop>()
+  const [completedCrop, setCompletedCrop] = useState<PixelCrop>()
+  const [imagemProcessada, setImagemProcessada] = useState<ImagemProcessada | null>(null)
 
   const [contexto, setContexto] = useState<Contexto | null>(null)
   const [avaliacao, setAvaliacao] = useState<Avaliacao | null>(null)
   const [descricao, setDescricao] = useState('')
-  const [publico, setPublico] = useState(publicoInicial)
+  const [isPublico, setIsPublico] = useState(publicoInicial)
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState('')
 
@@ -108,49 +59,97 @@ function LooksNovoContent({ publicoInicial }: { publicoInicial: boolean }) {
     if (fotoOriginalUrl) URL.revokeObjectURL(fotoOriginalUrl)
     const url = URL.createObjectURL(file)
     setFotoOriginalUrl(url)
+    setCrop(undefined)
+    setCompletedCrop(undefined)
     setIsEditorOpen(true)
     e.target.value = ''
   }
 
+  const aplicarCrop = useCallback(async () => {
+    if (!imgRef.current) return
+    const image = imgRef.current
+    const canvas = document.createElement('canvas')
+
+    // Se não fez crop, usar imagem inteira
+    const cropArea: PixelCrop = completedCrop ?? {
+      x: 0,
+      y: 0,
+      width: image.naturalWidth,
+      height: image.naturalHeight,
+      unit: 'px',
+    }
+
+    const scaleX = image.naturalWidth / image.width
+    const scaleY = image.naturalHeight / image.height
+    let width = cropArea.width * scaleX
+    let height = cropArea.height * scaleY
+
+    // Redimensionar para máximo 1080px no lado maior
+    const maxSize = 1080
+    if (width > maxSize || height > maxSize) {
+      if (width > height) {
+        height = Math.round(height * maxSize / width)
+        width = maxSize
+      } else {
+        width = Math.round(width * maxSize / height)
+        height = maxSize
+      }
+    }
+
+    canvas.width = width
+    canvas.height = height
+    const ctx = canvas.getContext('2d')!
+    ctx.drawImage(
+      image,
+      cropArea.x * scaleX,
+      cropArea.y * scaleY,
+      cropArea.width * scaleX,
+      cropArea.height * scaleY,
+      0, 0, width, height
+    )
+
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.85)
+    canvas.toBlob((blob) => {
+      if (!blob) return
+      setImagemProcessada({ blob, dataUrl, width, height })
+      setIsEditorOpen(false)
+      setViewMode('form')
+    }, 'image/jpeg', 0.85)
+  }, [completedCrop])
+
   async function handleSalvar() {
-    if (!foto) { setErro('Selecione uma foto.'); return }
+    if (!imagemProcessada) { setErro('Selecione uma foto.'); return }
     setSalvando(true)
     setErro('')
 
     try {
       const supabase = createClient()
 
-      // A) Obter userId
       const { data: { user } } = await supabase.auth.getUser()
       const userId = user?.id
       console.log('1. userId:', userId)
       if (!userId) throw new Error('Usuário não autenticado')
 
-      // B) Blob já processado
-      console.log('2. blob:', foto.blob.size, foto.blob.type)
+      console.log('2. blob:', imagemProcessada.blob.size, imagemProcessada.blob.type)
 
-      // C) Path do upload
       const uuid = crypto.randomUUID()
       const path = `${userId}/${uuid}.jpg`
       console.log('3. path:', path)
 
-      // D) Upload para storage
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('looks-diario')
-        .upload(path, foto.blob, {
+        .upload(path, imagemProcessada.blob, {
           contentType: 'image/jpeg',
           upsert: false,
         })
       console.log('4. upload result:', uploadData, uploadError)
       if (uploadError) throw uploadError
 
-      // E) URL pública
       const { data: { publicUrl } } = supabase.storage
         .from('looks-diario')
         .getPublicUrl(path)
       console.log('5. publicUrl:', publicUrl)
 
-      // F) Insert no banco
       const { data: insertData, error: insertError } = await supabase
         .from('looks_diario')
         .insert({
@@ -159,10 +158,10 @@ function LooksNovoContent({ publicoInicial }: { publicoInicial: boolean }) {
           contexto: contexto ?? null,
           avaliacao: avaliacao ?? null,
           descricao: descricao.trim() || null,
-          publico,
-          largura: foto.largura,
-          altura: foto.altura,
-          aspect_ratio: parseFloat((foto.largura / foto.altura).toFixed(4)),
+          publico: isPublico,
+          largura: imagemProcessada.width,
+          altura: imagemProcessada.height,
+          aspect_ratio: parseFloat((imagemProcessada.width / imagemProcessada.height).toFixed(4)),
         })
         .select()
         .single()
@@ -172,10 +171,9 @@ function LooksNovoContent({ publicoInicial }: { publicoInicial: boolean }) {
       playSuccess()
       router.push('/app/looks')
     } catch (err) {
-      console.error('[looks/novo] Erro ao salvar:', err)
+      console.error('[looks/novo] Erro:', err)
       playError()
-      const msg = err instanceof Error ? err.message : 'Erro ao salvar. Tente novamente.'
-      setErro(msg)
+      setErro(err instanceof Error ? err.message : 'Erro ao salvar. Tente novamente.')
       setSalvando(false)
     }
   }
@@ -230,38 +228,76 @@ function LooksNovoContent({ publicoInicial }: { publicoInicial: boolean }) {
           {erro && <p style={{ fontSize: 13, color: '#f87171', textAlign: 'center' }}>{erro}</p>}
         </main>
 
-        {/* Editor Filerobot — abre sobre a tela de seleção */}
+        {/* Editor de crop — abre sobre a tela de seleção */}
         {isEditorOpen && fotoOriginalUrl && (
-          <div style={{ position: 'fixed', inset: 0, zIndex: 9999 }}>
-            <FilerobotImageEditor
-              source={fotoOriginalUrl}
-              onSave={async (editedImage) => {
-                try {
-                  if (!editedImage.imageBase64) throw new Error('Imagem não gerada')
-                  const processada = await processarImagem(editedImage.imageBase64)
-                  setFoto(processada)
-                  setIsEditorOpen(false)
-                  setViewMode('form')
-                } catch (err) {
-                  console.error('[filerobot onSave]', err)
-                  setErro('Erro ao processar imagem.')
-                  setIsEditorOpen(false)
-                }
-              }}
-              onClose={() => {
-                setIsEditorOpen(false)
-                setFotoOriginalUrl(null)
-              }}
-              tabsIds={[TAB_ADJUST]}
-              defaultTabId={TAB_ADJUST}
-              defaultToolId={TOOL_CROP}
-              Crop={{
-                noPresets: true,
-                ratio: 'custom',
-              }}
-              savingPixelRatio={2}
-              previewPixelRatio={1}
-            />
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 9999,
+              backgroundColor: '#000',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '16px 0',
+            }}
+          >
+            <div style={{ width: '100%', maxHeight: '72vh', overflow: 'auto', display: 'flex', justifyContent: 'center' }}>
+              <ReactCrop
+                crop={crop}
+                onChange={(c) => setCrop(c)}
+                onComplete={(c) => setCompletedCrop(c)}
+                // Sem aspect — crop completamente livre
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  ref={imgRef}
+                  src={fotoOriginalUrl}
+                  style={{ maxWidth: '100%', maxHeight: '70vh', display: 'block' }}
+                  alt="Editar foto"
+                />
+              </ReactCrop>
+            </div>
+
+            <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, marginTop: 10, textAlign: 'center' }}>
+              Arraste para selecionar a área • sem seleção usa a foto inteira
+            </p>
+
+            <div style={{ display: 'flex', gap: 12, marginTop: 16, padding: '0 20px', width: '100%', maxWidth: 430 }}>
+              <button
+                onClick={() => { setIsEditorOpen(false); setFotoOriginalUrl(null) }}
+                style={{
+                  flex: 1,
+                  padding: '14px',
+                  borderRadius: 14,
+                  border: '1.5px solid rgba(255,255,255,0.3)',
+                  backgroundColor: 'transparent',
+                  color: '#fff',
+                  fontSize: 15,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                ← Cancelar
+              </button>
+              <button
+                onClick={aplicarCrop}
+                style={{
+                  flex: 2,
+                  padding: '14px',
+                  borderRadius: 14,
+                  border: 'none',
+                  backgroundColor: '#1B5E5A',
+                  color: '#fff',
+                  fontSize: 15,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                ✓ Usar esta foto
+              </button>
+            </div>
           </div>
         )}
       </PageContainer>
@@ -276,7 +312,7 @@ function LooksNovoContent({ publicoInicial }: { publicoInicial: boolean }) {
 
         <div className="flex items-center gap-3">
           <button
-            onClick={() => { setViewMode('select'); setFoto(null); setIsEditorOpen(false) }}
+            onClick={() => { setViewMode('select'); setImagemProcessada(null); setIsEditorOpen(false) }}
             style={{ fontSize: 22, color: '#999', background: 'none', border: 'none', cursor: 'pointer' }}
           >
             ←
@@ -287,16 +323,16 @@ function LooksNovoContent({ publicoInicial }: { publicoInicial: boolean }) {
         </div>
 
         {/* Preview foto */}
-        {foto && (
+        {imagemProcessada && (
           <div style={{ position: 'relative', borderRadius: 16, overflow: 'hidden' }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={foto.dataUrl}
+              src={imagemProcessada.dataUrl}
               alt="Preview"
               style={{ width: '100%', height: 'auto', display: 'block' }}
             />
             <button
-              onClick={() => { setViewMode('select'); setFoto(null) }}
+              onClick={() => { setViewMode('select'); setImagemProcessada(null) }}
               style={{
                 position: 'absolute',
                 top: 10,
@@ -408,7 +444,7 @@ function LooksNovoContent({ publicoInicial }: { publicoInicial: boolean }) {
 
         {/* Toggle público */}
         <button
-          onClick={() => setPublico((v) => !v)}
+          onClick={() => setIsPublico((v) => !v)}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -429,7 +465,7 @@ function LooksNovoContent({ publicoInicial }: { publicoInicial: boolean }) {
               width: 46,
               height: 28,
               borderRadius: 14,
-              backgroundColor: publico ? '#1B5E5A' : '#D0D0D0',
+              backgroundColor: isPublico ? '#1B5E5A' : '#D0D0D0',
               position: 'relative',
               transition: 'background-color 0.2s',
               flexShrink: 0,
@@ -439,7 +475,7 @@ function LooksNovoContent({ publicoInicial }: { publicoInicial: boolean }) {
               style={{
                 position: 'absolute',
                 top: 3,
-                left: publico ? 21 : 3,
+                left: isPublico ? 21 : 3,
                 width: 22,
                 height: 22,
                 borderRadius: '50%',
