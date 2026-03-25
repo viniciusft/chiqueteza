@@ -200,7 +200,7 @@ mas NÃO está implementado ainda. Provider será escolhido na V2.
 
 ### Implementado
 - Autenticação (Supabase Auth)
-- Tab bar 5 abas: Início | Try-On | Visagismo | Rotina | Profissionais
+- Tab bar 5 abas: Início | Looks | Visagismo | Rotina | Profissionais
 - Módulo Rotina: agendamentos, alertas, histórico, gasto mensal
 - Módulo Profissionais: caderneta, galeria, WhatsApp, compartilhar
 - Ação rápida WhatsApp nos cards de agendamento
@@ -210,6 +210,7 @@ mas NÃO está implementado ainda. Provider será escolhido na V2.
 - Service Worker PWA (public/sw.js)
 - Visagismo + Colorimetria: upload, análise Gemini, resultado, foto salva no Storage
 - Upload com preview mode e dois inputs separados (câmera / galeria)
+- Diário de Looks: registro pessoal + galeria pública com curtidas
 
 ### Em desenvolvimento (V2)
 - Try-On de maquiagem
@@ -315,6 +316,49 @@ VAPID_PRIVATE_KEY
 - Política de privacidade visível na tela de upload
 - Buckets Supabase Storage: analises-faciais, profissionais-fotos, looks-gerados
 - Providers com política de não retenção de dados
+
+---
+
+## Diário de Looks
+
+### Tabelas
+- `looks_diario`: id, usuario_id, foto_url, contexto, avaliacao, descricao, publico, curtidas, largura, altura, aspect_ratio, created_at, updated_at
+- `looks_curtidas`: id, look_id, usuario_id, created_at
+
+### Storage
+- Bucket: `looks-diario` (público para leitura)
+- Path obrigatório: `{userId}/{uuid}.jpg`
+- Políticas RLS: INSERT apenas para usuária autenticada no próprio diretório
+
+### Editor de imagem
+- **react-filerobot-image-editor** — crop livre mobile-friendly com bordas arrastáveis
+- Importar com `next/dynamic` + `ssr: false` (component client-only)
+- `TABS` e `TOOLS` podem ser importados estaticamente (são constantes)
+- `onSave(editedImage)` → usar `editedImage.imageBase64`
+- ⚠️ ATENÇÃO: `react-easy-crop` continua sendo usado APENAS no visagismo (`app/app/visagismo/upload/page.tsx`). Não remover.
+
+### Processamento de imagem (client-side)
+- base64 do Filerobot → `atob()` → `Uint8Array` → `Blob`
+- Redimensionar: máx 1080px no lado maior, quality 0.85, canvas
+- Retorna `{ blob, dataUrl, largura, altura }`
+
+### Upload e insert (client-side)
+- Usar `supabase` (client, não admin) — RLS permite
+- userId sempre via `supabase.auth.getUser()`, nunca hardcodado
+- Upload: `supabase.storage.from('looks-diario').upload(path, blob, { contentType: 'image/jpeg' })`
+- URL pública: `supabase.storage.from('looks-diario').getPublicUrl(path)`
+- Insert: `supabase.from('looks_diario').insert({...})`
+
+### Layout
+- `react-masonry-css` — 2 colunas, proporção livre das fotos
+- Classes CSS em `app/globals.css`: `.masonry-grid`, `.masonry-grid_column`
+
+### Rotas
+- `/app/looks` — privada (redirect para login se não autenticada)
+- `/app/galeria` — pública (qualquer pessoa pode ver)
+- `/app/looks/novo?publico=true` — abre com toggle público ativado
+
+---
 
 ## Sinergias com Âmbar Beauty Studio
 - Projetos completamente separados agora

@@ -1,15 +1,25 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import dynamic from 'next/dynamic'
+import { useRef, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import Cropper, { Area as CropArea } from 'react-easy-crop'
+import { createClient } from '@/lib/supabase/client'
 import AppHeader from '@/components/ui/AppHeader'
 import PageContainer from '@/components/ui/PageContainer'
-import { getCroppedImg } from '../cropUtils'
 import { playSuccess, playError } from '@/lib/sound'
-import { Suspense } from 'react'
 
-type ViewMode = 'select' | 'crop' | 'form'
+// Filerobot é client-only (acessa window) — SSR desativado
+// Importar TABS/TOOLS estaticamente puxaria o módulo no servidor e causaria
+// "window is not defined". Solução: dynamic import e strings inline.
+const FilerobotImageEditor = dynamic(
+  () => import('react-filerobot-image-editor').then((m) => m.default),
+  { ssr: false }
+)
+// Valores de TABS.ADJUST e TOOLS.CROP extraídos das tipagens do pacote
+const TAB_ADJUST = 'Adjust'
+const TOOL_CROP = 'Crop'
+
+type ViewMode = 'select' | 'form'
 type Contexto = 'dia_casual' | 'dia_formal' | 'noite_casual' | 'noite_especial'
 type Avaliacao = 'amei' | 'ok' | 'nao_gostei'
 
@@ -31,18 +41,57 @@ interface FotoProcessada {
   blob: Blob
   largura: number
   altura: number
-  aspect_ratio: number
 }
 
-function LooksNovoContent({ publico: publicoInicial }: { publico: boolean }) {
+/** Converte base64 (com ou sem prefixo data:) para Blob e redimensiona para máx 1080px */
+async function processarImagem(imageBase64: string): Promise<FotoProcessada> {
+  const base64Data = imageBase64.includes(',') ? imageBase64.split(',')[1] : imageBase64
+  const byteCharacters = atob(base64Data)
+  const byteNumbers = new Uint8Array(byteCharacters.length)
+  for (let i = 0; i < byteCharacters.length; i++) {
+    byteNumbers[i] = byteCharacters.charCodeAt(i)
+  }
+  const blob = new Blob([byteNumbers], { type: 'image/jpeg' })
+
+  // Redimensionar para máx 1080px no lado maior
+  const img = new Image()
+  img.src = URL.createObjectURL(blob)
+  await new Promise<void>((resolve) => { img.onload = () => resolve() })
+
+  const MAX = 1080
+  let { width, height } = img
+  if (width > MAX || height > MAX) {
+    if (width > height) {
+      height = Math.round(height * MAX / width)
+      width = MAX
+    } else {
+      width = Math.round(width * MAX / height)
+      height = MAX
+    }
+  }
+
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  canvas.getContext('2d')!.drawImage(img, 0, 0, width, height)
+  URL.revokeObjectURL(img.src)
+
+  const finalBlob = await new Promise<Blob>((resolve) => {
+    canvas.toBlob((b) => resolve(b!), 'image/jpeg', 0.85)
+  })
+
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.85)
+
+  return { dataUrl, blob: finalBlob, largura: width, altura: height }
+}
+
+function LooksNovoContent({ publicoInicial }: { publicoInicial: boolean }) {
   const router = useRouter()
   const inputRef = useRef<HTMLInputElement>(null)
 
   const [viewMode, setViewMode] = useState<ViewMode>('select')
-  const [imageSrc, setImageSrc] = useState<string | null>(null)
-  const [crop, setCrop] = useState({ x: 0, y: 0 })
-  const [zoom, setZoom] = useState(1)
-  const [croppedAreaPixels, setCroppedAreaPixels] = useState<CropArea | null>(null)
+  const [fotoOriginalUrl, setFotoOriginalUrl] = useState<string | null>(null)
+  const [isEditorOpen, setIsEditorOpen] = useState(false)
   const [foto, setFoto] = useState<FotoProcessada | null>(null)
 
   const [contexto, setContexto] = useState<Contexto | null>(null)
@@ -56,25 +105,11 @@ function LooksNovoContent({ publico: publicoInicial }: { publico: boolean }) {
     const file = e.target.files?.[0]
     if (!file) return
     setErro('')
+    if (fotoOriginalUrl) URL.revokeObjectURL(fotoOriginalUrl)
     const url = URL.createObjectURL(file)
-    setImageSrc(url)
-    setCrop({ x: 0, y: 0 })
-    setZoom(1)
-    setViewMode('crop')
-    // Limpar input para permitir re-seleção
+    setFotoOriginalUrl(url)
+    setIsEditorOpen(true)
     e.target.value = ''
-  }
-
-  async function handleConfirmarCrop() {
-    if (!imageSrc || !croppedAreaPixels) return
-    setErro('')
-    try {
-      const result = await getCroppedImg(imageSrc, croppedAreaPixels)
-      setFoto(result)
-      setViewMode('form')
-    } catch {
-      setErro('Erro ao processar a foto.')
-    }
   }
 
   async function handleSalvar() {
@@ -83,39 +118,64 @@ function LooksNovoContent({ publico: publicoInicial }: { publico: boolean }) {
     setErro('')
 
     try {
-      // Converter blob para base64
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = () => resolve(reader.result as string)
-        reader.onerror = reject
-        reader.readAsDataURL(foto.blob)
-      })
+      const supabase = createClient()
 
-      const res = await fetch('/api/looks/novo', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          foto_base64: base64,
+      // A) Obter userId
+      const { data: { user } } = await supabase.auth.getUser()
+      const userId = user?.id
+      console.log('1. userId:', userId)
+      if (!userId) throw new Error('Usuário não autenticado')
+
+      // B) Blob já processado
+      console.log('2. blob:', foto.blob.size, foto.blob.type)
+
+      // C) Path do upload
+      const uuid = crypto.randomUUID()
+      const path = `${userId}/${uuid}.jpg`
+      console.log('3. path:', path)
+
+      // D) Upload para storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('looks-diario')
+        .upload(path, foto.blob, {
+          contentType: 'image/jpeg',
+          upsert: false,
+        })
+      console.log('4. upload result:', uploadData, uploadError)
+      if (uploadError) throw uploadError
+
+      // E) URL pública
+      const { data: { publicUrl } } = supabase.storage
+        .from('looks-diario')
+        .getPublicUrl(path)
+      console.log('5. publicUrl:', publicUrl)
+
+      // F) Insert no banco
+      const { data: insertData, error: insertError } = await supabase
+        .from('looks_diario')
+        .insert({
+          usuario_id: userId,
+          foto_url: publicUrl,
           contexto: contexto ?? null,
           avaliacao: avaliacao ?? null,
           descricao: descricao.trim() || null,
           publico,
           largura: foto.largura,
           altura: foto.altura,
-          aspect_ratio: foto.aspect_ratio,
-        }),
-      })
-
-      if (!res.ok) {
-        const data = await res.json() as { error?: string }
-        throw new Error(data.error ?? 'Erro ao salvar')
-      }
+          aspect_ratio: parseFloat((foto.largura / foto.altura).toFixed(4)),
+        })
+        .select()
+        .single()
+      console.log('6. insert result:', insertData, insertError)
+      if (insertError) throw insertError
 
       playSuccess()
       router.push('/app/looks')
     } catch (err) {
+      console.error('[looks/novo] Erro ao salvar:', err)
       playError()
-      setErro(err instanceof Error ? err.message : 'Erro ao salvar.')
+      const msg = err instanceof Error ? err.message : 'Erro ao salvar. Tente novamente.'
+      setErro(msg)
       setSalvando(false)
     }
   }
@@ -127,7 +187,12 @@ function LooksNovoContent({ publico: publicoInicial }: { publico: boolean }) {
         <AppHeader />
         <main className="flex flex-col px-5 py-6 gap-6">
           <div className="flex items-center gap-3">
-            <button onClick={() => router.back()} style={{ fontSize: 22, color: '#999', background: 'none', border: 'none', cursor: 'pointer' }}>←</button>
+            <button
+              onClick={() => router.back()}
+              style={{ fontSize: 22, color: '#999', background: 'none', border: 'none', cursor: 'pointer' }}
+            >
+              ←
+            </button>
             <h1 className="font-extrabold tracking-tight" style={{ fontSize: 22, color: '#171717' }}>
               Novo look
             </h1>
@@ -164,91 +229,42 @@ function LooksNovoContent({ publico: publicoInicial }: { publico: boolean }) {
 
           {erro && <p style={{ fontSize: 13, color: '#f87171', textAlign: 'center' }}>{erro}</p>}
         </main>
-      </PageContainer>
-    )
-  }
 
-  // ── Tela: cropper ─────────────────────────────────────────────────────
-  if (viewMode === 'crop' && imageSrc) {
-    return (
-      <div style={{ position: 'fixed', inset: 0, backgroundColor: '#000', display: 'flex', flexDirection: 'column', zIndex: 100 }}>
-        {/* Área do cropper */}
-        <div style={{ flex: 1, position: 'relative' }}>
-          <Cropper
-            image={imageSrc}
-            crop={crop}
-            zoom={zoom}
-            // Sem aspect — crop livre
-            onCropChange={setCrop}
-            onZoomChange={setZoom}
-            onCropComplete={(_: CropArea, croppedPixels: CropArea) => setCroppedAreaPixels(croppedPixels)}
-            style={{
-              containerStyle: { backgroundColor: '#000' },
-              cropAreaStyle: { borderRadius: 8 },
-            }}
-          />
-        </div>
-
-        {/* Controles de zoom */}
-        <div style={{ padding: '12px 20px', backgroundColor: 'rgba(0,0,0,0.8)' }}>
-          <input
-            type="range"
-            min={1}
-            max={3}
-            step={0.01}
-            value={zoom}
-            onChange={(e) => setZoom(Number(e.target.value))}
-            style={{ width: '100%', accentColor: '#1B5E5A' }}
-          />
-        </div>
-
-        {/* Botões */}
-        <div
-          style={{
-            display: 'flex',
-            gap: 10,
-            padding: '12px 20px 32px',
-            backgroundColor: 'rgba(0,0,0,0.8)',
-          }}
-        >
-          <button
-            onClick={() => { setViewMode('select'); setImageSrc(null) }}
-            style={{
-              flex: 1,
-              padding: '14px',
-              borderRadius: 14,
-              border: '1.5px solid rgba(255,255,255,0.3)',
-              backgroundColor: 'transparent',
-              color: '#fff',
-              fontSize: 15,
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
-          >
-            ← Trocar foto
-          </button>
-          <button
-            onClick={handleConfirmarCrop}
-            style={{
-              flex: 2,
-              padding: '14px',
-              borderRadius: 14,
-              border: 'none',
-              backgroundColor: '#1B5E5A',
-              color: '#fff',
-              fontSize: 15,
-              fontWeight: 700,
-              cursor: 'pointer',
-            }}
-          >
-            ✓ Usar esta foto
-          </button>
-        </div>
-
-        {erro && (
-          <p style={{ padding: '0 20px 12px', fontSize: 13, color: '#f87171', textAlign: 'center' }}>{erro}</p>
+        {/* Editor Filerobot — abre sobre a tela de seleção */}
+        {isEditorOpen && fotoOriginalUrl && (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 9999 }}>
+            <FilerobotImageEditor
+              source={fotoOriginalUrl}
+              onSave={async (editedImage) => {
+                try {
+                  if (!editedImage.imageBase64) throw new Error('Imagem não gerada')
+                  const processada = await processarImagem(editedImage.imageBase64)
+                  setFoto(processada)
+                  setIsEditorOpen(false)
+                  setViewMode('form')
+                } catch (err) {
+                  console.error('[filerobot onSave]', err)
+                  setErro('Erro ao processar imagem.')
+                  setIsEditorOpen(false)
+                }
+              }}
+              onClose={() => {
+                setIsEditorOpen(false)
+                setFotoOriginalUrl(null)
+              }}
+              tabsIds={[TAB_ADJUST]}
+              defaultTabId={TAB_ADJUST}
+              defaultToolId={TOOL_CROP}
+              Crop={{
+                noPresets: true,
+                ratio: 'custom',
+              }}
+              savingPixelRatio={2}
+              previewPixelRatio={1}
+            />
+          </div>
         )}
-      </div>
+      </PageContainer>
     )
   }
 
@@ -258,10 +274,9 @@ function LooksNovoContent({ publico: publicoInicial }: { publico: boolean }) {
       <AppHeader />
       <main className="flex flex-col px-5 py-6 gap-6">
 
-        {/* Header */}
         <div className="flex items-center gap-3">
           <button
-            onClick={() => setViewMode('crop')}
+            onClick={() => { setViewMode('select'); setFoto(null); setIsEditorOpen(false) }}
             style={{ fontSize: 22, color: '#999', background: 'none', border: 'none', cursor: 'pointer' }}
           >
             ←
@@ -476,5 +491,5 @@ export default function LooksNovoPage() {
 function LooksNovoInner() {
   const searchParams = useSearchParams()
   const publicoInicial = searchParams.get('publico') === 'true'
-  return <LooksNovoContent publico={publicoInicial} />
+  return <LooksNovoContent publicoInicial={publicoInicial} />
 }
