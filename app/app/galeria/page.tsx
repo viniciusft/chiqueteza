@@ -280,10 +280,10 @@ export default function GaleriaPage() {
                           left: 7,
                           fontSize: 10,
                           fontFamily: 'monospace',
-                          color: '#D4A843',
+                          color: '#FFFFFF',
                           fontWeight: 700,
                           letterSpacing: 0.5,
-                          textShadow: '0 1px 3px rgba(0,0,0,0.5)',
+                          textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000',
                         }}
                       >
                         {new Date(look.data_foto + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })}
