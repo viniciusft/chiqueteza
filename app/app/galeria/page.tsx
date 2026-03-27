@@ -41,22 +41,30 @@ export default function GaleriaPage() {
   const [curtidosAnimando, setCurtidosAnimando] = useState<Set<string>>(new Set())
   const [userId, setUserId] = useState<string | null>(null)
   const [pagina, setPagina] = useState(0)
+  const [filtroHashtag, setFiltroHashtag] = useState<string | null>(null)
+  const [buscaGaleria, setBuscaGaleria] = useState('')
+  const [buscaFocada, setBuscaFocada] = useState(false)
+  const [topHashtags, setTopHashtags] = useState<string[]>([])
 
-  const carregarGaleria = useCallback(async (ord: Ordenacao, pag: number, append = false) => {
+  const carregarGaleria = useCallback(async (ord: Ordenacao, pag: number, append = false, hashtag: string | null = null) => {
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!append) setUserId(user?.id ?? null)
 
-    const query = supabase
+    let query = supabase
       .from('looks_diario')
       .select('id, foto_url, contexto, avaliacao, descricao, curtidas, created_at, usuario_id, data_foto')
       .eq('publico', true)
       .range(pag * PAGE_SIZE, (pag + 1) * PAGE_SIZE - 1)
 
+    if (hashtag) {
+      query = query.contains('hashtags', [hashtag])
+    }
+
     if (ord === 'em_alta') {
-      query.order('curtidas', { ascending: false }).order('created_at', { ascending: false })
+      query = query.order('curtidas', { ascending: false }).order('created_at', { ascending: false })
     } else {
-      query.order('created_at', { ascending: false })
+      query = query.order('created_at', { ascending: false })
     }
 
     const { data } = await query
@@ -84,14 +92,37 @@ export default function GaleriaPage() {
   useEffect(() => {
     setLoading(true)
     setPagina(0)
-    void carregarGaleria(ordenacao, 0, false).finally(() => setLoading(false))
-  }, [ordenacao, carregarGaleria])
+    void carregarGaleria(ordenacao, 0, false, filtroHashtag).finally(() => setLoading(false))
+  }, [ordenacao, filtroHashtag, carregarGaleria])
+
+  // Carregar top 10 hashtags públicas uma vez
+  useEffect(() => {
+    const supabase = createClient()
+    void supabase
+      .from('looks_diario')
+      .select('hashtags')
+      .eq('publico', true)
+      .not('hashtags', 'is', null)
+      .then(({ data }: { data: { hashtags: string[] | null }[] | null }) => {
+        const contagem: Record<string, number> = {}
+        ;(data ?? []).forEach((look) => {
+          look.hashtags?.forEach((tag) => {
+            contagem[tag] = (contagem[tag] ?? 0) + 1
+          })
+        })
+        const top10 = Object.entries(contagem)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 10)
+          .map(([tag]) => tag)
+        setTopHashtags(top10)
+      })
+  }, [])
 
   async function handleVerMais() {
     setCarregandoMais(true)
     const proxPagina = pagina + 1
     setPagina(proxPagina)
-    await carregarGaleria(ordenacao, proxPagina, true)
+    await carregarGaleria(ordenacao, proxPagina, true, filtroHashtag)
     setCarregandoMais(false)
   }
 
@@ -149,6 +180,11 @@ export default function GaleriaPage() {
     }
   }
 
+  const sugestoesGaleria = topHashtags.filter((t) =>
+    t !== filtroHashtag &&
+    (buscaGaleria === '' || t.toLowerCase().includes(buscaGaleria.toLowerCase()))
+  )
+
   return (
     <PageContainer>
       <AppHeader />
@@ -165,6 +201,80 @@ export default function GaleriaPage() {
           >
             Meus looks →
           </button>
+        </div>
+
+        {/* Busca por hashtag (Ajuste 4) */}
+        <div style={{ margin: '0 20px 16px', position: 'relative', zIndex: 10 }}>
+          <div style={{ position: 'relative' }}>
+            <input
+              type="text"
+              value={buscaGaleria}
+              onChange={(e) => setBuscaGaleria(e.target.value)}
+              onFocus={() => setBuscaFocada(true)}
+              onBlur={() => setTimeout(() => setBuscaFocada(false), 150)}
+              placeholder="# Buscar por hashtag..."
+              style={{
+                width: '100%', borderRadius: 12, border: '1.5px solid #E8E8E8',
+                padding: '10px 36px 10px 14px', fontSize: 14, color: '#171717',
+                outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box',
+                backgroundColor: '#fff',
+              }}
+            />
+            {(filtroHashtag || buscaGaleria) && (
+              <button
+                onClick={() => { setFiltroHashtag(null); setBuscaGaleria('') }}
+                style={{
+                  position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: '#bbb', fontSize: 18, lineHeight: 1, padding: 0,
+                }}
+              >×</button>
+            )}
+          </div>
+
+          {/* Chip filtro ativo */}
+          {filtroHashtag && (
+            <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  backgroundColor: '#1B5E5A', color: '#fff',
+                  borderRadius: 20, padding: '4px 10px', fontSize: 12, fontWeight: 700,
+                }}
+              >
+                #{filtroHashtag}
+                <button
+                  onClick={() => setFiltroHashtag(null)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#fff', fontSize: 14, lineHeight: 1, padding: 0 }}
+                >×</button>
+              </span>
+            </div>
+          )}
+
+          {/* Dropdown sugestões */}
+          {buscaFocada && !filtroHashtag && sugestoesGaleria.length > 0 && (
+            <div
+              style={{
+                position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 20,
+                backgroundColor: '#fff', borderRadius: 12,
+                border: '1px solid #E8E8E8', boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
+                padding: 8, display: 'flex', flexWrap: 'wrap', gap: 6,
+                marginTop: 4,
+              }}
+            >
+              {sugestoesGaleria.map((tag) => (
+                <button
+                  key={tag}
+                  onMouseDown={() => { setFiltroHashtag(tag); setBuscaGaleria('') }}
+                  style={{
+                    padding: '5px 12px', borderRadius: 20, border: '1.5px solid #E8E8E8',
+                    backgroundColor: '#F5F5F5', color: '#444',
+                    fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                  }}
+                >#{tag}</button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Toggle ordenação */}
