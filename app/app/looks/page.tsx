@@ -43,10 +43,12 @@ export default function LooksPage() {
   const [lookSelecionado, setLookSelecionado] = useState<LookDiario | null>(null)
   const [deletando, setDeletando] = useState(false)
   const [confirmarDelete, setConfirmarDelete] = useState(false)
-  const [hashtagSelecionada, setHashtagSelecionada] = useState<string | null>(null)
   const [todasHashtags, setTodasHashtags] = useState<string[]>([])
+  const [tagsSelecionadas, setTagsSelecionadas] = useState<string[]>([])
+  const [buscaHashtag, setBuscaHashtag] = useState('')
+  const [buscaFocada, setBuscaFocada] = useState(false)
 
-  const carregarLooks = useCallback(async (filtroHashtag: string | null = null) => {
+  const carregarLooks = useCallback(async (tags: string[] = []) => {
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { router.push('/login'); return }
@@ -57,32 +59,29 @@ export default function LooksPage() {
       .eq('usuario_id', user.id)
       .order('created_at', { ascending: false })
 
-    if (filtroHashtag) {
-      query = query.contains('hashtags', [filtroHashtag])
+    if (tags.length > 0) {
+      query = query.overlaps('hashtags', tags)
     }
 
-    const { data } = await query
-    setLooks((data as LookDiario[]) ?? [])
-
-    // Coletar todas as hashtags únicas para os filtros
-    if (!filtroHashtag) {
-      const todas = supabase
+    const [{ data }, { data: hashData }] = await Promise.all([
+      query,
+      supabase
         .from('looks_diario')
         .select('hashtags')
         .eq('usuario_id', user.id)
-        .not('hashtags', 'is', null)
-      const { data: hashData } = await todas
-      const set = new Set<string>()
-      ;(hashData ?? []).forEach((row: { hashtags: string[] | null }) => {
-        row.hashtags?.forEach((t) => set.add(t))
-      })
-      setTodasHashtags(Array.from(set).sort())
-    }
+        .not('hashtags', 'is', null),
+    ])
+    setLooks((data as LookDiario[]) ?? [])
 
+    const set = new Set<string>()
+    ;(hashData ?? []).forEach((row: { hashtags: string[] | null }) => {
+      row.hashtags?.forEach((t) => set.add(t))
+    })
+    setTodasHashtags(Array.from(set).sort())
     setLoading(false)
   }, [router])
 
-  useEffect(() => { void carregarLooks(null) }, [carregarLooks])
+  useEffect(() => { void carregarLooks([]) }, [carregarLooks])
 
   async function handleDeletar(look: LookDiario) {
     if (!confirmarDelete) {
@@ -95,7 +94,7 @@ export default function LooksPage() {
     setLookSelecionado(null)
     setDeletando(false)
     setConfirmarDelete(false)
-    void carregarLooks(null)
+    void carregarLooks(tagsSelecionadas)
   }
 
   async function handleTogglePublico(look: LookDiario) {
@@ -107,12 +106,26 @@ export default function LooksPage() {
     setLooks((prev) => prev.map((l) => l.id === look.id ? atualizado : l))
   }
 
-  function handleFiltroHashtag(tag: string) {
-    const nova = hashtagSelecionada === tag ? null : tag
-    setHashtagSelecionada(nova)
+  function toggleTag(tag: string) {
+    const novas = tagsSelecionadas.includes(tag)
+      ? tagsSelecionadas.filter((t) => t !== tag)
+      : [...tagsSelecionadas, tag]
+    setTagsSelecionadas(novas)
     setLoading(true)
-    void carregarLooks(nova).finally(() => setLoading(false))
+    void carregarLooks(novas).finally(() => setLoading(false))
   }
+
+  function limparFiltros() {
+    setTagsSelecionadas([])
+    setBuscaHashtag('')
+    setLoading(true)
+    void carregarLooks([]).finally(() => setLoading(false))
+  }
+
+  const sugestoes = todasHashtags.filter((t) =>
+    !tagsSelecionadas.includes(t) &&
+    (buscaHashtag === '' || t.toLowerCase().includes(buscaHashtag.toLowerCase()))
+  )
 
   function fecharModal() {
     setLookSelecionado(null)
@@ -178,32 +191,90 @@ export default function LooksPage() {
           </div>
         )}
 
-        {/* Filtro por hashtag */}
-        {!loading && todasHashtags.length > 0 && (
-          <div style={{ overflowX: 'auto', paddingBottom: 4 }}>
-            <div style={{ display: 'flex', gap: 8, padding: '0 20px', whiteSpace: 'nowrap' }}>
-              {todasHashtags.map((tag) => (
+        {/* Busca por hashtags (Ajuste 3) */}
+        {!loading && (
+          <div style={{ padding: '0 20px 12px', position: 'relative', zIndex: 10 }}>
+            {/* Chips selecionadas + Limpar */}
+            {tagsSelecionadas.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                {tagsSelecionadas.map((tag) => (
+                  <span
+                    key={tag}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 4,
+                      backgroundColor: '#1B5E5A', color: '#fff',
+                      borderRadius: 20, padding: '4px 10px', fontSize: 12, fontWeight: 700,
+                    }}
+                  >
+                    #{tag}
+                    <button
+                      onClick={() => toggleTag(tag)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#fff', fontSize: 14, lineHeight: 1, padding: 0 }}
+                    >×</button>
+                  </span>
+                ))}
                 <button
-                  key={tag}
-                  onClick={() => handleFiltroHashtag(tag)}
+                  onClick={limparFiltros}
                   style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    padding: '6px 14px',
-                    borderRadius: 20,
-                    border: `1.5px solid ${hashtagSelecionada === tag ? '#1B5E5A' : '#E8E8E8'}`,
-                    backgroundColor: hashtagSelecionada === tag ? '#E8F5F4' : '#fff',
-                    color: hashtagSelecionada === tag ? '#1B5E5A' : '#888',
-                    fontSize: 13,
-                    fontWeight: hashtagSelecionada === tag ? 700 : 500,
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
+                    fontSize: 12, color: '#999', background: 'none',
+                    border: '1px solid #E8E8E8', borderRadius: 20,
+                    padding: '4px 10px', cursor: 'pointer', fontWeight: 600,
                   }}
-                >
-                  #{tag}
-                </button>
-              ))}
+                >Limpar</button>
+              </div>
+            )}
+
+            {/* Input de busca */}
+            <div style={{ position: 'relative' }}>
+              <input
+                type="text"
+                value={buscaHashtag}
+                onChange={(e) => setBuscaHashtag(e.target.value)}
+                onFocus={() => setBuscaFocada(true)}
+                onBlur={() => setTimeout(() => setBuscaFocada(false), 150)}
+                placeholder={todasHashtags.length > 0 ? '# Filtrar por hashtag...' : 'Nenhuma hashtag nos seus looks'}
+                style={{
+                  width: '100%', borderRadius: 12, border: '1.5px solid #E8E8E8',
+                  padding: '10px 36px 10px 14px', fontSize: 14, color: '#171717',
+                  outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box',
+                  backgroundColor: '#fff',
+                }}
+              />
+              {(buscaHashtag || tagsSelecionadas.length > 0) && (
+                <button
+                  onClick={limparFiltros}
+                  style={{
+                    position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    color: '#bbb', fontSize: 18, lineHeight: 1, padding: 0,
+                  }}
+                >×</button>
+              )}
             </div>
+
+            {/* Dropdown de sugestões */}
+            {buscaFocada && sugestoes.length > 0 && (
+              <div
+                style={{
+                  position: 'absolute', top: '100%', left: 20, right: 20, zIndex: 20,
+                  backgroundColor: '#fff', borderRadius: 12,
+                  border: '1px solid #E8E8E8', boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
+                  padding: 8, display: 'flex', flexWrap: 'wrap', gap: 6,
+                }}
+              >
+                {sugestoes.map((tag) => (
+                  <button
+                    key={tag}
+                    onMouseDown={() => { toggleTag(tag); setBuscaHashtag('') }}
+                    style={{
+                      padding: '5px 12px', borderRadius: 20, border: '1.5px solid #E8E8E8',
+                      backgroundColor: '#F5F5F5', color: '#444',
+                      fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                    }}
+                  >#{tag}</button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
