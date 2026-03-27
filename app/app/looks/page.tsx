@@ -365,14 +365,39 @@ export default function LooksPage() {
             {/* Handle */}
             <div style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: '#E0E0E0', alignSelf: 'center', marginBottom: 4 }} />
 
-            {/* Foto grande */}
-            <div style={{ borderRadius: 16, overflow: 'hidden' }}>
+            {/* Foto grande — proporção real (Ajuste 2) */}
+            <div style={{ position: 'relative', borderRadius: 16, overflow: 'hidden' }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={lookSelecionado.foto_url}
                 alt="Look"
-                style={{ width: '100%', height: 'auto', display: 'block' }}
+                style={{
+                  width: '100%',
+                  display: 'block',
+                  aspectRatio: lookSelecionado.largura && lookSelecionado.altura
+                    ? `${lookSelecionado.largura} / ${lookSelecionado.altura}`
+                    : undefined,
+                  height: 'auto',
+                  objectFit: 'cover',
+                }}
               />
+              {lookSelecionado.data_foto && (
+                <span
+                  style={{
+                    position: 'absolute',
+                    bottom: 10,
+                    left: 10,
+                    fontSize: 11,
+                    fontFamily: 'monospace',
+                    color: '#FFFFFF',
+                    fontWeight: 700,
+                    letterSpacing: 0.5,
+                    textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000',
+                  }}
+                >
+                  {new Date(lookSelecionado.data_foto + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })}
+                </span>
+              )}
             </div>
 
             {/* Info */}
