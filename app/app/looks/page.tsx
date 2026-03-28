@@ -627,7 +627,7 @@ export default function LooksPage() {
           >
             <div style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: '#E0E0E0', alignSelf: 'center', marginBottom: 4 }} />
 
-            <div style={{ position: 'relative', borderRadius: 16, overflow: 'hidden' }}>
+            <div style={{ position: 'relative', borderRadius: 16, overflow: 'hidden', flexShrink: 0 }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={lookSelecionado.foto_url}
