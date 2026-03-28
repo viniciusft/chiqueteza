@@ -633,11 +633,7 @@ export default function LooksPage() {
                 src={lookSelecionado.foto_url}
                 alt="Look"
                 style={{
-                  width: '100%', display: 'block',
-                  aspectRatio: lookSelecionado.largura && lookSelecionado.altura
-                    ? `${lookSelecionado.largura} / ${lookSelecionado.altura}`
-                    : undefined,
-                  height: 'auto', objectFit: 'cover',
+                  width: '100%', display: 'block', height: 'auto',
                 }}
               />
               {lookSelecionado.data_foto && (
