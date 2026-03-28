@@ -20,6 +20,12 @@ interface LookPublico {
   data_foto: string | null
 }
 
+interface Colecao {
+  id: string
+  nome: string
+  emoji: string | null
+}
+
 type Ordenacao = 'em_alta' | 'recentes'
 
 const PAGE_SIZE = 20
@@ -29,6 +35,8 @@ const AVALIACAO_EMOJIS: Record<string, string> = {
   ok: '😊',
   nao_gostei: '😕',
 }
+
+const EMOJIS_COLECAO = ['💄', '👗', '🌙', '💍', '🌸', '🌟', '👑', '🎨', '💅', '🌈']
 
 export default function GaleriaPage() {
   const router = useRouter()
@@ -45,6 +53,17 @@ export default function GaleriaPage() {
   const [buscaGaleria, setBuscaGaleria] = useState('')
   const [buscaFocada, setBuscaFocada] = useState(false)
   const [topHashtags, setTopHashtags] = useState<string[]>([])
+
+  // Favoritos
+  const [favoritos, setFavoritos] = useState<Set<string>>(new Set())
+  const [colecoes, setColecoes] = useState<Colecao[]>([])
+  const [lookParaSalvar, setLookParaSalvar] = useState<LookPublico | null>(null)
+  const [mostrarBSColecao, setMostrarBSColecao] = useState(false)
+  const [jaNossFavoritos, setJaNaFavoritos] = useState(false)
+  const [criandoColecao, setCriandoColecao] = useState(false)
+  const [novaColecaoNome, setNovaColecaoNome] = useState('')
+  const [novaColecaoEmoji, setNovaColecaoEmoji] = useState('')
+  const [salvandoFavorito, setSalvandoFavorito] = useState(false)
 
   const carregarGaleria = useCallback(async (ord: Ordenacao, pag: number, append = false, hashtag: string | null = null) => {
     const supabase = createClient()
@@ -76,7 +95,6 @@ export default function GaleriaPage() {
     } else {
       setLooks(lista)
 
-      // Buscar curtidas do usuário
       if (user && lista.length > 0) {
         const ids = lista.map((l) => l.id)
         const { data: minhasCurtidas } = await supabase
@@ -95,7 +113,28 @@ export default function GaleriaPage() {
     void carregarGaleria(ordenacao, 0, false, filtroHashtag).finally(() => setLoading(false))
   }, [ordenacao, filtroHashtag, carregarGaleria])
 
-  // Carregar top 10 hashtags públicas uma vez
+  // Carregar favoritos e coleções quando userId é definido
+  useEffect(() => {
+    if (!userId) return
+    const supabase = createClient()
+    void supabase
+      .from('favoritos')
+      .select('look_id')
+      .eq('usuario_id', userId)
+      .then(({ data }: { data: { look_id: string }[] | null }) => {
+        setFavoritos(new Set<string>((data ?? []).map((f) => f.look_id)))
+      })
+    void supabase
+      .from('favoritos_colecoes')
+      .select('id, nome, emoji')
+      .eq('usuario_id', userId)
+      .order('created_at', { ascending: true })
+      .then(({ data }: { data: Colecao[] | null }) => {
+        setColecoes(data ?? [])
+      })
+  }, [userId])
+
+  // Carregar top 10 hashtags públicas
   useEffect(() => {
     const supabase = createClient()
     void supabase
@@ -132,7 +171,6 @@ export default function GaleriaPage() {
 
     const jaCurtiu = curtidas.has(look.id)
 
-    // Optimistic update
     setCurtidas((prev) => {
       const next = new Set(prev)
       if (jaCurtiu) next.delete(look.id)
@@ -145,7 +183,6 @@ export default function GaleriaPage() {
       )
     )
 
-    // Animação no coração
     if (!jaCurtiu) {
       setCurtidosAnimando((prev) => new Set(prev).add(look.id))
       setTimeout(() => {
@@ -165,7 +202,6 @@ export default function GaleriaPage() {
         prev.map((l) => l.id === look.id ? { ...l, curtidas: data.curtidas } : l)
       )
     } catch {
-      // Reverter
       setCurtidas((prev) => {
         const next = new Set(prev)
         if (jaCurtiu) next.add(look.id)
@@ -177,6 +213,71 @@ export default function GaleriaPage() {
           l.id === look.id ? { ...l, curtidas: jaCurtiu ? l.curtidas + 1 : Math.max(0, l.curtidas - 1) } : l
         )
       )
+    }
+  }
+
+  function handleBookmark(look: LookPublico) {
+    if (!userId) { router.push('/login'); return }
+    setLookParaSalvar(look)
+    setJaNaFavoritos(favoritos.has(look.id))
+    setCriandoColecao(false)
+    setNovaColecaoNome('')
+    setNovaColecaoEmoji('')
+    setMostrarBSColecao(true)
+  }
+
+  async function handleSalvarFavorito(colecaoId: string | null) {
+    if (!lookParaSalvar || !userId) return
+    setSalvandoFavorito(true)
+    const supabase = createClient()
+    await supabase.from('favoritos').insert({
+      usuario_id: userId,
+      look_id: lookParaSalvar.id,
+      colecao_id: colecaoId,
+    })
+    setFavoritos((prev) => new Set(prev).add(lookParaSalvar.id))
+    setMostrarBSColecao(false)
+    setLookParaSalvar(null)
+    setSalvandoFavorito(false)
+  }
+
+  async function handleDesfavoritar() {
+    if (!lookParaSalvar || !userId) return
+    setSalvandoFavorito(true)
+    const supabase = createClient()
+    await supabase.from('favoritos').delete()
+      .eq('usuario_id', userId)
+      .eq('look_id', lookParaSalvar.id)
+    setFavoritos((prev) => {
+      const next = new Set(prev)
+      next.delete(lookParaSalvar.id)
+      return next
+    })
+    setMostrarBSColecao(false)
+    setLookParaSalvar(null)
+    setSalvandoFavorito(false)
+  }
+
+  async function handleCriarColecao() {
+    if (!novaColecaoNome.trim() || !userId) return
+    setSalvandoFavorito(true)
+    const supabase = createClient()
+    const { data } = await supabase
+      .from('favoritos_colecoes')
+      .insert({
+        usuario_id: userId,
+        nome: novaColecaoNome.trim(),
+        emoji: novaColecaoEmoji || null,
+      })
+      .select('id, nome, emoji')
+      .single()
+
+    if (data) {
+      const novaColecao = data as Colecao
+      setColecoes((prev) => [...prev, novaColecao])
+      await handleSalvarFavorito(novaColecao.id)
+    } else {
+      setSalvandoFavorito(false)
     }
   }
 
@@ -203,7 +304,7 @@ export default function GaleriaPage() {
           </button>
         </div>
 
-        {/* Busca por hashtag (Ajuste 4) */}
+        {/* Busca por hashtag */}
         <div style={{ margin: '0 20px 16px', position: 'relative', zIndex: 10 }}>
           <div style={{ position: 'relative' }}>
             <input
@@ -232,7 +333,6 @@ export default function GaleriaPage() {
             )}
           </div>
 
-          {/* Chip filtro ativo */}
           {filtroHashtag && (
             <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
               <span
@@ -251,7 +351,6 @@ export default function GaleriaPage() {
             </div>
           )}
 
-          {/* Dropdown sugestões */}
           {buscaFocada && !filtroHashtag && sugestoesGaleria.length > 0 && (
             <div
               style={{
@@ -284,14 +383,10 @@ export default function GaleriaPage() {
               key={val}
               onClick={() => setOrdenacao(val)}
               style={{
-                flex: 1,
-                padding: '9px',
-                borderRadius: 11,
-                border: 'none',
+                flex: 1, padding: '9px', borderRadius: 11, border: 'none',
                 backgroundColor: ordenacao === val ? '#fff' : 'transparent',
                 color: ordenacao === val ? '#1B5E5A' : '#888',
-                fontSize: 13,
-                fontWeight: ordenacao === val ? 700 : 500,
+                fontSize: 13, fontWeight: ordenacao === val ? 700 : 500,
                 cursor: 'pointer',
                 boxShadow: ordenacao === val ? '0 1px 4px rgba(0,0,0,0.1)' : 'none',
                 transition: 'all 0.15s',
@@ -327,15 +422,8 @@ export default function GaleriaPage() {
             <button
               onClick={() => router.push('/app/looks/novo?publico=true')}
               style={{
-                marginTop: 4,
-                padding: '14px 28px',
-                borderRadius: 14,
-                border: 'none',
-                backgroundColor: '#1B5E5A',
-                color: '#fff',
-                fontSize: 15,
-                fontWeight: 700,
-                cursor: 'pointer',
+                marginTop: 4, padding: '14px 28px', borderRadius: 14, border: 'none',
+                backgroundColor: '#1B5E5A', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer',
               }}
             >
               Compartilhar meu look
@@ -343,7 +431,7 @@ export default function GaleriaPage() {
           </div>
         )}
 
-        {/* Masonry grid */}
+        {/* Grid */}
         {!loading && looks.length > 0 && (
           <>
             <Masonry
@@ -354,17 +442,15 @@ export default function GaleriaPage() {
               {looks.map((look) => {
                 const curtiu = curtidas.has(look.id)
                 const animando = curtidosAnimando.has(look.id)
+                const favoritou = favoritos.has(look.id)
                 return (
                   <div
                     key={look.id}
                     style={{
-                      position: 'relative',
-                      borderRadius: 12,
-                      overflow: 'hidden',
+                      position: 'relative', borderRadius: 12, overflow: 'hidden',
                       backgroundColor: '#F0F0F0',
                     }}
                   >
-                    {/* Foto */}
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={look.foto_url}
@@ -372,70 +458,53 @@ export default function GaleriaPage() {
                       style={{ width: '100%', height: 'auto', display: 'block' }}
                     />
 
-                    {/* Badge avaliação */}
                     {look.avaliacao && (
-                      <span
-                        style={{ position: 'absolute', top: 7, left: 7, fontSize: 16 }}
-                      >
+                      <span style={{ position: 'absolute', top: 7, left: 7, fontSize: 16 }}>
                         {AVALIACAO_EMOJIS[look.avaliacao]}
                       </span>
                     )}
 
-                    {/* Data estilo foto revelada */}
                     {look.data_foto && (
-                      <span
-                        style={{
-                          position: 'absolute',
-                          bottom: 44,
-                          left: 7,
-                          fontSize: 10,
-                          fontFamily: 'monospace',
-                          color: '#FFFFFF',
-                          fontWeight: 700,
-                          letterSpacing: 0.5,
-                          textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000',
-                        }}
-                      >
+                      <span style={{
+                        position: 'absolute', bottom: 44, left: 7, fontSize: 10,
+                        fontFamily: 'monospace', color: '#FFFFFF', fontWeight: 700, letterSpacing: 0.5,
+                        textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000',
+                      }}>
                         {new Date(look.data_foto + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })}
                       </span>
                     )}
 
-                    {/* Rodapé: coração */}
-                    <div
-                      style={{
-                        position: 'absolute',
-                        bottom: 0,
-                        left: 0,
-                        right: 0,
-                        height: 36,
-                        backgroundColor: 'rgba(255,255,255,0.92)',
-                        backdropFilter: 'blur(8px)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'flex-end',
-                        padding: '0 8px 0 10px',
-                      }}
-                    >
+                    {/* Rodapé: bookmark + coração */}
+                    <div style={{
+                      position: 'absolute', bottom: 0, left: 0, right: 0, height: 36,
+                      backgroundColor: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(8px)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '0 8px',
+                    }}>
                       <button
-                        onClick={() => handleCurtir(look)}
+                        onClick={() => handleBookmark(look)}
                         style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 3,
-                          border: 'none',
-                          backgroundColor: 'transparent',
-                          cursor: 'pointer',
-                          padding: '4px 2px',
+                          display: 'flex', alignItems: 'center', gap: 2,
+                          border: 'none', backgroundColor: 'transparent', cursor: 'pointer', padding: '4px 2px',
                         }}
                       >
-                        <span
-                          style={{
-                            fontSize: 16,
-                            transform: animando ? 'scale(1.3)' : 'scale(1)',
-                            transition: 'transform 0.2s ease',
-                            display: 'inline-block',
-                          }}
-                        >
+                        <span style={{ fontSize: 15, opacity: favoritou ? 1 : 0.5 }}>
+                          {favoritou ? '🔖' : '🏷️'}
+                        </span>
+                      </button>
+
+                      <button
+                        onClick={() => { void handleCurtir(look) }}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 3,
+                          border: 'none', backgroundColor: 'transparent', cursor: 'pointer', padding: '4px 2px',
+                        }}
+                      >
+                        <span style={{
+                          fontSize: 16,
+                          transform: animando ? 'scale(1.3)' : 'scale(1)',
+                          transition: 'transform 0.2s ease', display: 'inline-block',
+                        }}>
                           {curtiu ? '❤️' : '🤍'}
                         </span>
                         <span style={{ fontSize: 11, color: curtiu ? '#F472A0' : '#aaa', fontWeight: 600 }}>
@@ -448,20 +517,14 @@ export default function GaleriaPage() {
               })}
             </Masonry>
 
-            {/* Ver mais */}
             {temMais && (
               <div style={{ padding: '20px 20px 0', display: 'flex', justifyContent: 'center' }}>
                 <button
-                  onClick={handleVerMais}
+                  onClick={() => { void handleVerMais() }}
                   disabled={carregandoMais}
                   style={{
-                    padding: '12px 32px',
-                    borderRadius: 14,
-                    border: '1.5px solid #E8E8E8',
-                    backgroundColor: '#fff',
-                    color: '#1B5E5A',
-                    fontSize: 14,
-                    fontWeight: 700,
+                    padding: '12px 32px', borderRadius: 14, border: '1.5px solid #E8E8E8',
+                    backgroundColor: '#fff', color: '#1B5E5A', fontSize: 14, fontWeight: 700,
                     cursor: carregandoMais ? 'not-allowed' : 'pointer',
                     opacity: carregandoMais ? 0.6 : 1,
                   }}
@@ -472,8 +535,165 @@ export default function GaleriaPage() {
             )}
           </>
         )}
-
       </main>
+
+      {/* Bottom sheet — Salvar em coleção */}
+      {mostrarBSColecao && lookParaSalvar && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.65)',
+            zIndex: 50, display: 'flex', alignItems: 'flex-end',
+          }}
+          onClick={() => { setMostrarBSColecao(false); setLookParaSalvar(null) }}
+        >
+          <div
+            style={{
+              backgroundColor: '#fff', borderRadius: '24px 24px 0 0',
+              padding: '20px 20px 48px', width: '100%', maxWidth: 430,
+              margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 12,
+              maxHeight: '80vh', overflowY: 'auto',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: '#E0E0E0', alignSelf: 'center', marginBottom: 4 }} />
+
+            {jaNossFavoritos ? (
+              /* Já está nos favoritos — opção de desfavoritar */
+              <>
+                <p style={{ fontSize: 16, fontWeight: 700, color: '#171717', margin: 0 }}>
+                  🔖 Look salvo nos favoritos
+                </p>
+                <p style={{ fontSize: 13, color: '#888', margin: 0 }}>
+                  Deseja remover este look dos seus favoritos?
+                </p>
+                <button
+                  onClick={() => { void handleDesfavoritar() }}
+                  disabled={salvandoFavorito}
+                  style={{
+                    padding: '13px', borderRadius: 14, border: '1.5px solid #fca5a5',
+                    backgroundColor: '#fef2f2', color: '#ef4444', fontSize: 14, fontWeight: 600,
+                    cursor: salvandoFavorito ? 'not-allowed' : 'pointer',
+                    opacity: salvandoFavorito ? 0.6 : 1,
+                  }}
+                >
+                  {salvandoFavorito ? 'Removendo...' : 'Remover dos favoritos'}
+                </button>
+              </>
+            ) : criandoColecao ? (
+              /* Criar nova coleção */
+              <>
+                <p style={{ fontSize: 16, fontWeight: 700, color: '#171717', margin: 0 }}>
+                  Nova coleção
+                </p>
+
+                <input
+                  type="text"
+                  value={novaColecaoNome}
+                  onChange={(e) => setNovaColecaoNome(e.target.value)}
+                  autoFocus
+                  maxLength={30}
+                  placeholder="Ex: looks de trabalho"
+                  style={{
+                    borderRadius: 12, border: '1.5px solid #E8E8E8',
+                    padding: '12px 14px', fontSize: 15, color: '#171717',
+                    outline: 'none', fontFamily: 'inherit', width: '100%', boxSizing: 'border-box',
+                  }}
+                />
+
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {EMOJIS_COLECAO.map((emoji) => (
+                    <button
+                      key={emoji}
+                      onClick={() => setNovaColecaoEmoji(novaColecaoEmoji === emoji ? '' : emoji)}
+                      style={{
+                        width: 40, height: 40, borderRadius: 10, border: '1.5px solid',
+                        borderColor: novaColecaoEmoji === emoji ? '#1B5E5A' : '#E8E8E8',
+                        backgroundColor: novaColecaoEmoji === emoji ? '#E8F5F4' : '#fff',
+                        fontSize: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  onClick={() => { void handleCriarColecao() }}
+                  disabled={!novaColecaoNome.trim() || salvandoFavorito}
+                  style={{
+                    padding: '13px', borderRadius: 14, border: 'none',
+                    backgroundColor: '#1B5E5A', color: '#fff', fontSize: 14, fontWeight: 700,
+                    cursor: (!novaColecaoNome.trim() || salvandoFavorito) ? 'not-allowed' : 'pointer',
+                    opacity: (!novaColecaoNome.trim() || salvandoFavorito) ? 0.6 : 1,
+                  }}
+                >
+                  {salvandoFavorito ? 'Criando...' : 'Criar e salvar'}
+                </button>
+
+                <button
+                  onClick={() => setCriandoColecao(false)}
+                  style={{
+                    padding: '10px', borderRadius: 14, border: 'none',
+                    backgroundColor: 'transparent', color: '#888', fontSize: 13, cursor: 'pointer',
+                  }}
+                >
+                  Voltar
+                </button>
+              </>
+            ) : (
+              /* Selecionar coleção */
+              <>
+                <p style={{ fontSize: 16, fontWeight: 700, color: '#171717', margin: 0 }}>
+                  Salvar em coleção
+                </p>
+
+                {colecoes.length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {colecoes.map((colecao) => (
+                      <button
+                        key={colecao.id}
+                        onClick={() => { void handleSalvarFavorito(colecao.id) }}
+                        disabled={salvandoFavorito}
+                        style={{
+                          padding: '8px 16px', borderRadius: 20, border: '1.5px solid #E8E8E8',
+                          backgroundColor: '#F5F5F5', color: '#333',
+                          fontSize: 13, fontWeight: 700, cursor: salvandoFavorito ? 'not-allowed' : 'pointer',
+                        }}
+                      >
+                        {colecao.emoji ?? '📁'} {colecao.nome}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                <button
+                  onClick={() => setCriandoColecao(true)}
+                  style={{
+                    padding: '13px', borderRadius: 14, border: '1.5px dashed #1B5E5A',
+                    backgroundColor: '#F0FAF9', color: '#1B5E5A', fontSize: 14, fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  + Criar nova coleção
+                </button>
+
+                <button
+                  onClick={() => { void handleSalvarFavorito(null) }}
+                  disabled={salvandoFavorito}
+                  style={{
+                    padding: '13px', borderRadius: 14, border: '1.5px solid #E8E8E8',
+                    backgroundColor: '#fff', color: '#555', fontSize: 14, fontWeight: 600,
+                    cursor: salvandoFavorito ? 'not-allowed' : 'pointer',
+                    opacity: salvandoFavorito ? 0.6 : 1,
+                  }}
+                >
+                  {salvandoFavorito ? 'Salvando...' : 'Salvar sem coleção'}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </PageContainer>
   )
 }
