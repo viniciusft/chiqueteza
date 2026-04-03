@@ -9,7 +9,7 @@ export default function PageContainer({ children, className = '' }: PageContaine
   return (
     <div
       className={`min-h-screen mx-auto ${className}`}
-      style={{ backgroundColor: '#F5F5F5', maxWidth: 430 }}
+      style={{ backgroundColor: 'var(--background)', maxWidth: 430 }}
     >
       {children}
     </div>

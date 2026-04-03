@@ -11,6 +11,7 @@ import { PullToRefresh } from '@/components/ui/PullToRefresh'
 import { SkeletonList } from '@/components/ui/SkeletonCard'
 import { useCache } from '@/lib/cache/useCache'
 import { CACHE_KEYS } from '@/lib/cache/keys'
+import EmptyState from '@/components/ui/EmptyState'
 
 interface Profissional {
   id: string
@@ -78,7 +79,7 @@ function ProfissionaisContent({ userId }: { userId: string }) {
       <main className="flex flex-col gap-4 px-5 py-6">
 
         <div className="flex items-center justify-between">
-          <h1 className="font-extrabold tracking-tight" style={{ fontSize: 24, color: '#171717' }}>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 28, color: 'var(--foreground)', lineHeight: 1.2, letterSpacing: '-0.01em' }}>
             Profissionais
           </h1>
           {loading && profissionais !== null && <RevalidatingSpinner />}
@@ -87,18 +88,11 @@ function ProfissionaisContent({ userId }: { userId: string }) {
         {showSkeleton ? (
           <SkeletonList count={3} height={88} />
         ) : (profissionais ?? []).length === 0 ? (
-          <div
-            className="flex flex-col items-center gap-3 py-16"
-            style={{ borderRadius: 20, backgroundColor: '#fff', border: '1.5px solid #E8E8E8' }}
-          >
-            <span style={{ fontSize: 48 }}>💅</span>
-            <p className="font-semibold text-gray-500 text-center" style={{ fontSize: 15 }}>
-              Adicione suas profissionais favoritas
-            </p>
-            <p className="text-gray-400 text-center" style={{ fontSize: 13 }}>
-              Salve contatos, especialidades e histórico de atendimentos
-            </p>
-          </div>
+          <EmptyState
+            emoji="💅"
+            titulo="Sua caderneta está vazia"
+            descricao="Adicione as profissionais que cuida de você — cabeleireira, manicure, esteticista..."
+          />
         ) : (
           <div className="flex flex-col gap-3">
             {(profissionais ?? []).map((p) => (
@@ -159,7 +153,7 @@ export default function ProfissionaisPage() {
       <PageContainer>
         <AppHeader />
         <main className="flex flex-col gap-4 px-5 py-6">
-          <h1 className="font-extrabold tracking-tight" style={{ fontSize: 24, color: '#171717' }}>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 28, color: 'var(--foreground)', lineHeight: 1.2, letterSpacing: '-0.01em' }}>
             Profissionais
           </h1>
           <SkeletonList count={3} height={88} />

@@ -12,6 +12,7 @@ import { PullToRefresh } from '@/components/ui/PullToRefresh'
 import { SkeletonList } from '@/components/ui/SkeletonCard'
 import { useCache } from '@/lib/cache/useCache'
 import { CACHE_KEYS } from '@/lib/cache/keys'
+import EmptyState from '@/components/ui/EmptyState'
 
 function diasAtraso(ultimoProcedimento: string, frequenciaDias: number): number {
   const ultimo = new Date(ultimoProcedimento)
@@ -143,7 +144,7 @@ function RotinaContent({ userId }: { userId: string }) {
 
       <main className="flex flex-col gap-5 px-5 py-6 pb-24">
 
-        <h1 className="font-extrabold tracking-tight" style={{ fontSize: 24, color: '#171717' }}>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 28, color: 'var(--foreground)', lineHeight: 1.2, letterSpacing: '-0.01em' }}>
           Rotina
         </h1>
 
@@ -190,13 +191,11 @@ function RotinaContent({ userId }: { userId: string }) {
           {showSkeleton ? (
             <SkeletonList count={3} height={76} />
           ) : (agendamentos ?? []).length === 0 ? (
-            <div
-              className="flex flex-col items-center gap-2 py-8"
-              style={{ borderRadius: 16, backgroundColor: '#fff', border: '1.5px solid #E8E8E8' }}
-            >
-              <span style={{ fontSize: 32 }}>📅</span>
-              <p className="text-gray-400 text-sm">Nenhum agendamento futuro</p>
-            </div>
+            <EmptyState
+              emoji="📅"
+              titulo="Agenda livre!"
+              descricao="Nenhum agendamento futuro. Que tal marcar seu próximo horário?"
+            />
           ) : (
             (agendamentos ?? []).map((ag) => (
               <AgendamentoCard key={ag.id} agendamento={ag} />
@@ -207,10 +206,10 @@ function RotinaContent({ userId }: { userId: string }) {
         {/* Gasto este mês */}
         <div
           className="flex items-center justify-between px-4 py-4"
-          style={{ borderRadius: 16, backgroundColor: '#fff', border: '1.5px solid #E8E8E8' }}
+          style={{ borderRadius: 16, backgroundColor: 'var(--surface)', border: '1.5px solid var(--color-silver)', boxShadow: 'var(--shadow-sm)' }}
         >
-          <span className="font-semibold text-gray-500" style={{ fontSize: 14 }}>Gasto este mês</span>
-          <span className="font-extrabold" style={{ fontSize: 18, color: '#1B5E5A' }}>
+          <span style={{ fontSize: 14, color: 'var(--foreground-muted)', fontWeight: 600 }}>Gasto este mês</span>
+          <span style={{ fontSize: 18, color: 'var(--color-ever-green)', fontWeight: 800 }}>
             {gastosMes.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
           </span>
         </div>
@@ -231,8 +230,8 @@ function RotinaContent({ userId }: { userId: string }) {
               return (
                 <div
                   key={ag.id}
-                  className="flex items-center justify-between px-4 py-3 bg-white"
-                  style={{ borderRadius: 14, border: '1.5px solid #E8E8E8' }}
+                  className="flex items-center justify-between px-4 py-3"
+                  style={{ borderRadius: 14, border: '1.5px solid var(--color-silver)', backgroundColor: 'var(--surface)' }}
                 >
                   <div className="flex flex-col gap-0.5 flex-1 min-w-0 pr-2">
                     <p className="font-bold text-gray-800 truncate" style={{ fontSize: 14 }}>

@@ -3,6 +3,7 @@
 import { useRef, useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Cropper, { Area as CropArea } from 'react-easy-crop'
+import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
 import { invalidateCache } from '@/lib/cache'
 import { CACHE_KEYS } from '@/lib/cache/keys'
@@ -14,10 +15,11 @@ import { playSuccess, playError } from '@/lib/sound'
 
 type ViewMode = 'select' | 'preview' | 'crop' | 'uploading'
 
-const MENSAGENS_LOADING = [
-  'Analisando proporções faciais...',
-  'Identificando sua colorimetria...',
-  'Preparando seu guia personalizado...',
+const ETAPAS_LOADING = [
+  { emoji: '🔍', titulo: 'Lendo seu rosto...', detalhe: 'Identificando formato e proporções faciais' },
+  { emoji: '🎨', titulo: 'Descobrindo suas cores...', detalhe: 'Analisando subtom, olhos e cabelo' },
+  { emoji: '💄', titulo: 'Montando sua paleta...', detalhe: 'Selecionando tons de batom, sombra e blush' },
+  { emoji: '✨', titulo: 'Finalizando seu perfil...', detalhe: 'Gerando seu guia de beleza personalizado' },
 ]
 
 const CHIPS = ['Frontal', 'Rosto próximo', 'Boa iluminação', 'Sem filtros']
@@ -48,8 +50,8 @@ function VisagismoUploadContent() {
   useEffect(() => {
     if (viewMode !== 'uploading') return
     const interval = setInterval(() => {
-      setMensagemIdx((i) => (i + 1) % MENSAGENS_LOADING.length)
-    }, 3000)
+      setMensagemIdx((i) => Math.min(i + 1, ETAPAS_LOADING.length - 1))
+    }, 4000)
     return () => clearInterval(interval)
   }, [viewMode])
 
@@ -139,8 +141,9 @@ function VisagismoUploadContent() {
     }
   }
 
-  // Modo uploading
+  // Modo uploading — tela narrativa animada
   if (viewMode === 'uploading') {
+    const etapaAtual = ETAPAS_LOADING[mensagemIdx]
     return (
       <PageContainer>
         <AppHeader />
@@ -148,19 +151,91 @@ function VisagismoUploadContent() {
           style={{
             display: 'flex', flexDirection: 'column',
             alignItems: 'center', justifyContent: 'center',
-            minHeight: '70vh', gap: 20, padding: '0 24px',
+            minHeight: '75vh', gap: 32, padding: '0 28px',
           }}
         >
-          <div
-            style={{
-              width: 56, height: 56, border: '4px solid #1B5E5A',
-              borderTopColor: 'transparent', borderRadius: '50%',
-              animation: 'spin 0.8s linear infinite',
-            }}
-          />
-          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-          <p style={{ fontSize: 16, color: '#1B5E5A', fontWeight: 700, textAlign: 'center' }}>
-            {MENSAGENS_LOADING[mensagemIdx]}
+          {/* Spinner decorativo */}
+          <div style={{ position: 'relative', width: 80, height: 80 }}>
+            <div style={{
+              position: 'absolute', inset: 0,
+              border: '3px solid var(--color-ever-green-light)',
+              borderRadius: '50%',
+            }} />
+            <div style={{
+              position: 'absolute', inset: 0,
+              border: '3px solid transparent',
+              borderTopColor: 'var(--color-ever-green)',
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite',
+            }} />
+            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+            <div style={{
+              position: 'absolute', inset: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 28,
+            }}>
+              <AnimatePresence mode="wait">
+                <motion.span
+                  key={mensagemIdx}
+                  initial={{ opacity: 0, scale: 0.6 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.6 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                >
+                  {etapaAtual.emoji}
+                </motion.span>
+              </AnimatePresence>
+            </div>
+          </div>
+
+          {/* Texto animado */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, textAlign: 'center' }}>
+            <AnimatePresence mode="wait">
+              <motion.p
+                key={`titulo-${mensagemIdx}`}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.3 }}
+                style={{
+                  fontSize: 20, fontWeight: 700, color: 'var(--color-ever-green)',
+                  fontFamily: 'var(--font-display)', lineHeight: 1.2,
+                }}
+              >
+                {etapaAtual.titulo}
+              </motion.p>
+            </AnimatePresence>
+            <AnimatePresence mode="wait">
+              <motion.p
+                key={`detalhe-${mensagemIdx}`}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3, delay: 0.1 }}
+                style={{ fontSize: 14, color: 'var(--foreground-muted)', lineHeight: 1.5, maxWidth: 280 }}
+              >
+                {etapaAtual.detalhe}
+              </motion.p>
+            </AnimatePresence>
+          </div>
+
+          {/* Barra de progresso por etapas */}
+          <div style={{ display: 'flex', gap: 8 }}>
+            {ETAPAS_LOADING.map((_, i) => (
+              <motion.div
+                key={i}
+                animate={{
+                  backgroundColor: i <= mensagemIdx ? 'var(--color-ever-green)' : 'var(--color-ever-green-light)',
+                  width: i === mensagemIdx ? 28 : 8,
+                }}
+                transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                style={{ height: 8, borderRadius: 4 }}
+              />
+            ))}
+          </div>
+
+          <p style={{ fontSize: 12, color: 'var(--foreground-subtle)', textAlign: 'center', maxWidth: 240 }}>
+            A análise leva cerca de 30 segundos — não feche o app
           </p>
         </main>
       </PageContainer>

@@ -7,6 +7,7 @@ import PageContainer from '@/components/ui/PageContainer'
 import LogoutButton from './LogoutButton'
 import { PageTransition } from '@/components/ui/PageTransition'
 import { SkeletonList } from '@/components/ui/SkeletonCard'
+import { StaggerList, StaggerItem } from '@/components/ui/StaggerList'
 import { setCache } from '@/lib/cache'
 import { CACHE_KEYS } from '@/lib/cache/keys'
 
@@ -122,9 +123,9 @@ function HomeContent({ userId, nome: nomeInicial }: { userId: string; nome: stri
       <main className="flex flex-col px-5 py-8 gap-6">
 
         {/* Saudação */}
-        <div className="flex flex-col gap-0.5">
-          <span className="text-gray-500" style={{ fontSize: 14 }}>Olá,</span>
-          <span className="font-extrabold tracking-tight" style={{ fontSize: 26, color: '#171717' }}>
+        <div className="flex flex-col gap-1">
+          <span style={{ fontSize: 13, color: 'var(--foreground-muted)', fontFamily: 'var(--font-body)', fontWeight: 400 }}>Olá,</span>
+          <span style={{ fontSize: 28, color: 'var(--foreground)', fontFamily: 'var(--font-display)', fontWeight: 700, lineHeight: 1.15, letterSpacing: '-0.01em' }}>
             {nome} ✦
           </span>
         </div>
@@ -137,12 +138,14 @@ function HomeContent({ userId, nome: nomeInicial }: { userId: string; nome: stri
         {tudoEmDia && (
           <div
             className="flex flex-col items-center gap-2 py-10"
-            style={{ borderRadius: 20, backgroundColor: '#fff', border: '1.5px solid #E8E8E8' }}
+            style={{ borderRadius: 20, backgroundColor: 'var(--surface)', border: '1.5px solid var(--color-silver)', boxShadow: 'var(--shadow-sm)' }}
           >
-            <span style={{ fontSize: 40 }}>✨</span>
-            <p className="font-bold text-gray-700" style={{ fontSize: 16 }}>Tudo em dia por aqui ✦</p>
-            <p className="text-gray-400 text-center" style={{ fontSize: 13 }}>
-              Nenhum alerta e nenhum agendamento próximo.
+            <span style={{ fontSize: 42 }}>✨</span>
+            <p style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 17, color: 'var(--foreground)' }}>
+              Você está em dia!
+            </p>
+            <p style={{ fontSize: 13, color: 'var(--foreground-muted)', textAlign: 'center', maxWidth: 220 }}>
+              Nenhum alerta e nenhum agendamento próximo. Aproveite!
             </p>
           </div>
         )}
@@ -153,29 +156,32 @@ function HomeContent({ userId, nome: nomeInicial }: { userId: string; nome: stri
             <h2 className="font-bold text-gray-500 uppercase tracking-widest" style={{ fontSize: 11 }}>
               Atenção
             </h2>
-            {alertas.map((s) => {
-              const atraso = diasAtraso(s.ultimo_procedimento, s.frequencia_dias)
-              const critico = atraso > 7
-              return (
-                <div
-                  key={s.id}
-                  className="flex items-center gap-3 px-4 py-3"
-                  style={{
-                    borderRadius: 14,
-                    backgroundColor: critico ? '#FFF0F5' : '#FFF8E1',
-                    border: `1.5px solid ${critico ? '#F472A0' : '#D4A843'}`,
-                  }}
-                >
-                  <span style={{ fontSize: 18 }}>{critico ? '🔴' : '⚠️'}</span>
-                  <div>
-                    <p className="font-bold text-gray-800" style={{ fontSize: 14 }}>{s.nome}</p>
-                    <p style={{ fontSize: 12, color: critico ? '#F472A0' : '#D4A843' }}>
-                      {atraso} {atraso === 1 ? 'dia' : 'dias'} atrasada
-                    </p>
-                  </div>
-                </div>
-              )
-            })}
+            <StaggerList style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {alertas.map((s) => {
+                const atraso = diasAtraso(s.ultimo_procedimento, s.frequencia_dias)
+                const critico = atraso > 7
+                return (
+                  <StaggerItem key={s.id}>
+                    <div
+                      className="flex items-center gap-3 px-4 py-3"
+                      style={{
+                        borderRadius: 14,
+                        backgroundColor: critico ? 'var(--color-pink-peony-light)' : 'var(--color-wedding-band-light)',
+                        border: `1.5px solid ${critico ? 'var(--color-pink-peony)' : 'var(--color-wedding-band)'}`,
+                      }}
+                    >
+                      <span style={{ fontSize: 18 }}>{critico ? '🔴' : '⚠️'}</span>
+                      <div>
+                        <p className="font-bold text-gray-800" style={{ fontSize: 14 }}>{s.nome}</p>
+                        <p style={{ fontSize: 12, color: critico ? 'var(--color-pink-peony)' : 'var(--color-wedding-band)' }}>
+                          {atraso} {atraso === 1 ? 'dia' : 'dias'} atrasada
+                        </p>
+                      </div>
+                    </div>
+                  </StaggerItem>
+                )
+              })}
+            </StaggerList>
           </section>
         )}
 
@@ -186,8 +192,8 @@ function HomeContent({ userId, nome: nomeInicial }: { userId: string; nome: stri
               Próximo agendamento
             </h2>
             <div
-              className="flex items-center gap-3 px-4 py-4 bg-white"
-              style={{ borderRadius: 16, border: '1.5px solid #E8E8E8' }}
+              className="flex items-center gap-3 px-4 py-4"
+              style={{ borderRadius: 16, border: '1.5px solid var(--color-silver)', backgroundColor: 'var(--surface)', boxShadow: 'var(--shadow-sm)' }}
             >
               {/* Ícone calendário */}
               <div
