@@ -73,31 +73,32 @@ export default function PremiumGate({
           </div>
         </div>
 
-        <p style={{ fontWeight: 800, fontSize: 20, color: '#111', textAlign: 'center', marginBottom: 8 }}>
+        <p className="text-section-title text-center" style={{ marginBottom: 8 }}>
           Recurso Premium
         </p>
 
         {description && (
-          <p style={{ fontSize: 14, color: '#666', textAlign: 'center', marginBottom: 16, lineHeight: 1.5 }}>
+          <p className="text-body text-center" style={{ marginBottom: 16, lineHeight: 1.5 }}>
             {description}
           </p>
         )}
 
         <div style={{
-          backgroundColor: '#F5F5F5', borderRadius: 12,
+          backgroundColor: 'var(--background)', borderRadius: 12,
           padding: '10px 16px', marginBottom: 20, textAlign: 'center',
         }}>
-          <p style={{ fontSize: 13, color: '#666', margin: 0 }}>
+          <p className="text-caption m-0">
             Custo:{' '}
-            <span style={{ fontWeight: 700, color: '#1B5E5A' }}>{creditCost} créditos</span>
+            <span className="font-bold" style={{ color: 'var(--color-secondary)' }}>{creditCost} créditos</span>
           </p>
         </div>
 
         <button
           onClick={handleAssinar}
+          className="font-body font-bold"
           style={{
             width: '100%', padding: '14px', borderRadius: 14, border: 'none',
-            backgroundColor: '#1B5E5A', color: '#fff', fontSize: 16, fontWeight: 700,
+            backgroundColor: 'var(--color-primary)', color: '#fff', fontSize: 16,
             cursor: 'pointer',
           }}
         >
@@ -111,11 +112,12 @@ export default function PremiumGate({
     <>
       <button
         onClick={() => setSheetAberto(true)}
+        className="text-caption font-semibold"
         style={{
           display: 'inline-flex', alignItems: 'center', gap: 6,
           padding: '10px 16px', borderRadius: 12,
-          border: '1.5px solid #E8E8E8', backgroundColor: '#F9F9F9',
-          color: '#999', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+          border: '1.5px solid var(--color-silver)', backgroundColor: 'var(--background)',
+          color: 'var(--foreground-muted)', cursor: 'pointer',
         }}
       >
         <IconCadeado />

@@ -40,12 +40,8 @@ export default function LoginPage() {
 
         {/* Título */}
         <div className="flex flex-col gap-1">
-          <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 28, color: 'var(--foreground)', lineHeight: 1.2, letterSpacing: '-0.01em' }}>
-            Bem-vinda de volta ✦
-          </h1>
-          <p style={{ fontSize: 14, color: 'var(--foreground-muted)', fontFamily: 'var(--font-body)' }}>
-            Entre na sua conta
-          </p>
+          <h1 className="text-page-title">Bem-vinda de volta ✦</h1>
+          <p className="text-caption">Entre na sua conta</p>
         </div>
 
         {/* Formulário */}
@@ -59,9 +55,7 @@ export default function LoginPage() {
           )}
 
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="email" className="font-semibold text-gray-700" style={{ fontSize: 14 }}>
-              E-mail
-            </label>
+            <label htmlFor="email" className="text-card-title text-sm">E-mail</label>
             <input
               id="email"
               type="email"
@@ -70,22 +64,19 @@ export default function LoginPage() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full text-gray-800 placeholder-gray-400 transition focus:outline-none"
+              className="w-full font-body text-body placeholder:text-silver-400 transition focus:outline-none"
               style={{
                 borderRadius: 12,
                 border: '1.5px solid var(--color-silver)',
                 padding: '12px 16px',
-                fontSize: 15,
               }}
-              onFocus={(e) => (e.target.style.borderColor = 'var(--color-ever-green)')}
+              onFocus={(e) => (e.target.style.borderColor = 'var(--color-primary)')}
               onBlur={(e) => (e.target.style.borderColor = 'var(--color-silver)')}
             />
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="senha" className="font-semibold text-gray-700" style={{ fontSize: 14 }}>
-              Senha
-            </label>
+            <label htmlFor="senha" className="text-card-title text-sm">Senha</label>
             <input
               id="senha"
               type="password"
@@ -94,14 +85,13 @@ export default function LoginPage() {
               required
               value={senha}
               onChange={(e) => setSenha(e.target.value)}
-              className="w-full text-gray-800 placeholder-gray-400 transition focus:outline-none"
+              className="w-full font-body text-body placeholder:text-silver-400 transition focus:outline-none"
               style={{
                 borderRadius: 12,
                 border: '1.5px solid var(--color-silver)',
                 padding: '12px 16px',
-                fontSize: 15,
               }}
-              onFocus={(e) => (e.target.style.borderColor = 'var(--color-ever-green)')}
+              onFocus={(e) => (e.target.style.borderColor = 'var(--color-primary)')}
               onBlur={(e) => (e.target.style.borderColor = 'var(--color-silver)')}
             />
           </div>
@@ -114,7 +104,7 @@ export default function LoginPage() {
 
         <p className="text-center text-sm text-gray-500">
           Não tem conta?{' '}
-          <Link href="/cadastro" className="font-semibold hover:underline" style={{ color: 'var(--color-pink-peony)' }}>
+          <Link href="/cadastro" className="font-semibold hover:underline" style={{ color: 'var(--color-primary)' }}>
             Criar conta
           </Link>
         </p>

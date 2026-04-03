@@ -114,7 +114,6 @@ export default function TabBar() {
                 color: active ? 'var(--color-ever-green)' : 'var(--foreground-subtle)',
                 textDecoration: 'none',
                 fontWeight: active ? 700 : 400,
-                fontFamily: 'var(--font-body)',
                 position: 'relative',
                 transition: 'color var(--transition-fast)',
                 minHeight: 44,
@@ -145,7 +144,7 @@ export default function TabBar() {
                 {tab.icon}
               </motion.div>
 
-              <span style={{ fontSize: 10, letterSpacing: '0.02em' }}>{tab.label}</span>
+              <span className="font-body text-[10px] tracking-wide">{tab.label}</span>
             </Link>
           )
         })}

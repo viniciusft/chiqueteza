@@ -124,10 +124,8 @@ function HomeContent({ userId, nome: nomeInicial }: { userId: string; nome: stri
 
         {/* Saudação */}
         <div className="flex flex-col gap-1">
-          <span style={{ fontSize: 13, color: 'var(--foreground-muted)', fontFamily: 'var(--font-body)', fontWeight: 400 }}>Olá,</span>
-          <span style={{ fontSize: 28, color: 'var(--foreground)', fontFamily: 'var(--font-display)', fontWeight: 700, lineHeight: 1.15, letterSpacing: '-0.01em' }}>
-            {nome} ✦
-          </span>
+          <span className="text-caption">Olá,</span>
+          <span className="text-page-title" style={{ lineHeight: 1.15 }}>{nome} ✦</span>
         </div>
 
         {loading && (
@@ -140,11 +138,9 @@ function HomeContent({ userId, nome: nomeInicial }: { userId: string; nome: stri
             className="flex flex-col items-center gap-2 py-10"
             style={{ borderRadius: 20, backgroundColor: 'var(--surface)', border: '1.5px solid var(--color-silver)', boxShadow: 'var(--shadow-sm)' }}
           >
-            <span style={{ fontSize: 42 }}>✨</span>
-            <p style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 17, color: 'var(--foreground)' }}>
-              Você está em dia!
-            </p>
-            <p style={{ fontSize: 13, color: 'var(--foreground-muted)', textAlign: 'center', maxWidth: 220 }}>
+            <span className="text-[42px] leading-none">✨</span>
+            <p className="text-section-title">Você está em dia!</p>
+            <p className="text-caption text-center" style={{ maxWidth: 220 }}>
               Nenhum alerta e nenhum agendamento próximo. Aproveite!
             </p>
           </div>
@@ -153,7 +149,7 @@ function HomeContent({ userId, nome: nomeInicial }: { userId: string; nome: stri
         {/* Alertas */}
         {alertas.length > 0 && (
           <section className="flex flex-col gap-2">
-            <h2 className="font-bold text-gray-500 uppercase tracking-widest" style={{ fontSize: 11 }}>
+            <h2 className="text-label">
               Atenção
             </h2>
             <StaggerList style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -172,8 +168,8 @@ function HomeContent({ userId, nome: nomeInicial }: { userId: string; nome: stri
                     >
                       <span style={{ fontSize: 18 }}>{critico ? '🔴' : '⚠️'}</span>
                       <div>
-                        <p className="font-bold text-gray-800" style={{ fontSize: 14 }}>{s.nome}</p>
-                        <p style={{ fontSize: 12, color: critico ? 'var(--color-pink-peony)' : 'var(--color-wedding-band)' }}>
+                        <p className="text-card-title">{s.nome}</p>
+                        <p className="text-[12px]" style={{ color: critico ? 'var(--color-primary)' : 'var(--color-accent)' }}>
                           {atraso} {atraso === 1 ? 'dia' : 'dias'} atrasada
                         </p>
                       </div>
@@ -188,7 +184,7 @@ function HomeContent({ userId, nome: nomeInicial }: { userId: string; nome: stri
         {/* Próximo agendamento */}
         {proximo && (
           <section className="flex flex-col gap-2">
-            <h2 className="font-bold text-gray-500 uppercase tracking-widest" style={{ fontSize: 11 }}>
+            <h2 className="text-label">
               Próximo agendamento
             </h2>
             <div
@@ -197,17 +193,8 @@ function HomeContent({ userId, nome: nomeInicial }: { userId: string; nome: stri
             >
               {/* Ícone calendário */}
               <div
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 12,
-                  backgroundColor: '#E8F5F4',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 22,
-                  flexShrink: 0,
-                }}
+                className="flex items-center justify-center text-[22px] shrink-0"
+                style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: 'var(--color-secondary-light)' }}
               >
                 📅
               </div>
@@ -216,31 +203,23 @@ function HomeContent({ userId, nome: nomeInicial }: { userId: string; nome: stri
               <div className="flex flex-col gap-0.5 flex-1 min-w-0">
                 {/* Badge PRÓXIMO */}
                 <span
+                  className="text-label self-start"
                   style={{
-                    display: 'inline-block',
-                    alignSelf: 'flex-start',
-                    fontSize: 9,
-                    fontWeight: 700,
-                    letterSpacing: '0.08em',
-                    color: '#1B5E5A',
-                    backgroundColor: '#E8F5F4',
+                    color: 'var(--color-secondary)',
+                    backgroundColor: 'var(--color-secondary-light)',
                     borderRadius: 4,
                     padding: '2px 6px',
                     marginBottom: 2,
-                    textTransform: 'uppercase',
+                    fontSize: '9px',
                   }}
                 >
                   Próximo
                 </span>
-                <p className="font-extrabold text-gray-800 truncate" style={{ fontSize: 15 }}>
-                  {proximo.servico_nome}
-                </p>
+                <p className="text-card-title truncate">{proximo.servico_nome}</p>
                 {proximo.profissional?.nome && (
-                  <p className="text-gray-500 truncate" style={{ fontSize: 13 }}>
-                    {proximo.profissional.nome}
-                  </p>
+                  <p className="text-caption truncate">{proximo.profissional.nome}</p>
                 )}
-                <p style={{ fontSize: 12, color: '#1B5E5A', fontWeight: 600 }}>
+                <p className="text-[12px] font-semibold" style={{ color: 'var(--color-secondary)' }}>
                   {new Date(proximo.data_hora).toLocaleDateString('pt-BR', {
                     weekday: 'short',
                     day: 'numeric',

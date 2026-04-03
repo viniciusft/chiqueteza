@@ -5,7 +5,7 @@
 - **Nota atual:** 5.5/10
 - **Nota alvo:** 9.5/10
 - **Ultima sessao:** 2026-04-03
-- **Proxima acao:** Task 1.3 — eliminar inline styles de tipografia nos arquivos .tsx
+- **Proxima acao:** Task 2.1 — Button.tsx redesign (pink primary + ripple + variants)
 
 ## Contexto das Sessoes Anteriores
 As sessoes anteriores ja implementaram:
@@ -21,13 +21,17 @@ As sessoes anteriores ja implementaram:
 - Muitos inline styles ainda presentes (task 1.3 vai limpar)
 
 ## Fases Completas
-(nenhuma 100% concluida ainda)
+- [x] **Fase 1 — Design System Foundation** (tasks 1.1 a 1.4)
+
+> Nota: task 1.3 eliminou inline styles nos componentes UI + Home + Login.
+> Páginas internas (rotina, visagismo, galeria, profissionais, looks) ainda têm
+> inline styles — serão limpos na task 5.1 (Polish Final).
 
 ## Fase 1: Design System Foundation
 - [x] 1.1 — Design tokens no tailwind.config.ts (paleta completa, pink primária)
 - [x] 1.2 — globals.css reescrito (pink primary, fundo #FFFBFC, utilities completas)
-- [ ] 1.3 — Tipografia: eliminar inline styles, classes utilitárias
-- [ ] 1.4 — Instalar GSAP + lib/animations/gsap.ts + lib/animations/framer.ts
+- [x] 1.3 — Tipografia: eliminar inline styles, classes utilitárias (componentes UI + Home + Login)
+- [x] 1.4 — Instalar GSAP + lib/animations/gsap.ts + lib/animations/framer.ts + hooks.ts
 
 ## Fase 2: Componentes Core
 - [ ] 2.1 — Button.tsx redesign (ripple + pink primary + variants)
@@ -78,3 +82,4 @@ As sessoes anteriores ja implementaram:
 | 1-7 | 2026-04-03 | 1-7 (anteriores) | Framer Motion, fonts, tokens parciais, StaggerList, EmptyState, ActionSheet, Visagismo loading | Sessoes de design system inicial |
 | 8 | 2026-04-03 | Passo Zero | PROGRESS.md criado, PROMPT-AUDITORIA-CHIQUETEZA.md criado | Inicio do plano estruturado |
 | 9 | 2026-04-03 | 1.1 + 1.2 | tailwind.config.ts paleta completa; globals.css reescrito (pink primária, fundo #FFFBFC, text-page-title etc.) | Build ok |
+| 10 | 2026-04-03 | 1.3 + 1.4 | Inline styles removidos (TabBar, Button, EmptyState, ActionSheet, PremiumGate, Login, Home); GSAP instalado + lib/animations/{gsap,framer,hooks}.ts | Fase 1 completa |

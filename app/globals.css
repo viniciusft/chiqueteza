@@ -29,6 +29,7 @@
   --color-accent:           #D4A843;      /* gold premium */
   --color-accent-light:     #FFF9ED;
   --color-info:             #A8C5CC;      /* something blue */
+  --color-secondary-light:  #E8F5F4;     /* green light alias */
 
   /* Semantic */
   --color-success: #22C55E;

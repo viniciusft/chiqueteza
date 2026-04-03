@@ -63,7 +63,7 @@ export default function ActionSheet({ isOpen, onClose, title, actions }: ActionS
 
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-              <p style={{ fontWeight: 700, fontSize: 16, color: 'var(--foreground)', margin: 0, fontFamily: 'var(--font-body)' }}>{title}</p>
+              <p className="text-card-title m-0" style={{ color: 'var(--foreground)' }}>{title}</p>
               <button
                 onClick={onClose}
                 style={{
@@ -85,16 +85,16 @@ export default function ActionSheet({ isOpen, onClose, title, actions }: ActionS
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.04, duration: 0.2 }}
                   onClick={action.onClick}
+                  className="font-body font-semibold text-left"
                   style={{
                     width: '100%', padding: '14px 16px', borderRadius: 12,
                     border: '1.5px solid var(--color-silver)', backgroundColor: 'var(--surface)',
                     display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer',
                     color: action.variant === 'danger' ? '#EF4444' : 'var(--foreground)',
-                    fontSize: 15, fontWeight: 600, textAlign: 'left',
-                    fontFamily: 'var(--font-body)',
+                    fontSize: 15,
                   }}
                 >
-                  <span style={{ fontSize: 18 }}>{action.icon}</span>
+                  <span className="text-[18px]">{action.icon}</span>
                   <span>{action.label}</span>
                 </motion.button>
               ))}

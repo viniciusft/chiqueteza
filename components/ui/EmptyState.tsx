@@ -15,45 +15,30 @@ export default function EmptyState({ emoji, titulo, descricao, acao }: EmptyStat
       initial={{ opacity: 0, scale: 0.96 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+      className="flex flex-col items-center text-center"
       style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
         gap: 10,
         padding: '36px 24px',
         borderRadius: 20,
         backgroundColor: 'var(--surface)',
         border: '1.5px solid var(--color-silver)',
         boxShadow: 'var(--shadow-sm)',
-        textAlign: 'center',
       }}
     >
       <motion.span
         initial={{ scale: 0.5, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ type: 'spring', stiffness: 400, damping: 20, delay: 0.1 }}
-        style={{ fontSize: 44, lineHeight: 1 }}
+        className="text-[44px] leading-none"
       >
         {emoji}
       </motion.span>
 
-      <p style={{
-        fontFamily: 'var(--font-display)',
-        fontWeight: 700,
-        fontSize: 17,
-        color: 'var(--foreground)',
-        lineHeight: 1.25,
-        marginTop: 2,
-      }}>
+      <p className="text-section-title mt-0.5" style={{ lineHeight: 1.25 }}>
         {titulo}
       </p>
 
-      <p style={{
-        fontSize: 14,
-        color: 'var(--foreground-muted)',
-        lineHeight: 1.5,
-        maxWidth: 240,
-      }}>
+      <p className="text-caption" style={{ lineHeight: 1.5, maxWidth: 240 }}>
         {descricao}
       </p>
 

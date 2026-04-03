@@ -40,7 +40,7 @@ export default function Button({
   return (
     <button
       className={`${base} ${variants[variant]} ${outlineBorder} ${width} ${className}`}
-      style={{ borderRadius: 'var(--radius-md)', padding: '14px 20px', minHeight: 48, fontFamily: 'var(--font-body)' }}
+      style={{ borderRadius: 'var(--radius-md)', padding: '14px 20px', minHeight: 48 }}
       disabled={disabled || loading}
       onClick={handleClick}
       {...props}
