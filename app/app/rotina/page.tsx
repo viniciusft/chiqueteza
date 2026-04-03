@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
+import { motion } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
 import AppHeader from '@/components/ui/AppHeader'
 import PageContainer from '@/components/ui/PageContainer'
@@ -13,6 +14,7 @@ import { SkeletonList } from '@/components/ui/SkeletonCard'
 import { useCache } from '@/lib/cache/useCache'
 import { CACHE_KEYS } from '@/lib/cache/keys'
 import EmptyState from '@/components/ui/EmptyState'
+import { AlertTriangle, TrendingUp } from 'lucide-react'
 
 function diasAtraso(ultimoProcedimento: string, frequenciaDias: number): number {
   const ultimo = new Date(ultimoProcedimento)
@@ -28,9 +30,9 @@ function inicioDoMes(): string {
 }
 
 const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
-  concluido: { label: 'Realizado', color: '#1B5E5A', bg: '#E8F5F4' },
-  cancelado: { label: 'Cancelado', color: '#9ca3af', bg: '#F5F5F5' },
-  agendado:  { label: 'Agendado',  color: '#A8C5CC', bg: '#EFF7F8' },
+  concluido: { label: 'Realizado', color: '#1B5E5A', bg: 'rgba(27,94,90,0.08)' },
+  cancelado: { label: 'Cancelado', color: '#9ca3af', bg: 'rgba(156,163,175,0.10)' },
+  agendado:  { label: 'Agendado',  color: '#FF3366', bg: 'rgba(255,51,102,0.08)' },
 }
 
 interface ServicoBeleza {
@@ -52,32 +54,12 @@ interface Agendamento {
   profissional: { nome: string; telefone: string | null } | null
 }
 
-function RevalidatingSpinner() {
-  return (
-    <>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      <div
-        style={{
-          width: 16, height: 16,
-          border: '2px solid #1B5E5A',
-          borderTopColor: 'transparent',
-          borderRadius: '50%',
-          animation: 'spin 0.8s linear infinite',
-          opacity: 0.5,
-        }}
-      />
-    </>
-  )
-}
-
-// Componente interno: recebe userId já resolvido e usa useCache
 function RotinaContent({ userId }: { userId: string }) {
   const supabase = createClient()
   const [servicos, setServicos] = useState<ServicoBeleza[]>([])
   const [gastosMes, setGastosMes] = useState<number>(0)
   const [historico, setHistorico] = useState<Agendamento[]>([])
 
-  // Dados secundários (sem cache por enquanto)
   useEffect(() => {
     void (async () => {
       const mes = inicioDoMes()
@@ -108,7 +90,6 @@ function RotinaContent({ userId }: { userId: string }) {
     })()
   }, [userId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Agendamentos futuros com cache (stale-while-revalidate)
   const agendamentosFetcher = useCallback(async (): Promise<Agendamento[]> => {
     const { data } = await supabase
       .from('agendamentos_rotina')
@@ -138,145 +119,157 @@ function RotinaContent({ userId }: { userId: string }) {
 
   return (
     <PageTransition>
-    <PullToRefresh>
-    <PageContainer>
-      <AppHeader actions={<LogoutButton />} />
+      <PullToRefresh>
+        <PageContainer>
+          <AppHeader actions={<LogoutButton />} />
 
-      <main className="flex flex-col gap-5 px-5 py-6 pb-24">
+          <main className="flex flex-col gap-5 px-5 py-6 pb-24">
 
-        <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 28, color: 'var(--foreground)', lineHeight: 1.2, letterSpacing: '-0.01em' }}>
-          Rotina
-        </h1>
+            <h1 className="text-page-title">Rotina</h1>
 
-        {/* Alertas de intervalo */}
-        {alertas.length > 0 && (
-          <section className="flex flex-col gap-2">
-            <h2 className="font-bold text-gray-500 uppercase tracking-widest" style={{ fontSize: 11 }}>
-              Atenção
-            </h2>
-            {alertas.map((s) => {
-              const atraso = diasAtraso(s.ultimo_procedimento, s.frequencia_dias)
-              const critico = atraso > 7
-              return (
-                <div
-                  key={s.id}
-                  className="flex items-center gap-3 px-4 py-3"
-                  style={{
-                    borderRadius: 14,
-                    backgroundColor: critico ? '#FFF0F5' : '#FFF8E1',
-                    border: `1.5px solid ${critico ? '#F472A0' : '#D4A843'}`,
-                  }}
-                >
-                  <span style={{ fontSize: 18 }}>{critico ? '🔴' : '⚠️'}</span>
-                  <div>
-                    <p className="font-bold text-gray-800" style={{ fontSize: 14 }}>{s.nome}</p>
-                    <p style={{ fontSize: 12, color: critico ? '#F472A0' : '#D4A843' }}>
-                      {atraso} {atraso === 1 ? 'dia' : 'dias'} atrasada
-                    </p>
-                  </div>
-                </div>
-              )
-            })}
-          </section>
-        )}
-
-        {/* Próximos agendamentos */}
-        <section className="flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <h2 className="font-bold text-gray-500 uppercase tracking-widest" style={{ fontSize: 11 }}>
-              Próximos agendamentos
-            </h2>
-            {loadingAgendamentos && agendamentos !== null && <RevalidatingSpinner />}
-          </div>
-          {showSkeleton ? (
-            <SkeletonList count={3} height={76} />
-          ) : (agendamentos ?? []).length === 0 ? (
-            <EmptyState
-              emoji="📅"
-              titulo="Agenda livre!"
-              descricao="Nenhum agendamento futuro. Que tal marcar seu próximo horário?"
-            />
-          ) : (
-            (agendamentos ?? []).map((ag) => (
-              <AgendamentoCard key={ag.id} agendamento={ag} />
-            ))
-          )}
-        </section>
-
-        {/* Gasto este mês */}
-        <div
-          className="flex items-center justify-between px-4 py-4"
-          style={{ borderRadius: 16, backgroundColor: 'var(--surface)', border: '1.5px solid var(--color-silver)', boxShadow: 'var(--shadow-sm)' }}
-        >
-          <span style={{ fontSize: 14, color: 'var(--foreground-muted)', fontWeight: 600 }}>Gasto este mês</span>
-          <span style={{ fontSize: 18, color: 'var(--color-ever-green)', fontWeight: 800 }}>
-            {gastosMes.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-          </span>
-        </div>
-
-        {/* Histórico */}
-        {historico.length > 0 && (
-          <section className="flex flex-col gap-2">
-            <h2 className="font-bold text-gray-500 uppercase tracking-widest" style={{ fontSize: 11 }}>
-              Histórico
-            </h2>
-            {historico.map((ag) => {
-              const cfg = statusConfig[ag.status] ?? statusConfig.agendado
-              const dataFmt = new Date(ag.data_hora).toLocaleDateString('pt-BR', {
-                day: 'numeric',
-                month: 'short',
-                year: 'numeric',
-              })
-              return (
-                <div
-                  key={ag.id}
-                  className="flex items-center justify-between px-4 py-3"
-                  style={{ borderRadius: 14, border: '1.5px solid var(--color-silver)', backgroundColor: 'var(--surface)' }}
-                >
-                  <div className="flex flex-col gap-0.5 flex-1 min-w-0 pr-2">
-                    <p className="font-bold text-gray-800 truncate" style={{ fontSize: 14 }}>
-                      {ag.servico_nome}
-                    </p>
-                    <p className="text-gray-400" style={{ fontSize: 12 }}>
-                      {dataFmt}
-                      {ag.profissional?.nome ? ` · ${ag.profissional.nome}` : ''}
-                    </p>
-                  </div>
-                  <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                    <span
-                      className="font-bold uppercase tracking-wide"
+            {/* Alertas */}
+            {alertas.length > 0 && (
+              <section className="flex flex-col gap-2">
+                <h2 className="text-label">Atenção</h2>
+                {alertas.map((s) => {
+                  const atraso = diasAtraso(s.ultimo_procedimento, s.frequencia_dias)
+                  const critico = atraso > 7
+                  return (
+                    <div
+                      key={s.id}
+                      className="flex items-center gap-3 px-4 py-3 rounded-xl"
                       style={{
-                        fontSize: 10,
-                        color: cfg.color,
-                        backgroundColor: cfg.bg,
-                        borderRadius: 6,
-                        padding: '2px 8px',
+                        background: critico ? 'rgba(255,51,102,0.06)' : 'rgba(212,168,67,0.07)',
+                        border: `1.5px solid ${critico ? 'rgba(255,51,102,0.25)' : 'rgba(212,168,67,0.3)'}`,
                       }}
                     >
-                      {cfg.label}
-                    </span>
-                    {ag.valor && (
-                      <span className="text-gray-500" style={{ fontSize: 12 }}>
-                        {Number(ag.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                      </span>
-                    )}
-                  </div>
+                      <div
+                        className="flex items-center justify-center rounded-full flex-shrink-0"
+                        style={{
+                          width: 32, height: 32,
+                          background: critico ? 'rgba(255,51,102,0.10)' : 'rgba(212,168,67,0.15)',
+                        }}
+                      >
+                        <AlertTriangle size={15} color={critico ? 'var(--color-primary)' : '#D4A843'} />
+                      </div>
+                      <div>
+                        <p className="text-card-title">{s.nome}</p>
+                        <p style={{
+                          fontSize: 12, fontWeight: 600,
+                          color: critico ? 'var(--color-primary)' : '#D4A843',
+                        }}>
+                          {atraso} {atraso === 1 ? 'dia' : 'dias'} em atraso
+                        </p>
+                      </div>
+                    </div>
+                  )
+                })}
+              </section>
+            )}
+
+            {/* Próximos agendamentos */}
+            <section className="flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <h2 className="text-label">Próximos agendamentos</h2>
+              </div>
+              {showSkeleton ? (
+                <SkeletonList count={3} height={76} />
+              ) : (agendamentos ?? []).length === 0 ? (
+                <EmptyState
+                  emoji="📅"
+                  titulo="Agenda livre!"
+                  descricao="Nenhum agendamento futuro. Que tal marcar seu próximo horário?"
+                />
+              ) : (
+                (agendamentos ?? []).map((ag) => (
+                  <AgendamentoCard key={ag.id} agendamento={ag} />
+                ))
+              )}
+            </section>
+
+            {/* Gasto este mês */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.97 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.4, delay: 0.15 }}
+              className="flex items-center justify-between px-4 py-4 rounded-2xl"
+              style={{
+                background: 'linear-gradient(135deg, rgba(27,94,90,0.06) 0%, rgba(27,94,90,0.03) 100%)',
+                border: '1.5px solid rgba(27,94,90,0.15)',
+              }}
+            >
+              <div className="flex items-center gap-2">
+                <div className="flex items-center justify-center rounded-xl"
+                  style={{ width: 36, height: 36, background: 'rgba(27,94,90,0.10)' }}>
+                  <TrendingUp size={16} color="#1B5E5A" />
                 </div>
-              )
-            })}
-          </section>
-        )}
+                <span className="text-card-title" style={{ color: 'var(--foreground-muted)' }}>
+                  Gasto este mês
+                </span>
+              </div>
+              <span style={{
+                fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700,
+                color: '#1B5E5A',
+              }}>
+                {gastosMes.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              </span>
+            </motion.div>
 
-      </main>
+            {/* Histórico */}
+            {historico.length > 0 && (
+              <section className="flex flex-col gap-2">
+                <h2 className="text-label">Histórico</h2>
+                {historico.map((ag) => {
+                  const cfg = statusConfig[ag.status] ?? statusConfig.agendado
+                  const dataFmt = new Date(ag.data_hora).toLocaleDateString('pt-BR', {
+                    day: 'numeric', month: 'short', year: 'numeric',
+                  })
+                  return (
+                    <div
+                      key={ag.id}
+                      className="flex items-center justify-between px-4 py-3 rounded-xl"
+                      style={{ border: '1.5px solid var(--color-silver)', backgroundColor: 'var(--surface)' }}
+                    >
+                      <div className="flex flex-col gap-0.5 flex-1 min-w-0 pr-2">
+                        <p className="text-card-title truncate">{ag.servico_nome}</p>
+                        <p className="text-caption">
+                          {dataFmt}
+                          {ag.profissional?.nome ? ` · ${ag.profissional.nome}` : ''}
+                        </p>
+                      </div>
+                      <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                        <span
+                          style={{
+                            fontSize: 10, fontWeight: 700, letterSpacing: '0.04em',
+                            textTransform: 'uppercase',
+                            color: cfg.color,
+                            background: cfg.bg,
+                            borderRadius: 6, padding: '2px 8px',
+                          }}
+                        >
+                          {cfg.label}
+                        </span>
+                        {ag.valor && (
+                          <span className="text-caption">
+                            {Number(ag.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </section>
+            )}
 
-      <RotinaSeedFAB />
-    </PageContainer>
-    </PullToRefresh>
+          </main>
+
+          <RotinaSeedFAB />
+        </PageContainer>
+      </PullToRefresh>
     </PageTransition>
   )
 }
 
-// Componente principal: resolve userId antes de renderizar o conteúdo
 export default function RotinaPage() {
   const [userId, setUserId] = useState<string | null>(null)
 
@@ -291,15 +284,13 @@ export default function RotinaPage() {
   if (!userId) {
     return (
       <PageTransition>
-      <PageContainer>
-        <AppHeader actions={<LogoutButton />} />
-        <main className="flex flex-col gap-5 px-5 py-6 pb-24">
-          <h1 className="font-extrabold tracking-tight" style={{ fontSize: 24, color: '#171717' }}>
-            Rotina
-          </h1>
-          <SkeletonList count={3} height={76} />
-        </main>
-      </PageContainer>
+        <PageContainer>
+          <AppHeader actions={<LogoutButton />} />
+          <main className="flex flex-col gap-5 px-5 py-6 pb-24">
+            <h1 className="text-page-title">Rotina</h1>
+            <SkeletonList count={3} height={76} />
+          </main>
+        </PageContainer>
       </PageTransition>
     )
   }

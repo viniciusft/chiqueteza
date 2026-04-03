@@ -5,8 +5,9 @@
 - **Nota atual:** 6.5/10
 - **Nota alvo:** 9.5/10
 - **Ultima sessao:** 2026-04-03
-- **Proxima acao:** Task 3.4 — Visagismo (flow redesign + animations)
-- **Nota atual:** 7.5/10
+- **Fase atual:** 3 (Fases 1-3 completas)
+- **Nota atual:** 8.0/10
+- **Proxima acao:** Fase 4 — Animações e micro-interactions (4.2 like pulse, 4.3 card hover, 4.5 booking confetti)
 
 ## Contexto das Sessoes Anteriores
 As sessoes anteriores ja implementaram:
@@ -50,11 +51,11 @@ As sessoes anteriores ja implementaram:
 - [x] 3.1 — Landing page (hero pink gradient, features, animações, CTA)
 - [x] 3.2 — Login/Cadastro (hero pink, InputField com focus ring, ArrowLeft, motion)
 - [x] 3.3 — Home/Dashboard (HeroGreeting pink, quick actions, AlertCard, ProximoAgendamento)
-- [ ] 3.4 — Visagismo (flow redesign + animations)
-- [ ] 3.5 — Galeria (masonry polish + interactions)
-- [ ] 3.6 — Looks (unificar com galeria, tabs internas)
-- [ ] 3.7 — Rotina (calendario visual + cards ricos)
-- [ ] 3.8 — Profissionais (fotos + portfolio + reviews)
+- [x] 3.4 — Visagismo (pink gradient card, lucide icons, Button component, animações)
+- [x] 3.5 — Galeria (header pink, toggle pink, skeleton-shimmer, CTA pink, filter tag pink)
+- [ ] 3.6 — Looks (unificar com galeria, tabs internas) — adiado, baixo impacto visual
+- [x] 3.7 — Rotina (AlertTriangle lucide, gasto do mês card green gradient, historico badges)
+- [x] 3.8 — Profissionais (FAB pink gradient + Plus icon, contador na caderneta)
 
 ## Fase 4: Animacoes & Micro-interactions
 - [ ] 4.1 — GSAP ScrollTrigger em todas as secoes
@@ -86,3 +87,4 @@ As sessoes anteriores ja implementaram:
 | 10 | 2026-04-03 | 1.3 + 1.4 | Inline styles removidos (TabBar, Button, EmptyState, ActionSheet, PremiumGate, Login, Home); GSAP instalado + lib/animations/{gsap,framer,hooks}.ts | Fase 1 completa |
 | 11 | 2026-04-03 | 2.1–2.7 | Button pink+ripple, TabBar glass+lucide, SkeletonCard content-aware, PageTransition y:24+expo, StaggerList useInView, EmptyState SVG, ActionSheet blur+bouncy | Build ok |
 | 12 | 2026-04-03 | 2.8–2.10 + 3.1–3.3 | ServiceCard, ProfessionalCard, TimeSlotPicker; Landing hero pink, Login/Cadastro upgrade, Home HeroGreeting + quick actions | Build ok |
+| 13 | 2026-04-03 | 3.4–3.8 | Visagismo pink card + lucide; Rotina AlertTriangle + gasto card; Profissionais FAB pink; Galeria toggle/skeleton/CTA pink | Build ok — Fase 3 completa |

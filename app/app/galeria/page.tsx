@@ -293,12 +293,10 @@ export default function GaleriaPage() {
 
         {/* Header */}
         <div className="flex items-center justify-between px-5 mb-5">
-          <h1 className="font-extrabold tracking-tight" style={{ fontSize: 22, color: '#171717' }}>
-            Galeria
-          </h1>
+          <h1 className="text-page-title">Galeria</h1>
           <button
             onClick={() => router.push('/app/looks')}
-            style={{ fontSize: 13, color: '#1B5E5A', fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer' }}
+            style={{ fontSize: 13, color: 'var(--color-primary)', fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)' }}
           >
             Meus looks →
           </button>
@@ -338,7 +336,7 @@ export default function GaleriaPage() {
               <span
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: 4,
-                  backgroundColor: '#1B5E5A', color: '#fff',
+                  background: 'linear-gradient(90deg, #FF3366, #F472A0)', color: '#fff',
                   borderRadius: 20, padding: '4px 10px', fontSize: 12, fontWeight: 700,
                 }}
               >
@@ -385,9 +383,9 @@ export default function GaleriaPage() {
               style={{
                 flex: 1, padding: '9px', borderRadius: 11, border: 'none',
                 backgroundColor: ordenacao === val ? '#fff' : 'transparent',
-                color: ordenacao === val ? '#1B5E5A' : '#888',
+                color: ordenacao === val ? 'var(--color-primary)' : '#888',
                 fontSize: 13, fontWeight: ordenacao === val ? 700 : 500,
-                cursor: 'pointer',
+                cursor: 'pointer', fontFamily: 'var(--font-body)',
                 boxShadow: ordenacao === val ? '0 1px 4px rgba(0,0,0,0.1)' : 'none',
                 transition: 'all 0.15s',
               }}
@@ -401,12 +399,12 @@ export default function GaleriaPage() {
         {loading && (
           <div style={{ display: 'flex', gap: 8, padding: '0 8px' }}>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div style={{ height: 200, borderRadius: 12, backgroundColor: '#E8E8E8' }} />
-              <div style={{ height: 150, borderRadius: 12, backgroundColor: '#E8E8E8' }} />
+              <div className="skeleton-shimmer" style={{ height: 200, borderRadius: 12 }} />
+              <div className="skeleton-shimmer" style={{ height: 150, borderRadius: 12 }} />
             </div>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8, marginTop: 24 }}>
-              <div style={{ height: 170, borderRadius: 12, backgroundColor: '#E8E8E8' }} />
-              <div style={{ height: 200, borderRadius: 12, backgroundColor: '#E8E8E8' }} />
+              <div className="skeleton-shimmer" style={{ height: 170, borderRadius: 12 }} />
+              <div className="skeleton-shimmer" style={{ height: 200, borderRadius: 12 }} />
             </div>
           </div>
         )}
@@ -423,7 +421,10 @@ export default function GaleriaPage() {
               onClick={() => router.push('/app/looks/novo?publico=true')}
               style={{
                 marginTop: 4, padding: '14px 28px', borderRadius: 14, border: 'none',
-                backgroundColor: '#1B5E5A', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer',
+                background: 'linear-gradient(135deg, #FF3366, #C41A4A)',
+                color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer',
+                fontFamily: 'var(--font-body)',
+                boxShadow: '0 4px 16px rgba(255,51,102,0.3)',
               }}
             >
               Compartilhar meu look
@@ -523,8 +524,8 @@ export default function GaleriaPage() {
                   onClick={() => { void handleVerMais() }}
                   disabled={carregandoMais}
                   style={{
-                    padding: '12px 32px', borderRadius: 14, border: '1.5px solid #E8E8E8',
-                    backgroundColor: '#fff', color: '#1B5E5A', fontSize: 14, fontWeight: 700,
+                    padding: '12px 32px', borderRadius: 14, border: '1.5px solid rgba(255,51,102,0.25)',
+                    backgroundColor: '#fff', color: 'var(--color-primary)', fontSize: 14, fontWeight: 700,
                     cursor: carregandoMais ? 'not-allowed' : 'pointer',
                     opacity: carregandoMais ? 0.6 : 1,
                   }}
