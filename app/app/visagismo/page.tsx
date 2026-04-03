@@ -129,7 +129,7 @@ function VisagismoContent({ userId }: { userId: string }) {
       <PageContainer>
         <AppHeader actions={<LogoutButton />} />
         <main className="flex flex-col px-5 py-6 gap-5">
-          <h1 className="font-extrabold tracking-tight" style={{ fontSize: 24, color: '#171717' }}>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 28, color: 'var(--foreground)', lineHeight: 1.2, letterSpacing: '-0.01em' }}>
             Visagismo
           </h1>
           <SkeletonList count={2} height={96} />
@@ -147,7 +147,7 @@ function VisagismoContent({ userId }: { userId: string }) {
         <AppHeader actions={<LogoutButton />} />
         <main className="flex flex-col px-5 py-6 gap-5">
 
-          <h1 className="font-extrabold tracking-tight" style={{ fontSize: 24, color: '#171717' }}>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 28, color: 'var(--foreground)', lineHeight: 1.2, letterSpacing: '-0.01em' }}>
             Visagismo
           </h1>
 
@@ -290,7 +290,7 @@ function VisagismoContent({ userId }: { userId: string }) {
       <main className="flex flex-col px-5 py-6 gap-6">
 
         <div className="flex flex-col gap-1">
-          <h1 className="font-extrabold tracking-tight" style={{ fontSize: 24, color: '#171717' }}>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 28, color: 'var(--foreground)', lineHeight: 1.2, letterSpacing: '-0.01em' }}>
             Visagismo
           </h1>
           <p className="text-gray-500" style={{ fontSize: 14 }}>
@@ -370,7 +370,7 @@ export default function VisagismoPage() {
       <PageContainer>
         <AppHeader actions={<LogoutButton />} />
         <main className="flex flex-col px-5 py-6 gap-5">
-          <h1 className="font-extrabold tracking-tight" style={{ fontSize: 24, color: '#171717' }}>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 28, color: 'var(--foreground)', lineHeight: 1.2, letterSpacing: '-0.01em' }}>
             Visagismo
           </h1>
           <SkeletonList count={2} height={96} />

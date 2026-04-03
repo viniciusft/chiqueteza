@@ -144,7 +144,7 @@ function RotinaContent({ userId }: { userId: string }) {
 
       <main className="flex flex-col gap-5 px-5 py-6 pb-24">
 
-        <h1 className="font-extrabold tracking-tight" style={{ fontSize: 24, color: '#171717' }}>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 28, color: 'var(--foreground)', lineHeight: 1.2, letterSpacing: '-0.01em' }}>
           Rotina
         </h1>
 
@@ -206,10 +206,10 @@ function RotinaContent({ userId }: { userId: string }) {
         {/* Gasto este mês */}
         <div
           className="flex items-center justify-between px-4 py-4"
-          style={{ borderRadius: 16, backgroundColor: '#fff', border: '1.5px solid #E8E8E8' }}
+          style={{ borderRadius: 16, backgroundColor: 'var(--surface)', border: '1.5px solid var(--color-silver)', boxShadow: 'var(--shadow-sm)' }}
         >
-          <span className="font-semibold text-gray-500" style={{ fontSize: 14 }}>Gasto este mês</span>
-          <span className="font-extrabold" style={{ fontSize: 18, color: '#1B5E5A' }}>
+          <span style={{ fontSize: 14, color: 'var(--foreground-muted)', fontWeight: 600 }}>Gasto este mês</span>
+          <span style={{ fontSize: 18, color: 'var(--color-ever-green)', fontWeight: 800 }}>
             {gastosMes.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
           </span>
         </div>
@@ -230,8 +230,8 @@ function RotinaContent({ userId }: { userId: string }) {
               return (
                 <div
                   key={ag.id}
-                  className="flex items-center justify-between px-4 py-3 bg-white"
-                  style={{ borderRadius: 14, border: '1.5px solid #E8E8E8' }}
+                  className="flex items-center justify-between px-4 py-3"
+                  style={{ borderRadius: 14, border: '1.5px solid var(--color-silver)', backgroundColor: 'var(--surface)' }}
                 >
                   <div className="flex flex-col gap-0.5 flex-1 min-w-0 pr-2">
                     <p className="font-bold text-gray-800 truncate" style={{ fontSize: 14 }}>

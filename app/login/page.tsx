@@ -40,10 +40,10 @@ export default function LoginPage() {
 
         {/* Título */}
         <div className="flex flex-col gap-1">
-          <h1 className="font-extrabold tracking-tight" style={{ fontSize: 24, color: '#171717' }}>
-            Bem-vinda de volta
+          <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 28, color: 'var(--foreground)', lineHeight: 1.2, letterSpacing: '-0.01em' }}>
+            Bem-vinda de volta ✦
           </h1>
-          <p className="text-gray-500" style={{ fontSize: 14 }}>
+          <p style={{ fontSize: 14, color: 'var(--foreground-muted)', fontFamily: 'var(--font-body)' }}>
             Entre na sua conta
           </p>
         </div>
@@ -73,12 +73,12 @@ export default function LoginPage() {
               className="w-full text-gray-800 placeholder-gray-400 transition focus:outline-none"
               style={{
                 borderRadius: 12,
-                border: '1.5px solid #E8E8E8',
+                border: '1.5px solid var(--color-silver)',
                 padding: '12px 16px',
                 fontSize: 15,
               }}
-              onFocus={(e) => (e.target.style.borderColor = '#1B5E5A')}
-              onBlur={(e) => (e.target.style.borderColor = '#E8E8E8')}
+              onFocus={(e) => (e.target.style.borderColor = 'var(--color-ever-green)')}
+              onBlur={(e) => (e.target.style.borderColor = 'var(--color-silver)')}
             />
           </div>
 
@@ -97,12 +97,12 @@ export default function LoginPage() {
               className="w-full text-gray-800 placeholder-gray-400 transition focus:outline-none"
               style={{
                 borderRadius: 12,
-                border: '1.5px solid #E8E8E8',
+                border: '1.5px solid var(--color-silver)',
                 padding: '12px 16px',
                 fontSize: 15,
               }}
-              onFocus={(e) => (e.target.style.borderColor = '#1B5E5A')}
-              onBlur={(e) => (e.target.style.borderColor = '#E8E8E8')}
+              onFocus={(e) => (e.target.style.borderColor = 'var(--color-ever-green)')}
+              onBlur={(e) => (e.target.style.borderColor = 'var(--color-silver)')}
             />
           </div>
 
@@ -114,7 +114,7 @@ export default function LoginPage() {
 
         <p className="text-center text-sm text-gray-500">
           Não tem conta?{' '}
-          <Link href="/cadastro" className="font-semibold hover:underline" style={{ color: '#F472A0' }}>
+          <Link href="/cadastro" className="font-semibold hover:underline" style={{ color: 'var(--color-pink-peony)' }}>
             Criar conta
           </Link>
         </p>

@@ -262,7 +262,7 @@ export default function LooksPage() {
 
         {/* Header */}
         <div className="flex items-center justify-between px-5 mb-4">
-          <h1 className="font-extrabold tracking-tight" style={{ fontSize: 22, color: '#171717' }}>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 26, color: 'var(--foreground)', lineHeight: 1.2, letterSpacing: '-0.01em' }}>
             Looks
           </h1>
           <button
