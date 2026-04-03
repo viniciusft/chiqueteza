@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
 import AppHeader from '@/components/ui/AppHeader'
@@ -55,11 +55,33 @@ interface Agendamento {
   profissional: { nome: string; telefone: string | null } | null
 }
 
+function useCountUp(target: number, duration = 900): number {
+  const [count, setCount] = useState(0)
+  const rafRef = useRef<number | null>(null)
+  useEffect(() => {
+    if (target === 0) { setCount(0); return }
+    const start = performance.now()
+    const from = 0
+    function tick(now: number) {
+      const elapsed = now - start
+      const t = Math.min(elapsed / duration, 1)
+      // ease-out-expo
+      const eased = t === 1 ? 1 : 1 - Math.pow(2, -10 * t)
+      setCount(Math.round(from + (target - from) * eased))
+      if (t < 1) rafRef.current = requestAnimationFrame(tick)
+    }
+    rafRef.current = requestAnimationFrame(tick)
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current) }
+  }, [target, duration])
+  return count
+}
+
 function RotinaContent({ userId }: { userId: string }) {
   const supabase = createClient()
   const [servicos, setServicos] = useState<ServicoBeleza[]>([])
   const [gastosMes, setGastosMes] = useState<number>(0)
   const [historico, setHistorico] = useState<Agendamento[]>([])
+  const gastoAnimado = useCountUp(gastosMes)
 
   useEffect(() => {
     void (async () => {
@@ -216,7 +238,7 @@ function RotinaContent({ userId }: { userId: string }) {
                 fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700,
                 color: '#1B5E5A',
               }}>
-                {gastosMes.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                {gastoAnimado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               </span>
             </motion.div>
 
