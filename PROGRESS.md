@@ -5,7 +5,7 @@
 - **Nota atual:** 6.5/10
 - **Nota alvo:** 9.5/10
 - **Ultima sessao:** 2026-04-03
-- **Proxima acao:** Task 2.8 — ServiceCard.tsx (novo componente)
+- **Proxima acao:** Task 3.1 — Landing page (hero visual + gradients)
 
 ## Contexto das Sessoes Anteriores
 As sessoes anteriores ja implementaram:
@@ -41,9 +41,9 @@ As sessoes anteriores ja implementaram:
 - [x] 2.5 — StaggerList.tsx (trigger="scroll" com useInView do Framer)
 - [x] 2.6 — EmptyState.tsx (SVG illustrations inline, gradient-pink-soft, shadow-pink)
 - [x] 2.7 — ActionSheet.tsx (blur backdrop + bouncy spring + handle pink gradient)
-- [ ] 2.8 — Novo: ServiceCard.tsx
-- [ ] 2.9 — Novo: ProfessionalCard.tsx (com foto)
-- [ ] 2.10 — Novo: TimeSlotPicker.tsx
+- [x] 2.8 — Novo: ServiceCard.tsx (status badge, ícone, data/hora, valor, ação rápida)
+- [x] 2.9 — Novo: ProfessionalCard.tsx (avatar circular com iniciais fallback, stars douradas, WA + IG)
+- [x] 2.10 — Novo: TimeSlotPicker.tsx (grid de slots, gradient pink no selected, spring animation)
 
 ## Fase 3: Paginas Principais
 - [ ] 3.1 — Landing page (hero visual + gradients)
