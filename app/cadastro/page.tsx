@@ -74,7 +74,7 @@ export default function CadastroPage() {
       return
     }
 
-    router.push('/app')
+    router.push('/app/onboarding')
   }
 
   return (
