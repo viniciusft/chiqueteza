@@ -8,7 +8,7 @@
 - **Fase atual:** 3 (Fases 1-3 completas)
 - **Nota atual:** 8.0/10
 - **Nota atual:** 8.5/10
-- **Proxima acao:** Fase 5 concluída — tarefas pendentes: 5.3 (onboarding), 5.7 (teste dispositivos reais)
+- **Proxima acao:** Quase tudo completo — pendente: 4.9 (pull-to-refresh temático), 5.7 (teste dispositivos reais)
 
 ## Contexto das Sessoes Anteriores
 As sessoes anteriores ja implementaram:
@@ -64,16 +64,16 @@ As sessoes anteriores ja implementaram:
 - [x] 4.3 — Card tap: AgendamentoCard motion.div whileTap, lucide icons (CalendarDays, MessageCircle, MoreHorizontal)
 - [ ] 4.4 — Page transitions (shared layout)
 - [x] 4.5 — Booking confirmation: SuccessScreen com checkmark SVG animado (pathLength) + 6 partículas + redirect 2s
-- [ ] 4.6 — Tab content slide transition
-- [ ] 4.7 — Number counters (GSAP snap)
-- [ ] 4.8 — Progress ring (proximo agendamento)
+- [x] 4.6 — Tab content slide transition (looks/page.tsx AnimatePresence x:18 entre Meus Looks / Favoritos)
+- [x] 4.7 — Number counters (useCountUp hook RAF+ease-out-expo no gasto do mês, rotina)
+- [x] 4.8 — Progress ring (SVG strokeDashoffset animado no card próximo agendamento)
 - [ ] 4.9 — Pull-to-refresh tematico (pincel/tesoura)
-- [ ] 4.10 — Skeleton shimmer wave upgrade
+- [x] 4.10 — Skeleton shimmer wave upgrade (gradiente 105deg + highlight branco + delays cascata)
 
 ## Fase 5: Polish Final
 - [x] 5.1 — Eliminar TODOS os inline styles restantes (looks, looks/novo, visagismo/resultado, Logo, AppHeader, PremiumGate)
 - [x] 5.2 — Eliminar TODOS os emojis-como-icone (Lock lucide no PremiumGate; lucide icons no visagismo/resultado)
-- [ ] 5.3 — Onboarding flow (3 telas)
+- [x] 5.3 — Onboarding flow (3 telas: boas-vindas personalizada, features com cards animados, pronto + CTA)
 - [ ] 5.4 — Dark mode tokens (futuro)
 - [x] 5.5 — Audit WCAG AA contraste (foreground-muted #A3A3A3→#737373; #888→#666, #999/#bbb→#767676 em 6 arquivos)
 - [x] 5.6 — Performance (Masonry dynamic import; loading=lazy+decoding=async em imagens das grades)
@@ -92,3 +92,4 @@ As sessoes anteriores ja implementaram:
 | 14 | 2026-04-03 | 4.1–4.3 + 4.5 | AgendamentoCard motion+lucide; SuccessScreen checkmark+partículas; Like heart+partículas Galeria; StaggerList scroll Rotina | Build ok |
 | 15 | 2026-04-03 | 5.1 + 5.2 | looks/page.tsx pink (tabs, tags, chips, skeletons, FAB); looks/novo pink (seleções, hashtags, toggle, CTA); visagismo/resultado lucide+pink; Logo+AppHeader+PremiumGate redesign | Build ok |
 | 16 | 2026-04-03 | 5.5 + 5.6 | WCAG AA: foreground-muted darkened, #888/#999/#bbb → AA-compliant em 6 arquivos; Masonry dynamic import; lazy images | Build ok |
+| 17 | 2026-04-03 | 5.3 + 4.6 + 4.7 + 4.8 + 4.10 | Onboarding 3 telas (AnimatePresence, dots, nome personalizado); tab slide transition; counter animado; progress ring SVG; skeleton shimmer upgrade | Build ok |
