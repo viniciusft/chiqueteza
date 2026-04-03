@@ -359,7 +359,7 @@ export default function LooksPage() {
                     <button
                       onClick={limparFiltros}
                       style={{
-                        fontSize: 12, color: '#999', background: 'none',
+                        fontSize: 12, color: '#767676', background: 'none',
                         border: '1px solid #E8E8E8', borderRadius: 20,
                         padding: '4px 10px', cursor: 'pointer', fontWeight: 600,
                       }}
@@ -388,7 +388,7 @@ export default function LooksPage() {
                       style={{
                         position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
                         background: 'none', border: 'none', cursor: 'pointer',
-                        color: '#bbb', fontSize: 18, lineHeight: 1, padding: 0,
+                        color: '#767676', fontSize: 18, lineHeight: 1, padding: 0,
                       }}
                     >×</button>
                   )}
@@ -672,7 +672,7 @@ export default function LooksPage() {
               <p style={{ fontSize: 14, color: '#444', margin: 0 }}>{lookSelecionado.descricao}</p>
             )}
 
-            <p style={{ fontSize: 11, color: '#bbb', margin: 0 }}>
+            <p style={{ fontSize: 11, color: '#767676', margin: 0 }}>
               {new Date(lookSelecionado.created_at).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}
             </p>
 
@@ -779,7 +779,7 @@ export default function LooksPage() {
                 >
                   🗑️ Excluir coleção
                 </button>
-                <p style={{ fontSize: 11, color: '#bbb', textAlign: 'center', margin: 0 }}>
+                <p style={{ fontSize: 11, color: '#767676', textAlign: 'center', margin: 0 }}>
                   Os looks salvos não serão excluídos
                 </p>
               </>
@@ -815,7 +815,7 @@ export default function LooksPage() {
                   onClick={() => setModoEditar('menu')}
                   style={{
                     padding: '10px', borderRadius: 14, border: 'none',
-                    backgroundColor: 'transparent', color: '#888', fontSize: 13, cursor: 'pointer',
+                    backgroundColor: 'transparent', color: '#666', fontSize: 13, cursor: 'pointer',
                   }}
                 >
                   Cancelar

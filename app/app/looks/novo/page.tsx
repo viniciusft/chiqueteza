@@ -191,7 +191,7 @@ function LooksNovoContent({ publicoInicial }: { publicoInicial: boolean }) {
           <div className="flex items-center gap-3">
             <button
               onClick={() => router.back()}
-              style={{ fontSize: 22, color: '#999', background: 'none', border: 'none', cursor: 'pointer' }}
+              style={{ fontSize: 22, color: '#767676', background: 'none', border: 'none', cursor: 'pointer' }}
             >
               ←
             </button>
@@ -217,8 +217,8 @@ function LooksNovoContent({ publicoInicial }: { publicoInicial: boolean }) {
             }}
           >
             <span style={{ fontSize: 48 }}>📸</span>
-            <p style={{ fontSize: 15, color: '#999', fontWeight: 600 }}>Toque para selecionar foto</p>
-            <p style={{ fontSize: 12, color: '#bbb' }}>Câmera ou galeria</p>
+            <p style={{ fontSize: 15, color: '#767676', fontWeight: 600 }}>Toque para selecionar foto</p>
+            <p style={{ fontSize: 12, color: '#767676' }}>Câmera ou galeria</p>
           </button>
 
           <input
@@ -317,7 +317,7 @@ function LooksNovoContent({ publicoInicial }: { publicoInicial: boolean }) {
         <div className="flex items-center gap-3">
           <button
             onClick={() => { setViewMode('select'); setImagemProcessada(null); setIsEditorOpen(false) }}
-            style={{ fontSize: 22, color: '#999', background: 'none', border: 'none', cursor: 'pointer' }}
+            style={{ fontSize: 22, color: '#767676', background: 'none', border: 'none', cursor: 'pointer' }}
           >
             ←
           </button>
@@ -443,7 +443,7 @@ function LooksNovoContent({ publicoInicial }: { publicoInicial: boolean }) {
               backgroundColor: '#fff',
             }}
           />
-          <p style={{ fontSize: 11, color: '#bbb', textAlign: 'right' }}>{descricao.length}/40</p>
+          <p style={{ fontSize: 11, color: '#767676', textAlign: 'right' }}>{descricao.length}/40</p>
         </div>
 
         {/* Data da foto */}
@@ -473,7 +473,7 @@ function LooksNovoContent({ publicoInicial }: { publicoInicial: boolean }) {
         <div className="flex flex-col gap-2">
           <p className="font-bold" style={{ fontSize: 14, color: '#171717' }}>
             # Hashtags
-            <span style={{ fontSize: 11, fontWeight: 400, color: '#bbb', marginLeft: 8 }}>
+            <span style={{ fontSize: 11, fontWeight: 400, color: '#767676', marginLeft: 8 }}>
               {hashtags.length}/10
             </span>
           </p>
@@ -555,7 +555,7 @@ function LooksNovoContent({ publicoInicial }: { publicoInicial: boolean }) {
         >
           <div className="flex flex-col items-start gap-1">
             <span style={{ fontSize: 14, fontWeight: 700, color: '#171717' }}>Compartilhar na galeria pública</span>
-            <span style={{ fontSize: 12, color: '#999' }}>Inspire outras mulheres com seu look</span>
+            <span style={{ fontSize: 12, color: '#767676' }}>Inspire outras mulheres com seu look</span>
           </div>
           <div
             style={{

@@ -16,7 +16,7 @@
   /* Foreground */
   --foreground:           #171717;
   --foreground-secondary: #525252;
-  --foreground-muted:     #A3A3A3;
+  --foreground-muted:     #737373;   /* WCAG AA 4.6:1 on white */
   --foreground-subtle:    #D4D4D4;
   --foreground-inverse:   #FFFFFF;
 

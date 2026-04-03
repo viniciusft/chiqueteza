@@ -71,8 +71,8 @@ As sessoes anteriores ja implementaram:
 - [ ] 4.10 — Skeleton shimmer wave upgrade
 
 ## Fase 5: Polish Final
-- [ ] 5.1 — Eliminar TODOS os inline styles restantes
-- [ ] 5.2 — Eliminar TODOS os emojis-como-icone
+- [x] 5.1 — Eliminar TODOS os inline styles restantes (looks, looks/novo, visagismo/resultado, Logo, AppHeader, PremiumGate)
+- [x] 5.2 — Eliminar TODOS os emojis-como-icone (Lock lucide no PremiumGate; lucide icons no visagismo/resultado)
 - [ ] 5.3 — Onboarding flow (3 telas)
 - [ ] 5.4 — Dark mode tokens (futuro)
 - [ ] 5.5 — Audit WCAG AA contraste
@@ -90,3 +90,4 @@ As sessoes anteriores ja implementaram:
 | 12 | 2026-04-03 | 2.8–2.10 + 3.1–3.3 | ServiceCard, ProfessionalCard, TimeSlotPicker; Landing hero pink, Login/Cadastro upgrade, Home HeroGreeting + quick actions | Build ok |
 | 13 | 2026-04-03 | 3.4–3.8 | Visagismo pink card + lucide; Rotina AlertTriangle + gasto card; Profissionais FAB pink; Galeria toggle/skeleton/CTA pink | Build ok — Fase 3 completa |
 | 14 | 2026-04-03 | 4.1–4.3 + 4.5 | AgendamentoCard motion+lucide; SuccessScreen checkmark+partículas; Like heart+partículas Galeria; StaggerList scroll Rotina | Build ok |
+| 15 | 2026-04-03 | 5.1 + 5.2 | looks/page.tsx pink (tabs, tags, chips, skeletons, FAB); looks/novo pink (seleções, hashtags, toggle, CTA); visagismo/resultado lucide+pink; Logo+AppHeader+PremiumGate redesign | Build ok |

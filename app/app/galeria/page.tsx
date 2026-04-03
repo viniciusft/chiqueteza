@@ -327,7 +327,7 @@ export default function GaleriaPage() {
                 style={{
                   position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
                   background: 'none', border: 'none', cursor: 'pointer',
-                  color: '#bbb', fontSize: 18, lineHeight: 1, padding: 0,
+                  color: '#767676', fontSize: 18, lineHeight: 1, padding: 0,
                 }}
               >×</button>
             )}
@@ -607,7 +607,7 @@ export default function GaleriaPage() {
                 <p style={{ fontSize: 16, fontWeight: 700, color: '#171717', margin: 0 }}>
                   🔖 Look salvo nos favoritos
                 </p>
-                <p style={{ fontSize: 13, color: '#888', margin: 0 }}>
+                <p style={{ fontSize: 13, color: '#666', margin: 0 }}>
                   Deseja remover este look dos seus favoritos?
                 </p>
                 <button
@@ -678,7 +678,7 @@ export default function GaleriaPage() {
                   onClick={() => setCriandoColecao(false)}
                   style={{
                     padding: '10px', borderRadius: 14, border: 'none',
-                    backgroundColor: 'transparent', color: '#888', fontSize: 13, cursor: 'pointer',
+                    backgroundColor: 'transparent', color: '#666', fontSize: 13, cursor: 'pointer',
                   }}
                 >
                   Voltar
