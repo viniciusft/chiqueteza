@@ -458,6 +458,8 @@ export default function GaleriaPage() {
                     <img
                       src={look.foto_url}
                       alt="Look"
+                      loading="lazy"
+                      decoding="async"
                       style={{ width: '100%', height: 'auto', display: 'block' }}
                     />
 

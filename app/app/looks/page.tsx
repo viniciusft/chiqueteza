@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import Masonry from 'react-masonry-css'
+import dynamic from 'next/dynamic'
+const Masonry = dynamic(() => import('react-masonry-css'), { ssr: false })
 import { createClient } from '@/lib/supabase/client'
 import AppHeader from '@/components/ui/AppHeader'
 import PageContainer from '@/components/ui/PageContainer'
@@ -440,6 +441,8 @@ export default function LooksPage() {
                     <img
                       src={look.foto_url}
                       alt="Look"
+                      loading="lazy"
+                      decoding="async"
                       style={{ width: '100%', height: 'auto', display: 'block', borderRadius: 12 }}
                     />
                     {look.contexto && (
@@ -578,6 +581,8 @@ export default function LooksPage() {
                     <img
                       src={look.foto_url}
                       alt="Look"
+                      loading="lazy"
+                      decoding="async"
                       style={{ width: '100%', height: 'auto', display: 'block', borderRadius: 12 }}
                     />
                     {look.data_foto && (
