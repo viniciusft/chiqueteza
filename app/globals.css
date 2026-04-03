@@ -226,16 +226,20 @@ button, a[role="button"] {
   .scrollbar-none::-webkit-scrollbar { display: none; }
   .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
 
-  /* Skeleton shimmer */
+  /* Skeleton shimmer — wave upgrade */
   .skeleton-shimmer {
     background: linear-gradient(
-      90deg,
-      #FFF0F3 25%,
-      #FFE0E8 50%,
-      #FFF0F3 75%
+      105deg,
+      #FFF0F3 0%,
+      #FFF0F3 35%,
+      rgba(255,255,255,0.92) 48%,
+      #FFD6E2 52%,
+      #FFF0F3 65%,
+      #FFF0F3 100%
     );
-    background-size: 200% 100%;
-    animation: shimmer 1.5s ease-in-out infinite;
+    background-size: 300% 100%;
+    animation: shimmer 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    border-radius: 8px;
   }
 
   /* Animate helpers */

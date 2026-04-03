@@ -4,11 +4,11 @@ import React from 'react'
 
 // ─── Base shimmer atom ────────────────────────────────────────────────
 
-function Bone({ className = '', style }: { className?: string; style?: React.CSSProperties }) {
+function Bone({ className = '', style, delay = 0 }: { className?: string; style?: React.CSSProperties; delay?: number }) {
   return (
     <div
       className={`skeleton-shimmer rounded-lg ${className}`}
-      style={style}
+      style={{ ...style, animationDelay: `${delay}ms` }}
     />
   )
 }
@@ -43,17 +43,17 @@ export function SkeletonAppointment() {
 
       <div className="flex-1 flex flex-col gap-2">
         {/* Badge PRÓXIMO */}
-        <Bone style={{ height: 14, width: 52, borderRadius: 4 }} />
+        <Bone delay={80} style={{ height: 14, width: 52, borderRadius: 4 }} />
         {/* Nome do serviço */}
-        <Bone style={{ height: 15, width: '65%', borderRadius: 6 }} />
+        <Bone delay={160} style={{ height: 15, width: '65%', borderRadius: 6 }} />
         {/* Profissional */}
-        <Bone style={{ height: 13, width: '45%', borderRadius: 6 }} />
+        <Bone delay={240} style={{ height: 13, width: '45%', borderRadius: 6 }} />
         {/* Data/hora */}
-        <Bone style={{ height: 12, width: '55%', borderRadius: 6 }} />
+        <Bone delay={320} style={{ height: 12, width: '55%', borderRadius: 6 }} />
       </div>
 
       {/* Botão WhatsApp */}
-      <Bone style={{ width: 32, height: 32, borderRadius: 8, flexShrink: 0 }} />
+      <Bone delay={400} style={{ width: 32, height: 32, borderRadius: 8, flexShrink: 0 }} />
     </div>
   )
 }
