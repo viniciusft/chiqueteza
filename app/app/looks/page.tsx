@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import Masonry from 'react-masonry-css'
+import { motion, AnimatePresence } from 'framer-motion'
+import dynamic from 'next/dynamic'
+const Masonry = dynamic(() => import('react-masonry-css'), { ssr: false })
 import { createClient } from '@/lib/supabase/client'
 import AppHeader from '@/components/ui/AppHeader'
 import PageContainer from '@/components/ui/PageContainer'
@@ -262,12 +264,10 @@ export default function LooksPage() {
 
         {/* Header */}
         <div className="flex items-center justify-between px-5 mb-4">
-          <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 26, color: 'var(--foreground)', lineHeight: 1.2, letterSpacing: '-0.01em' }}>
-            Looks
-          </h1>
+          <h1 className="text-page-title">Looks</h1>
           <button
             onClick={() => router.push('/app/galeria')}
-            style={{ fontSize: 13, color: '#1B5E5A', fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer' }}
+            style={{ fontSize: 13, color: 'var(--color-primary)', fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)' }}
           >
             Galeria →
           </button>
@@ -285,7 +285,7 @@ export default function LooksPage() {
                 borderRadius: 11,
                 border: 'none',
                 backgroundColor: aba === val ? '#fff' : 'transparent',
-                color: aba === val ? '#1B5E5A' : '#888',
+                color: aba === val ? 'var(--color-primary)' : '#888',
                 fontSize: 13,
                 fontWeight: aba === val ? 700 : 500,
                 cursor: 'pointer',
@@ -298,18 +298,26 @@ export default function LooksPage() {
           ))}
         </div>
 
+        <AnimatePresence mode="wait">
+
         {/* ===== ABA MEUS LOOKS ===== */}
         {aba === 'meus_looks' && (
-          <>
+          <motion.div
+            key="meus_looks"
+            initial={{ opacity: 0, x: -18 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 18 }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+          >
             {loading && (
               <div style={{ display: 'flex', gap: 8, padding: '0 8px' }}>
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <div style={{ height: 200, borderRadius: 12, backgroundColor: '#E8E8E8' }} />
-                  <div style={{ height: 140, borderRadius: 12, backgroundColor: '#E8E8E8' }} />
+                  <div className="skeleton-shimmer" style={{ height: 200, borderRadius: 12 }} />
+                  <div className="skeleton-shimmer" style={{ height: 140, borderRadius: 12 }} />
                 </div>
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8, marginTop: 20 }}>
-                  <div style={{ height: 160, borderRadius: 12, backgroundColor: '#E8E8E8' }} />
-                  <div style={{ height: 200, borderRadius: 12, backgroundColor: '#E8E8E8' }} />
+                  <div className="skeleton-shimmer" style={{ height: 160, borderRadius: 12 }} />
+                  <div className="skeleton-shimmer" style={{ height: 200, borderRadius: 12 }} />
                 </div>
               </div>
             )}
@@ -325,7 +333,7 @@ export default function LooksPage() {
                       onClick={() => router.push('/app/looks/novo')}
                       style={{
                         padding: '13px 28px', borderRadius: 14, border: 'none',
-                        backgroundColor: 'var(--color-ever-green)', color: '#fff',
+                        background: 'linear-gradient(135deg, #FF3366, #C41A4A)', color: '#fff',
                         fontSize: 15, fontWeight: 700, cursor: 'pointer',
                         fontFamily: 'var(--font-body)',
                       }}
@@ -347,7 +355,7 @@ export default function LooksPage() {
                         key={tag}
                         style={{
                           display: 'inline-flex', alignItems: 'center', gap: 4,
-                          backgroundColor: '#1B5E5A', color: '#fff',
+                          background: 'linear-gradient(90deg, #FF3366, #F472A0)', color: '#fff',
                           borderRadius: 20, padding: '4px 10px', fontSize: 12, fontWeight: 700,
                         }}
                       >
@@ -361,7 +369,7 @@ export default function LooksPage() {
                     <button
                       onClick={limparFiltros}
                       style={{
-                        fontSize: 12, color: '#999', background: 'none',
+                        fontSize: 12, color: '#767676', background: 'none',
                         border: '1px solid #E8E8E8', borderRadius: 20,
                         padding: '4px 10px', cursor: 'pointer', fontWeight: 600,
                       }}
@@ -390,7 +398,7 @@ export default function LooksPage() {
                       style={{
                         position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
                         background: 'none', border: 'none', cursor: 'pointer',
-                        color: '#bbb', fontSize: 18, lineHeight: 1, padding: 0,
+                        color: '#767676', fontSize: 18, lineHeight: 1, padding: 0,
                       }}
                     >×</button>
                   )}
@@ -442,6 +450,8 @@ export default function LooksPage() {
                     <img
                       src={look.foto_url}
                       alt="Look"
+                      loading="lazy"
+                      decoding="async"
                       style={{ width: '100%', height: 'auto', display: 'block', borderRadius: 12 }}
                     />
                     {look.contexto && (
@@ -474,12 +484,18 @@ export default function LooksPage() {
                 ))}
               </Masonry>
             )}
-          </>
+          </motion.div>
         )}
 
         {/* ===== ABA FAVORITOS ===== */}
         {aba === 'favoritos' && (
-          <>
+          <motion.div
+            key="favoritos"
+            initial={{ opacity: 0, x: 18 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -18 }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+          >
             {/* Chips de coleções */}
             <div style={{
               padding: '0 20px 16px',
@@ -492,9 +508,9 @@ export default function LooksPage() {
                 onClick={() => { void handleSelecionarColecao(null) }}
                 style={{
                   flexShrink: 0, padding: '7px 14px', borderRadius: 20, border: '1.5px solid',
-                  borderColor: colecaoSelecionada === null ? '#1B5E5A' : '#E8E8E8',
-                  backgroundColor: colecaoSelecionada === null ? '#E8F5F4' : '#fff',
-                  color: colecaoSelecionada === null ? '#1B5E5A' : '#666',
+                  borderColor: colecaoSelecionada === null ? 'var(--color-primary)' : '#E8E8E8',
+                  backgroundColor: colecaoSelecionada === null ? 'rgba(255,51,102,0.06)' : '#fff',
+                  color: colecaoSelecionada === null ? 'var(--color-primary)' : '#666',
                   fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
                 }}
               >
@@ -513,9 +529,9 @@ export default function LooksPage() {
                   onMouseLeave={handleLongPressEnd}
                   style={{
                     flexShrink: 0, padding: '7px 14px', borderRadius: 20, border: '1.5px solid',
-                    borderColor: colecaoSelecionada === colecao.id ? '#1B5E5A' : '#E8E8E8',
-                    backgroundColor: colecaoSelecionada === colecao.id ? '#E8F5F4' : '#fff',
-                    color: colecaoSelecionada === colecao.id ? '#1B5E5A' : '#666',
+                    borderColor: colecaoSelecionada === colecao.id ? 'var(--color-primary)' : '#E8E8E8',
+                    backgroundColor: colecaoSelecionada === colecao.id ? 'rgba(255,51,102,0.06)' : '#fff',
+                    color: colecaoSelecionada === colecao.id ? 'var(--color-primary)' : '#666',
                     fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
                   }}
                 >
@@ -527,10 +543,10 @@ export default function LooksPage() {
             {loadingFavoritos && (
               <div style={{ display: 'flex', gap: 8, padding: '0 8px' }}>
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <div style={{ height: 180, borderRadius: 12, backgroundColor: '#E8E8E8' }} />
+                  <div className="skeleton-shimmer" style={{ height: 180, borderRadius: 12 }} />
                 </div>
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8, marginTop: 20 }}>
-                  <div style={{ height: 160, borderRadius: 12, backgroundColor: '#E8E8E8' }} />
+                  <div className="skeleton-shimmer" style={{ height: 160, borderRadius: 12 }} />
                 </div>
               </div>
             )}
@@ -548,7 +564,7 @@ export default function LooksPage() {
                       onClick={() => router.push('/app/galeria')}
                       style={{
                         padding: '13px 28px', borderRadius: 14, border: 'none',
-                        backgroundColor: 'var(--color-ever-green)', color: '#fff',
+                        background: 'linear-gradient(135deg, #FF3366, #C41A4A)', color: '#fff',
                         fontSize: 15, fontWeight: 700, cursor: 'pointer',
                         fontFamily: 'var(--font-body)',
                       }}
@@ -580,6 +596,8 @@ export default function LooksPage() {
                     <img
                       src={look.foto_url}
                       alt="Look"
+                      loading="lazy"
+                      decoding="async"
                       style={{ width: '100%', height: 'auto', display: 'block', borderRadius: 12 }}
                     />
                     {look.data_foto && (
@@ -596,8 +614,10 @@ export default function LooksPage() {
                 ))}
               </Masonry>
             )}
-          </>
+          </motion.div>
         )}
+
+        </AnimatePresence>
       </main>
 
       {/* FAB — só na aba Meus Looks */}
@@ -606,10 +626,10 @@ export default function LooksPage() {
           onClick={() => { playClick(); router.push('/app/looks/novo') }}
           style={{
             position: 'fixed', bottom: 90, right: 20, width: 56, height: 56,
-            borderRadius: '50%', backgroundColor: '#1B5E5A', color: '#fff',
+            borderRadius: '50%', background: 'linear-gradient(135deg, #FF3366, #C41A4A)', color: '#fff',
             fontSize: 28, border: 'none', cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 4px 18px rgba(27,94,90,0.45)', zIndex: 20,
+            boxShadow: '0 4px 18px rgba(255,51,102,0.35)', zIndex: 20,
           }}
         >
           +
@@ -658,7 +678,7 @@ export default function LooksPage() {
 
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {lookSelecionado.avaliacao && (
-                <span style={{ fontSize: 12, fontWeight: 700, backgroundColor: '#E8F5F4', color: '#1B5E5A', borderRadius: 20, padding: '4px 12px' }}>
+                <span style={{ fontSize: 12, fontWeight: 700, backgroundColor: 'rgba(255,51,102,0.08)', color: 'var(--color-primary)', borderRadius: 20, padding: '4px 12px' }}>
                   {AVALIACAO_EMOJIS[lookSelecionado.avaliacao]}{' '}
                   {{ amei: 'Amei', ok: 'Ok', nao_gostei: 'Não gostei' }[lookSelecionado.avaliacao] ?? lookSelecionado.avaliacao}
                 </span>
@@ -674,7 +694,7 @@ export default function LooksPage() {
               <p style={{ fontSize: 14, color: '#444', margin: 0 }}>{lookSelecionado.descricao}</p>
             )}
 
-            <p style={{ fontSize: 11, color: '#bbb', margin: 0 }}>
+            <p style={{ fontSize: 11, color: '#767676', margin: 0 }}>
               {new Date(lookSelecionado.created_at).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}
             </p>
 
@@ -698,7 +718,7 @@ export default function LooksPage() {
                   </div>
                   <div style={{
                     width: 42, height: 24, borderRadius: 12,
-                    backgroundColor: lookSelecionado.publico ? '#1B5E5A' : '#D0D0D0',
+                    backgroundColor: lookSelecionado.publico ? '#FF3366' : '#D0D0D0',
                     position: 'relative', transition: 'background-color 0.2s', flexShrink: 0,
                   }}>
                     <div style={{ position: 'absolute', top: 3, left: lookSelecionado.publico ? 21 : 3, width: 18, height: 18, borderRadius: '50%', backgroundColor: '#fff', transition: 'left 0.2s' }} />
@@ -781,7 +801,7 @@ export default function LooksPage() {
                 >
                   🗑️ Excluir coleção
                 </button>
-                <p style={{ fontSize: 11, color: '#bbb', textAlign: 'center', margin: 0 }}>
+                <p style={{ fontSize: 11, color: '#767676', textAlign: 'center', margin: 0 }}>
                   Os looks salvos não serão excluídos
                 </p>
               </>
@@ -806,7 +826,7 @@ export default function LooksPage() {
                   disabled={!editandoNome.trim() || salvandoColecao}
                   style={{
                     padding: '13px', borderRadius: 14, border: 'none',
-                    backgroundColor: '#1B5E5A', color: '#fff', fontSize: 14, fontWeight: 700,
+                    background: 'linear-gradient(135deg, #FF3366, #C41A4A)', color: '#fff', fontSize: 14, fontWeight: 700,
                     cursor: (!editandoNome.trim() || salvandoColecao) ? 'not-allowed' : 'pointer',
                     opacity: (!editandoNome.trim() || salvandoColecao) ? 0.6 : 1,
                   }}
@@ -817,7 +837,7 @@ export default function LooksPage() {
                   onClick={() => setModoEditar('menu')}
                   style={{
                     padding: '10px', borderRadius: 14, border: 'none',
-                    backgroundColor: 'transparent', color: '#888', fontSize: 13, cursor: 'pointer',
+                    backgroundColor: 'transparent', color: '#666', fontSize: 13, cursor: 'pointer',
                   }}
                 >
                   Cancelar

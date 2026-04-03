@@ -220,7 +220,7 @@ export default function GerarVisagismoPage() {
               <p className="font-extrabold" style={{ fontSize: 18, color: '#171717', lineHeight: 1.2 }}>
                 Crie sua imagem
               </p>
-              <p style={{ fontSize: 13, color: '#888' }}>Tudo é opcional — combine à vontade</p>
+              <p style={{ fontSize: 13, color: '#666' }}>Tudo é opcional — combine à vontade</p>
             </div>
           </div>
         </div>
@@ -266,7 +266,7 @@ export default function GerarVisagismoPage() {
                     <Circulo hex={b.hex} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={{ fontSize: 12, fontWeight: 600, color: '#222', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.nome}</p>
-                      <p style={{ fontSize: 11, color: '#888' }}>{b.acabamento}</p>
+                      <p style={{ fontSize: 11, color: '#666' }}>{b.acabamento}</p>
                     </div>
                     {sel && <span style={{ color: '#1B5E5A', fontSize: 14, flexShrink: 0 }}>✓</span>}
                   </button>
@@ -464,7 +464,7 @@ export default function GerarVisagismoPage() {
             >
               ✦ Gerar minha imagem
             </button>
-            <p style={{ fontSize: 12, color: '#999', textAlign: 'center' }}>
+            <p style={{ fontSize: 12, color: '#767676', textAlign: 'center' }}>
               Consome 10 créditos · Você tem {creditos} crédito{creditos !== 1 ? 's' : ''} disponíve{creditos !== 1 ? 'is' : 'l'}
             </p>
           </div>

@@ -3,66 +3,21 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { motion } from 'framer-motion'
+import { Home, Heart, Sparkles, CalendarDays, Users } from 'lucide-react'
 import { playClick } from '@/lib/sound'
 
 interface Tab {
   label: string
   href: string
-  icon: React.ReactNode
-}
-
-function IconCasa() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z" />
-      <path d="M9 21V12h6v9" />
-    </svg>
-  )
-}
-
-function IconLooks() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="3" width="8" height="8" rx="2" />
-      <rect x="13" y="3" width="8" height="8" rx="2" />
-      <rect x="3" y="13" width="8" height="8" rx="2" />
-      <rect x="13" y="13" width="8" height="8" rx="2" />
-    </svg>
-  )
-}
-
-function IconVisagismo() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 2l2 8 8 2-8 2-2 8-2-8-8-2 8-2 2-8z" />
-    </svg>
-  )
-}
-
-function IconCalendar() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="4" width="18" height="18" rx="2" />
-      <path d="M16 2v4M8 2v4M3 10h18" />
-    </svg>
-  )
-}
-
-function IconPessoa() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="7" r="4" />
-      <path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8" />
-    </svg>
-  )
+  icon: React.ElementType
 }
 
 const tabs: Tab[] = [
-  { label: 'Início', href: '/app', icon: <IconCasa /> },
-  { label: 'Looks', href: '/app/looks', icon: <IconLooks /> },
-  { label: 'Visagismo', href: '/app/visagismo', icon: <IconVisagismo /> },
-  { label: 'Rotina', href: '/app/rotina', icon: <IconCalendar /> },
-  { label: 'Profissionais', href: '/app/profissionais', icon: <IconPessoa /> },
+  { label: 'Início',       href: '/app',               icon: Home },
+  { label: 'Looks',        href: '/app/looks',          icon: Heart },
+  { label: 'Visagismo',    href: '/app/visagismo',      icon: Sparkles },
+  { label: 'Rotina',       href: '/app/rotina',         icon: CalendarDays },
+  { label: 'Profissionais',href: '/app/profissionais',  icon: Users },
 ]
 
 export default function TabBar() {
@@ -75,15 +30,15 @@ export default function TabBar() {
 
   return (
     <nav
+      className="glass"
       style={{
         position: 'fixed',
         bottom: 0,
         left: 0,
         right: 0,
         zIndex: 30,
-        backgroundColor: 'var(--surface)',
-        borderTop: '1px solid var(--color-silver)',
-        boxShadow: '0 -2px 12px rgba(27, 94, 90, 0.06)',
+        borderTop: '1px solid rgba(255,255,255,0.6)',
+        boxShadow: '0 -4px 20px rgba(255,51,102,0.06), 0 -1px 0 rgba(0,0,0,0.04)',
         paddingBottom: 'env(safe-area-inset-bottom)',
         display: 'flex',
         justifyContent: 'center',
@@ -99,11 +54,14 @@ export default function TabBar() {
       >
         {tabs.map((tab) => {
           const active = isActive(tab.href)
+          const Icon = tab.icon
+
           return (
             <Link
               key={tab.href}
               href={tab.href}
               onClick={playClick}
+              className="font-body"
               style={{
                 flex: 1,
                 display: 'flex',
@@ -111,41 +69,56 @@ export default function TabBar() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: 3,
-                color: active ? 'var(--color-ever-green)' : 'var(--foreground-subtle)',
+                color: active ? 'var(--color-primary)' : 'var(--foreground-subtle)',
                 textDecoration: 'none',
-                fontWeight: active ? 700 : 400,
-                fontFamily: 'var(--font-body)',
+                fontWeight: active ? 600 : 400,
                 position: 'relative',
                 transition: 'color var(--transition-fast)',
                 minHeight: 44,
               }}
             >
-              {/* Indicador ativo animado com layoutId */}
+              {/* Indicador ativo — pill animada com layoutId */}
               {active && (
                 <motion.div
                   layoutId="tab-indicator"
                   style={{
                     position: 'absolute',
                     top: 0,
-                    left: '20%',
-                    right: '20%',
+                    left: '22%',
+                    right: '22%',
                     height: 3,
-                    backgroundColor: 'var(--color-ever-green)',
+                    background: 'linear-gradient(90deg, #FF3366, #F472A0)',
                     borderRadius: '0 0 4px 4px',
                   }}
                   transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                 />
               )}
 
-              {/* Ícone com scale ao ativar */}
+              {/* Ícone animado */}
               <motion.div
-                animate={{ scale: active ? 1.1 : 1 }}
+                animate={{
+                  scale: active ? 1.12 : 1,
+                  color: active ? 'var(--color-primary)' : 'var(--foreground-subtle)',
+                }}
                 transition={{ type: 'spring', stiffness: 400, damping: 25 }}
               >
-                {tab.icon}
+                <Icon
+                  size={22}
+                  strokeWidth={active ? 2.5 : 1.8}
+                  fill={active && tab.href === '/app/looks' ? 'currentColor' : 'none'}
+                />
               </motion.div>
 
-              <span style={{ fontSize: 10, letterSpacing: '0.02em' }}>{tab.label}</span>
+              <span
+                className="font-body text-[10px] tracking-wide"
+                style={{
+                  color: active ? 'var(--color-primary)' : 'var(--foreground-subtle)',
+                  fontWeight: active ? 600 : 400,
+                  transition: 'color var(--transition-fast)',
+                }}
+              >
+                {tab.label}
+              </span>
             </Link>
           )
         })}

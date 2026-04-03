@@ -2,11 +2,13 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { motion, AnimatePresence } from 'framer-motion'
 import Masonry from 'react-masonry-css'
 import { createClient } from '@/lib/supabase/client'
 import AppHeader from '@/components/ui/AppHeader'
 import PageContainer from '@/components/ui/PageContainer'
 import { playClick } from '@/lib/sound'
+import { Heart, Bookmark } from 'lucide-react'
 
 interface LookPublico {
   id: string
@@ -293,12 +295,10 @@ export default function GaleriaPage() {
 
         {/* Header */}
         <div className="flex items-center justify-between px-5 mb-5">
-          <h1 className="font-extrabold tracking-tight" style={{ fontSize: 22, color: '#171717' }}>
-            Galeria
-          </h1>
+          <h1 className="text-page-title">Galeria</h1>
           <button
             onClick={() => router.push('/app/looks')}
-            style={{ fontSize: 13, color: '#1B5E5A', fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer' }}
+            style={{ fontSize: 13, color: 'var(--color-primary)', fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)' }}
           >
             Meus looks →
           </button>
@@ -327,7 +327,7 @@ export default function GaleriaPage() {
                 style={{
                   position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
                   background: 'none', border: 'none', cursor: 'pointer',
-                  color: '#bbb', fontSize: 18, lineHeight: 1, padding: 0,
+                  color: '#767676', fontSize: 18, lineHeight: 1, padding: 0,
                 }}
               >×</button>
             )}
@@ -338,7 +338,7 @@ export default function GaleriaPage() {
               <span
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: 4,
-                  backgroundColor: '#1B5E5A', color: '#fff',
+                  background: 'linear-gradient(90deg, #FF3366, #F472A0)', color: '#fff',
                   borderRadius: 20, padding: '4px 10px', fontSize: 12, fontWeight: 700,
                 }}
               >
@@ -385,9 +385,9 @@ export default function GaleriaPage() {
               style={{
                 flex: 1, padding: '9px', borderRadius: 11, border: 'none',
                 backgroundColor: ordenacao === val ? '#fff' : 'transparent',
-                color: ordenacao === val ? '#1B5E5A' : '#888',
+                color: ordenacao === val ? 'var(--color-primary)' : '#888',
                 fontSize: 13, fontWeight: ordenacao === val ? 700 : 500,
-                cursor: 'pointer',
+                cursor: 'pointer', fontFamily: 'var(--font-body)',
                 boxShadow: ordenacao === val ? '0 1px 4px rgba(0,0,0,0.1)' : 'none',
                 transition: 'all 0.15s',
               }}
@@ -401,12 +401,12 @@ export default function GaleriaPage() {
         {loading && (
           <div style={{ display: 'flex', gap: 8, padding: '0 8px' }}>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div style={{ height: 200, borderRadius: 12, backgroundColor: '#E8E8E8' }} />
-              <div style={{ height: 150, borderRadius: 12, backgroundColor: '#E8E8E8' }} />
+              <div className="skeleton-shimmer" style={{ height: 200, borderRadius: 12 }} />
+              <div className="skeleton-shimmer" style={{ height: 150, borderRadius: 12 }} />
             </div>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8, marginTop: 24 }}>
-              <div style={{ height: 170, borderRadius: 12, backgroundColor: '#E8E8E8' }} />
-              <div style={{ height: 200, borderRadius: 12, backgroundColor: '#E8E8E8' }} />
+              <div className="skeleton-shimmer" style={{ height: 170, borderRadius: 12 }} />
+              <div className="skeleton-shimmer" style={{ height: 200, borderRadius: 12 }} />
             </div>
           </div>
         )}
@@ -423,7 +423,10 @@ export default function GaleriaPage() {
               onClick={() => router.push('/app/looks/novo?publico=true')}
               style={{
                 marginTop: 4, padding: '14px 28px', borderRadius: 14, border: 'none',
-                backgroundColor: '#1B5E5A', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer',
+                background: 'linear-gradient(135deg, #FF3366, #C41A4A)',
+                color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer',
+                fontFamily: 'var(--font-body)',
+                boxShadow: '0 4px 16px rgba(255,51,102,0.3)',
               }}
             >
               Compartilhar meu look
@@ -455,6 +458,8 @@ export default function GaleriaPage() {
                     <img
                       src={look.foto_url}
                       alt="Look"
+                      loading="lazy"
+                      decoding="async"
                       style={{ width: '100%', height: 'auto', display: 'block' }}
                     />
 
@@ -476,41 +481,82 @@ export default function GaleriaPage() {
 
                     {/* Rodapé: bookmark + coração */}
                     <div style={{
-                      position: 'absolute', bottom: 0, left: 0, right: 0, height: 36,
+                      position: 'absolute', bottom: 0, left: 0, right: 0, height: 38,
                       backgroundColor: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(8px)',
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                       padding: '0 8px',
                     }}>
-                      <button
+                      {/* Bookmark */}
+                      <motion.button
+                        whileTap={{ scale: 0.82 }}
                         onClick={() => handleBookmark(look)}
                         style={{
                           display: 'flex', alignItems: 'center', gap: 2,
                           border: 'none', backgroundColor: 'transparent', cursor: 'pointer', padding: '4px 2px',
                         }}
                       >
-                        <span style={{ fontSize: 15, opacity: favoritou ? 1 : 0.5 }}>
-                          {favoritou ? '🔖' : '🏷️'}
-                        </span>
-                      </button>
+                        <Bookmark
+                          size={16}
+                          color={favoritou ? '#D4A843' : '#bbb'}
+                          fill={favoritou ? '#D4A843' : 'none'}
+                          strokeWidth={2}
+                        />
+                      </motion.button>
 
-                      <button
+                      {/* Like — pulse spring */}
+                      <motion.button
                         onClick={() => { void handleCurtir(look) }}
                         style={{
-                          display: 'flex', alignItems: 'center', gap: 3,
+                          display: 'flex', alignItems: 'center', gap: 3, position: 'relative',
                           border: 'none', backgroundColor: 'transparent', cursor: 'pointer', padding: '4px 2px',
                         }}
                       >
-                        <span style={{
-                          fontSize: 16,
-                          transform: animando ? 'scale(1.3)' : 'scale(1)',
-                          transition: 'transform 0.2s ease', display: 'inline-block',
-                        }}>
-                          {curtiu ? '❤️' : '🤍'}
-                        </span>
-                        <span style={{ fontSize: 11, color: curtiu ? '#F472A0' : '#aaa', fontWeight: 600 }}>
+                        <motion.div
+                          animate={animando ? {
+                            scale: [1, 1.5, 0.85, 1.2, 1],
+                            rotate: [0, -15, 10, -5, 0],
+                          } : { scale: 1, rotate: 0 }}
+                          transition={{ duration: 0.45, ease: 'easeOut' }}
+                        >
+                          <Heart
+                            size={17}
+                            color={curtiu ? '#FF3366' : '#bbb'}
+                            fill={curtiu ? '#FF3366' : 'none'}
+                            strokeWidth={2}
+                          />
+                        </motion.div>
+
+                        {/* Mini partículas ao curtir */}
+                        <AnimatePresence>
+                          {animando && (
+                            <>
+                              {[0, 60, 120, 180, 240, 300].map((deg, i) => (
+                                <motion.div
+                                  key={deg}
+                                  initial={{ scale: 0, x: 0, y: 0, opacity: 1 }}
+                                  animate={{
+                                    scale: [0, 1, 0],
+                                    x: Math.cos((deg * Math.PI) / 180) * 14,
+                                    y: Math.sin((deg * Math.PI) / 180) * 14,
+                                    opacity: [1, 1, 0],
+                                  }}
+                                  exit={{ opacity: 0 }}
+                                  transition={{ duration: 0.5, delay: i * 0.03 }}
+                                  style={{
+                                    position: 'absolute', width: 5, height: 5, borderRadius: '50%',
+                                    background: i % 2 === 0 ? '#FF3366' : '#F9D56E',
+                                    pointerEvents: 'none',
+                                  }}
+                                />
+                              ))}
+                            </>
+                          )}
+                        </AnimatePresence>
+
+                        <span style={{ fontSize: 11, color: curtiu ? '#FF3366' : '#aaa', fontWeight: 600 }}>
                           {look.curtidas}
                         </span>
-                      </button>
+                      </motion.button>
                     </div>
                   </div>
                 )
@@ -523,8 +569,8 @@ export default function GaleriaPage() {
                   onClick={() => { void handleVerMais() }}
                   disabled={carregandoMais}
                   style={{
-                    padding: '12px 32px', borderRadius: 14, border: '1.5px solid #E8E8E8',
-                    backgroundColor: '#fff', color: '#1B5E5A', fontSize: 14, fontWeight: 700,
+                    padding: '12px 32px', borderRadius: 14, border: '1.5px solid rgba(255,51,102,0.25)',
+                    backgroundColor: '#fff', color: 'var(--color-primary)', fontSize: 14, fontWeight: 700,
                     cursor: carregandoMais ? 'not-allowed' : 'pointer',
                     opacity: carregandoMais ? 0.6 : 1,
                   }}
@@ -563,7 +609,7 @@ export default function GaleriaPage() {
                 <p style={{ fontSize: 16, fontWeight: 700, color: '#171717', margin: 0 }}>
                   🔖 Look salvo nos favoritos
                 </p>
-                <p style={{ fontSize: 13, color: '#888', margin: 0 }}>
+                <p style={{ fontSize: 13, color: '#666', margin: 0 }}>
                   Deseja remover este look dos seus favoritos?
                 </p>
                 <button
@@ -634,7 +680,7 @@ export default function GaleriaPage() {
                   onClick={() => setCriandoColecao(false)}
                   style={{
                     padding: '10px', borderRadius: 14, border: 'none',
-                    backgroundColor: 'transparent', color: '#888', fontSize: 13, cursor: 'pointer',
+                    backgroundColor: 'transparent', color: '#666', fontSize: 13, cursor: 'pointer',
                   }}
                 >
                   Voltar

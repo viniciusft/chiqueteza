@@ -200,7 +200,7 @@ export default function ResultadoImagemPage() {
           />
         )}
 
-        <p style={{ fontSize: 12, color: '#999', textAlign: 'center' }}>
+        <p style={{ fontSize: 12, color: '#767676', textAlign: 'center' }}>
           ← Arraste para comparar antes e depois →
         </p>
 

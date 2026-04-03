@@ -1,35 +1,33 @@
 'use client'
 
-import { motion } from 'framer-motion'
-
-const containerVariants = {
-  hidden: {},
-  show: {
-    transition: {
-      staggerChildren: 0.06,
-      delayChildren: 0.05,
-    },
-  },
-}
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 12 },
-  show:   { opacity: 1, y: 0, transition: { type: 'spring' as const, stiffness: 360, damping: 28 } },
-}
+import React, { useEffect, useRef } from 'react'
+import { motion, useInView } from 'framer-motion'
+import { staggerContainer, staggerItem } from '@/lib/animations/framer'
 
 interface StaggerListProps {
   children: React.ReactNode
   className?: string
   style?: React.CSSProperties
+  /** 'mount' = anima ao montar (default) | 'scroll' = anima ao entrar no viewport */
+  trigger?: 'mount' | 'scroll'
 }
 
-/** Wrapper que anima os filhos diretos em cascata (stagger). */
-export function StaggerList({ children, className, style }: StaggerListProps) {
+/**
+ * Wrapper que anima os filhos diretos em cascata (stagger).
+ * trigger="scroll" dispara quando o container entra no viewport.
+ */
+export function StaggerList({ children, className, style, trigger = 'mount' }: StaggerListProps) {
+  const ref = useRef<HTMLDivElement>(null)
+  const isInView = useInView(ref, { once: true, margin: '-60px 0px' })
+
+  const animate = trigger === 'scroll' ? (isInView ? 'show' : 'hidden') : 'show'
+
   return (
     <motion.div
-      variants={containerVariants}
+      ref={ref}
+      variants={staggerContainer}
       initial="hidden"
-      animate="show"
+      animate={animate}
       className={className}
       style={style}
     >
@@ -39,9 +37,9 @@ export function StaggerList({ children, className, style }: StaggerListProps) {
 }
 
 /** Item individual para usar dentro de StaggerList. */
-export function StaggerItem({ children, className, style }: StaggerListProps) {
+export function StaggerItem({ children, className, style }: Omit<StaggerListProps, 'trigger'>) {
   return (
-    <motion.div variants={itemVariants} className={className} style={style}>
+    <motion.div variants={staggerItem} className={className} style={style}>
       {children}
     </motion.div>
   )

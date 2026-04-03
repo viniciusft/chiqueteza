@@ -268,7 +268,7 @@ function VisagismoUploadContent() {
           <p style={{ fontSize: 16, color: '#fff', fontWeight: 700, textAlign: 'center' }}>
             Esta foto está boa?
           </p>
-          <p style={{ fontSize: 13, color: '#999', textAlign: 'center', marginTop: -8 }}>
+          <p style={{ fontSize: 13, color: '#767676', textAlign: 'center', marginTop: -8 }}>
             Rosto frontal, bem iluminado e sem filtros
           </p>
 
@@ -307,7 +307,7 @@ function VisagismoUploadContent() {
             style={{
               padding: '12px', borderRadius: 14,
               border: 'none', backgroundColor: 'transparent',
-              color: '#888', fontSize: 14, cursor: 'pointer',
+              color: '#666', fontSize: 14, cursor: 'pointer',
             }}
           >
             ← Escolher outra foto
@@ -351,7 +351,7 @@ function VisagismoUploadContent() {
             display: 'flex', flexDirection: 'column', gap: 16,
           }}
         >
-          <p style={{ fontSize: 12, color: '#999', textAlign: 'center' }}>
+          <p style={{ fontSize: 12, color: '#767676', textAlign: 'center' }}>
             Arraste para posicionar • Pinch para zoom
           </p>
 
@@ -465,7 +465,7 @@ function VisagismoUploadContent() {
               <p style={{ fontSize: 16, fontWeight: 700, color: '#171717', marginBottom: 2 }}>
                 Escolher da galeria
               </p>
-              <p style={{ fontSize: 13, color: '#999' }}>
+              <p style={{ fontSize: 13, color: '#767676' }}>
                 Selecione uma foto existente
               </p>
             </div>

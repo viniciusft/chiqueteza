@@ -191,7 +191,7 @@ function LooksNovoContent({ publicoInicial }: { publicoInicial: boolean }) {
           <div className="flex items-center gap-3">
             <button
               onClick={() => router.back()}
-              style={{ fontSize: 22, color: '#999', background: 'none', border: 'none', cursor: 'pointer' }}
+              style={{ fontSize: 22, color: '#767676', background: 'none', border: 'none', cursor: 'pointer' }}
             >
               ←
             </button>
@@ -217,8 +217,8 @@ function LooksNovoContent({ publicoInicial }: { publicoInicial: boolean }) {
             }}
           >
             <span style={{ fontSize: 48 }}>📸</span>
-            <p style={{ fontSize: 15, color: '#999', fontWeight: 600 }}>Toque para selecionar foto</p>
-            <p style={{ fontSize: 12, color: '#bbb' }}>Câmera ou galeria</p>
+            <p style={{ fontSize: 15, color: '#767676', fontWeight: 600 }}>Toque para selecionar foto</p>
+            <p style={{ fontSize: 12, color: '#767676' }}>Câmera ou galeria</p>
           </button>
 
           <input
@@ -292,7 +292,7 @@ function LooksNovoContent({ publicoInicial }: { publicoInicial: boolean }) {
                   padding: '14px',
                   borderRadius: 14,
                   border: 'none',
-                  backgroundColor: '#1B5E5A',
+                  background: 'linear-gradient(135deg, #FF3366, #C41A4A)',
                   color: '#fff',
                   fontSize: 15,
                   fontWeight: 700,
@@ -317,7 +317,7 @@ function LooksNovoContent({ publicoInicial }: { publicoInicial: boolean }) {
         <div className="flex items-center gap-3">
           <button
             onClick={() => { setViewMode('select'); setImagemProcessada(null); setIsEditorOpen(false) }}
-            style={{ fontSize: 22, color: '#999', background: 'none', border: 'none', cursor: 'pointer' }}
+            style={{ fontSize: 22, color: '#767676', background: 'none', border: 'none', cursor: 'pointer' }}
           >
             ←
           </button>
@@ -372,14 +372,14 @@ function LooksNovoContent({ publicoInicial }: { publicoInicial: boolean }) {
                     gap: 8,
                     padding: '12px 14px',
                     borderRadius: 14,
-                    border: `1.5px solid ${ativo ? '#1B5E5A' : '#E8E8E8'}`,
-                    backgroundColor: ativo ? '#E8F5F4' : '#fff',
+                    border: `1.5px solid ${ativo ? '#FF3366' : '#E8E8E8'}`,
+                    backgroundColor: ativo ? 'rgba(255,51,102,0.06)' : '#fff',
                     cursor: 'pointer',
                     transition: 'all 0.15s',
                   }}
                 >
                   <span style={{ fontSize: 20 }}>{c.emoji}</span>
-                  <span style={{ fontSize: 13, fontWeight: ativo ? 700 : 500, color: ativo ? '#1B5E5A' : '#444' }}>
+                  <span style={{ fontSize: 13, fontWeight: ativo ? 700 : 500, color: ativo ? 'var(--color-primary)' : '#444' }}>
                     {c.label}
                   </span>
                 </button>
@@ -406,14 +406,14 @@ function LooksNovoContent({ publicoInicial }: { publicoInicial: boolean }) {
                     gap: 6,
                     padding: '12px 8px',
                     borderRadius: 14,
-                    border: `1.5px solid ${ativo ? '#1B5E5A' : '#E8E8E8'}`,
-                    backgroundColor: ativo ? '#E8F5F4' : '#fff',
+                    border: `1.5px solid ${ativo ? '#FF3366' : '#E8E8E8'}`,
+                    backgroundColor: ativo ? 'rgba(255,51,102,0.06)' : '#fff',
                     cursor: 'pointer',
                     transition: 'all 0.15s',
                   }}
                 >
                   <span style={{ fontSize: 26 }}>{a.emoji}</span>
-                  <span style={{ fontSize: 12, fontWeight: ativo ? 700 : 500, color: ativo ? '#1B5E5A' : '#666' }}>
+                  <span style={{ fontSize: 12, fontWeight: ativo ? 700 : 500, color: ativo ? 'var(--color-primary)' : '#666' }}>
                     {a.label}
                   </span>
                 </button>
@@ -443,7 +443,7 @@ function LooksNovoContent({ publicoInicial }: { publicoInicial: boolean }) {
               backgroundColor: '#fff',
             }}
           />
-          <p style={{ fontSize: 11, color: '#bbb', textAlign: 'right' }}>{descricao.length}/40</p>
+          <p style={{ fontSize: 11, color: '#767676', textAlign: 'right' }}>{descricao.length}/40</p>
         </div>
 
         {/* Data da foto */}
@@ -473,7 +473,7 @@ function LooksNovoContent({ publicoInicial }: { publicoInicial: boolean }) {
         <div className="flex flex-col gap-2">
           <p className="font-bold" style={{ fontSize: 14, color: '#171717' }}>
             # Hashtags
-            <span style={{ fontSize: 11, fontWeight: 400, color: '#bbb', marginLeft: 8 }}>
+            <span style={{ fontSize: 11, fontWeight: 400, color: '#767676', marginLeft: 8 }}>
               {hashtags.length}/10
             </span>
           </p>
@@ -486,8 +486,8 @@ function LooksNovoContent({ publicoInicial }: { publicoInicial: boolean }) {
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 5,
-                    backgroundColor: '#E8F5F4',
-                    color: '#1B5E5A',
+                    background: 'linear-gradient(90deg, #FF3366, #F472A0)',
+                    color: '#fff',
                     borderRadius: 20,
                     padding: '5px 12px',
                     fontSize: 13,
@@ -497,7 +497,7 @@ function LooksNovoContent({ publicoInicial }: { publicoInicial: boolean }) {
                   #{tag}
                   <button
                     onClick={() => setHashtags((prev) => prev.filter((t) => t !== tag))}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#1B5E5A', fontSize: 14, lineHeight: 1, padding: 0 }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#fff', fontSize: 14, lineHeight: 1, padding: 0 }}
                   >
                     ×
                   </button>
@@ -555,14 +555,14 @@ function LooksNovoContent({ publicoInicial }: { publicoInicial: boolean }) {
         >
           <div className="flex flex-col items-start gap-1">
             <span style={{ fontSize: 14, fontWeight: 700, color: '#171717' }}>Compartilhar na galeria pública</span>
-            <span style={{ fontSize: 12, color: '#999' }}>Inspire outras mulheres com seu look</span>
+            <span style={{ fontSize: 12, color: '#767676' }}>Inspire outras mulheres com seu look</span>
           </div>
           <div
             style={{
               width: 46,
               height: 28,
               borderRadius: 14,
-              backgroundColor: isPublico ? '#1B5E5A' : '#D0D0D0',
+              backgroundColor: isPublico ? '#FF3366' : '#D0D0D0',
               position: 'relative',
               transition: 'background-color 0.2s',
               flexShrink: 0,
@@ -597,7 +597,7 @@ function LooksNovoContent({ publicoInicial }: { publicoInicial: boolean }) {
             padding: '16px',
             borderRadius: 16,
             border: 'none',
-            backgroundColor: salvando ? '#A0C4C2' : '#1B5E5A',
+            background: salvando ? 'rgba(255,51,102,0.5)' : 'linear-gradient(135deg, #FF3366, #C41A4A)',
             color: '#fff',
             fontSize: 16,
             fontWeight: 700,

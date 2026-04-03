@@ -8,7 +8,9 @@ import PageContainer from '@/components/ui/PageContainer'
 import PremiumGate from '@/components/ui/PremiumGate'
 import type { VisagismoResponse } from '@/lib/ai/analyzeVisagismo'
 import { PageTransition } from '@/components/ui/PageTransition'
+import { Scissors, Palette, Eye, CheckCircle2, XCircle, Star } from 'lucide-react'
 
+// ─── Helpers de UI ────────────────────────────────────────────────
 
 function Circulo({ hex, size = 40, opacity = 1 }: { hex: string; size?: number; opacity?: number }) {
   return (
@@ -23,30 +25,47 @@ function Circulo({ hex, size = 40, opacity = 1 }: { hex: string; size?: number; 
   )
 }
 
-function SecaoTitulo({ children }: { children: React.ReactNode }) {
+function Tag({ children }: { children: React.ReactNode }) {
   return (
-    <h2
-      className="font-bold text-gray-500 uppercase tracking-widest"
-      style={{ fontSize: 11, marginBottom: 12 }}
-    >
+    <span style={{
+      background: 'rgba(255,255,255,0.2)', borderRadius: 20,
+      padding: '4px 12px', fontSize: 13, fontWeight: 600, color: '#fff',
+    }}>
       {children}
-    </h2>
+    </span>
   )
 }
 
-function Card({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
+function SectionCard({ children }: { children: React.ReactNode }) {
   return (
-    <div
-      style={{
-        backgroundColor: '#fff', borderRadius: 16,
-        padding: '16px', border: '1.5px solid #E8E8E8',
-        ...style,
-      }}
-    >
+    <div className="bg-white rounded-2xl p-4" style={{ border: '1.5px solid rgba(0,0,0,0.06)', boxShadow: '0 2px 12px rgba(0,0,0,0.04)' }}>
       {children}
     </div>
   )
 }
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return <h2 className="text-label mb-3">{children}</h2>
+}
+
+function SubLabel({ children }: { children: React.ReactNode }) {
+  return <p className="text-card-title mb-3">{children}</p>
+}
+
+function PremiumButton({ children }: { children: React.ReactNode }) {
+  return (
+    <button style={{
+      padding: '9px 16px', borderRadius: 10, border: 'none',
+      background: 'linear-gradient(135deg, #FF3366, #C41A4A)',
+      color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+      fontFamily: 'var(--font-body)',
+    }}>
+      {children}
+    </button>
+  )
+}
+
+// ─── Page ─────────────────────────────────────────────────────────
 
 export default async function ResultadoPage() {
   const supabase = await createClient()
@@ -70,378 +89,345 @@ export default async function ResultadoPage() {
 
   return (
     <PageTransition>
-    <PageContainer>
-      <AppHeader
-        actions={
-          <Link href="/app/visagismo" className="text-gray-400 font-medium" style={{ fontSize: 14 }}>
-            ← Voltar
-          </Link>
-        }
-      />
+      <PageContainer>
+        <AppHeader
+          actions={
+            <Link href="/app/visagismo" className="text-caption font-medium flex items-center gap-1" style={{ textDecoration: 'none', color: 'var(--foreground-muted)' }}>
+              ← Voltar
+            </Link>
+          }
+        />
 
-      <main className="flex flex-col gap-6 px-5 py-6 pb-10">
+        <main className="flex flex-col gap-6 px-5 py-6 pb-10">
 
-        {/* Foto da análise */}
-        {analise.foto_url && (
-          <div style={{ textAlign: 'center', marginBottom: 0 }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={analise.foto_url}
-              alt="Foto da análise"
-              style={{
-                width: 80, height: 80,
-                borderRadius: '50%',
-                objectFit: 'cover',
-                border: '3px solid #1B5E5A',
-                display: 'inline-block',
-              }}
-            />
-            <p style={{ fontSize: 11, color: '#999', marginTop: 4 }}>
-              Análise de {new Date(analise.created_at as string).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
-            </p>
-          </div>
-        )}
-
-        {/* ── SEÇÃO 1: Perfil ── */}
-        <section>
-          <SecaoTitulo>Perfil</SecaoTitulo>
-          <div
-            style={{
-              backgroundColor: '#1B5E5A', borderRadius: 20,
-              padding: '24px 20px', color: '#fff',
-            }}
-          >
-            <p style={{ fontWeight: 800, fontSize: 20, marginBottom: 12 }}>
-              {dados.colorimetria.estacao}
-            </p>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <span style={{
-                backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20,
-                padding: '4px 12px', fontSize: 13, fontWeight: 600,
-              }}>
-                {dados.colorimetria.subtom}
-              </span>
-              <span style={{
-                backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20,
-                padding: '4px 12px', fontSize: 13, fontWeight: 600,
-              }}>
-                rosto {dados.analise_facial.formato_rosto}
-              </span>
-              <span style={{
-                backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20,
-                padding: '4px 12px', fontSize: 13, fontWeight: 600,
-              }}>
-                contraste {dados.colorimetria.contraste_pessoal ?? dados.colorimetria.contraste}
-              </span>
-            </div>
-            {dados.colorimetria.descricao_estacao && (
-              <p style={{ fontSize: 13, marginTop: 14, opacity: 0.85, lineHeight: 1.5 }}>
-                {dados.colorimetria.descricao_estacao}
-              </p>
-            )}
-          </div>
-        </section>
-
-        {/* ── SEÇÃO 2: Paleta de cores ── */}
-        <section>
-          <SecaoTitulo>Paleta de cores</SecaoTitulo>
-          <Card>
-            <p className="font-semibold text-gray-700" style={{ fontSize: 13, marginBottom: 12 }}>
-              Cores que te valorizam
-            </p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
-              {dados.paleta_cores.cores_ideais.map((cor) => (
-                <div key={cor.hex} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, width: 48 }}>
-                  <Circulo hex={cor.hex} />
-                  <p style={{ fontSize: 9, color: '#666', textAlign: 'center', lineHeight: 1.2 }}>{cor.nome}</p>
-                </div>
-              ))}
-            </div>
-
-            <p className="font-semibold text-gray-500" style={{ fontSize: 13, marginBottom: 12 }}>
-              Cores a evitar
-            </p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
-              {dados.paleta_cores.cores_evitar.map((cor) => (
-                <div key={cor.hex} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, width: 48 }}>
-                  <Circulo hex={cor.hex} opacity={0.5} />
-                  <p style={{ fontSize: 9, color: '#999', textAlign: 'center', lineHeight: 1.2 }}>{cor.nome}</p>
-                </div>
-              ))}
-            </div>
-
-            <PremiumGate
-              isPremium={premium}
-              feature="VISAGISMO_IMAGEM"
-              creditCost={CREDIT_COSTS.VISAGISMO_IMAGEM}
-              label="Gerar look com estas cores"
-              description="Crie um look virtual usando as cores da sua paleta personalizada."
-            >
-              <button
+          {/* ── Foto + hero ── */}
+          {analise.foto_url && (
+            <div className="flex flex-col items-center gap-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={analise.foto_url}
+                alt="Foto da análise"
                 style={{
-                  width: '100%', padding: '12px', borderRadius: 12, border: 'none',
-                  backgroundColor: '#1B5E5A', color: '#fff', fontSize: 14,
-                  fontWeight: 700, cursor: 'pointer',
+                  width: 80, height: 80, borderRadius: '50%', objectFit: 'cover',
+                  border: '3px solid var(--color-primary)',
+                  boxShadow: '0 4px 16px rgba(255,51,102,0.25)',
+                  display: 'inline-block',
                 }}
-              >
-                Gerar look com estas cores
-              </button>
-            </PremiumGate>
-          </Card>
-        </section>
-
-        {/* ── SEÇÃO 3: Maquiagem ── */}
-        <section>
-          <SecaoTitulo>Maquiagem</SecaoTitulo>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-
-            {/* Batom */}
-            <Card>
-              <p className="font-bold text-gray-800" style={{ fontSize: 14, marginBottom: 12 }}>
-                💄 Batom
+              />
+              <p className="text-caption">
+                Análise de {new Date(analise.created_at as string).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
               </p>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 14 }}>
-                {dados.maquiagem.batom.map((b) => (
-                  <div key={b.hex} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, width: 56 }}>
-                    <Circulo hex={b.hex} />
-                    <p style={{ fontSize: 10, color: '#555', textAlign: 'center', lineHeight: 1.2 }}>{b.nome}</p>
-                    <p style={{ fontSize: 9, color: '#999', textAlign: 'center' }}>{b.acabamento}</p>
-                  </div>
-                ))}
-              </div>
-              <PremiumGate
-                isPremium={premium}
-                feature="VISAGISMO_IMAGEM"
-                creditCost={CREDIT_COSTS.VISAGISMO_IMAGEM}
-                label="Experimentar este batom"
-                description="Aplique virtualmente um dos batons recomendados na sua foto."
-              >
-                <button style={{ padding: '8px 14px', borderRadius: 10, border: 'none', backgroundColor: '#F472A0', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-                  Experimentar este batom
-                </button>
-              </PremiumGate>
-            </Card>
+            </div>
+          )}
 
-            {/* Sombra */}
-            <Card>
-              <p className="font-bold text-gray-800" style={{ fontSize: 14, marginBottom: 12 }}>
-                👁️ Sombra
-              </p>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 14 }}>
-                {dados.maquiagem.sombra.map((s) => (
-                  <div key={`${s.hex}-${s.ocasiao}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, width: 56 }}>
-                    <Circulo hex={s.hex} />
-                    <p style={{ fontSize: 10, color: '#555', textAlign: 'center', lineHeight: 1.2 }}>{s.nome}</p>
-                  </div>
-                ))}
-              </div>
-              <PremiumGate
-                isPremium={premium}
-                feature="VISAGISMO_IMAGEM"
-                creditCost={CREDIT_COSTS.VISAGISMO_IMAGEM}
-                label="Testar este look de olho"
-                description="Veja como fica o look de sombra recomendado na sua foto."
-              >
-                <button style={{ padding: '8px 14px', borderRadius: 10, border: 'none', backgroundColor: '#1B5E5A', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-                  Testar este look de olho
-                </button>
-              </PremiumGate>
-            </Card>
-
-            {/* Blush */}
-            <Card>
-              <p className="font-bold text-gray-800" style={{ fontSize: 14, marginBottom: 12 }}>
-                🌸 Blush
-              </p>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-                {dados.maquiagem.blush.map((b) => (
-                  <div key={`${b.hex}-${b.tecnica}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, width: 56 }}>
-                    <Circulo hex={b.hex} />
-                    <p style={{ fontSize: 10, color: '#555', textAlign: 'center', lineHeight: 1.2 }}>{b.nome}</p>
-                    <p style={{ fontSize: 9, color: '#999', textAlign: 'center' }}>{b.tecnica}</p>
-                  </div>
-                ))}
-              </div>
-            </Card>
-
-            {/* Delineado */}
-            {dados.maquiagem.delineado.formatos_recomendados.length > 0 && (
-              <Card>
-                <p className="font-bold text-gray-800" style={{ fontSize: 14, marginBottom: 10 }}>
-                  ✏️ Delineado
-                </p>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
-                  {dados.maquiagem.delineado.formatos_recomendados.map((f) => (
-                    <span
-                      key={f}
-                      style={{
-                        fontSize: 12, backgroundColor: '#E8F5F4', color: '#1B5E5A',
-                        borderRadius: 8, padding: '4px 10px', fontWeight: 600,
-                      }}
-                    >
-                      {f}
-                    </span>
-                  ))}
-                </div>
-                {dados.maquiagem.delineado.estilos_evitar.length > 0 && (
-                  <>
-                    <p style={{ fontSize: 12, color: '#999', marginBottom: 6 }}>Evitar:</p>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                      {dados.maquiagem.delineado.estilos_evitar.map((e) => (
-                        <span
-                          key={e}
-                          style={{
-                            fontSize: 12, backgroundColor: '#F5F5F5', color: '#999',
-                            borderRadius: 8, padding: '4px 10px',
-                          }}
-                        >
-                          {e}
-                        </span>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </Card>
-            )}
-          </div>
-        </section>
-
-        {/* ── SEÇÃO 4: Cabelo ── */}
-        <section>
-          <SecaoTitulo>Cabelo</SecaoTitulo>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <Card>
-              <p className="font-bold text-gray-800" style={{ fontSize: 14, marginBottom: 12 }}>
-                ✂️ Cortes recomendados
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {dados.cabelo.cortes_recomendados.map((c) => (
-                  <div key={c.nome} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    <p style={{ fontSize: 14, fontWeight: 700, color: '#1B5E5A' }}>{c.nome}</p>
-                    <p style={{ fontSize: 13, color: '#666' }}>{c.motivo}</p>
-                  </div>
-                ))}
-              </div>
-            </Card>
-
-            {dados.cabelo.cores_harmonicas.length > 0 && (
-              <Card>
-                <p className="font-bold text-gray-800" style={{ fontSize: 14, marginBottom: 12 }}>
-                  🎨 Cores harmônicas
-                </p>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-                  {dados.cabelo.cores_harmonicas.map((c) => (
-                    <div key={c.hex} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, width: 56 }}>
-                      <Circulo hex={c.hex} />
-                      <p style={{ fontSize: 10, color: '#555', textAlign: 'center', lineHeight: 1.2 }}>{c.nome}</p>
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            )}
-          </div>
-        </section>
-
-        {/* ── SEÇÃO 5: Relatório ── */}
-        <section>
-          <SecaoTitulo>Relatório</SecaoTitulo>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <Card>
-              <p className="font-bold text-gray-800" style={{ fontSize: 14, marginBottom: 8 }}>
-                Seu perfil
-              </p>
-              <p style={{ fontSize: 14, color: '#555', lineHeight: 1.6 }}>
-                {dados.relatorio.resumo_perfil}
-              </p>
-            </Card>
-
-            {dados.relatorio.o_que_te_valoriza.length > 0 && (
-              <Card>
-                <p className="font-bold text-gray-800" style={{ fontSize: 14, marginBottom: 10 }}>
-                  ✦ O que te valoriza
-                </p>
-                <ul style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {dados.relatorio.o_que_te_valoriza.map((item) => (
-                    <li key={item} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                      <span style={{ color: '#1B5E5A', fontWeight: 700, flexShrink: 0 }}>→</span>
-                      <p style={{ fontSize: 14, color: '#555', lineHeight: 1.5 }}>{item}</p>
-                    </li>
-                  ))}
-                </ul>
-              </Card>
-            )}
-
-            {dados.relatorio.o_que_evitar.length > 0 && (
-              <Card>
-                <p className="font-bold text-gray-800" style={{ fontSize: 14, marginBottom: 10 }}>
-                  O que evitar
-                </p>
-                <ul style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {dados.relatorio.o_que_evitar.map((item) => (
-                    <li key={item} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                      <span style={{ color: '#F472A0', fontWeight: 700, flexShrink: 0 }}>×</span>
-                      <p style={{ fontSize: 14, color: '#555', lineHeight: 1.5 }}>{item}</p>
-                    </li>
-                  ))}
-                </ul>
-              </Card>
-            )}
-
-            {/* Dica especial */}
+          {/* ── SEÇÃO 1: Perfil ── */}
+          <section>
+            <SectionLabel>Perfil</SectionLabel>
             <div
+              className="relative overflow-hidden rounded-2xl"
               style={{
-                backgroundColor: '#D4A843', borderRadius: 16,
-                padding: '20px', color: '#fff',
+                background: 'linear-gradient(135deg, #FF3366 0%, #C41A4A 100%)',
+                padding: '24px 20px', color: '#fff',
+                boxShadow: '0 6px 24px rgba(255,51,102,0.25)',
               }}
             >
-              <p style={{ fontWeight: 800, fontSize: 14, marginBottom: 8 }}>✦ Dica especial</p>
-              <p style={{ fontSize: 14, lineHeight: 1.6 }}>
-                {dados.relatorio.dica_especial}
+              {/* Círculo decorativo */}
+              <div style={{ position: 'absolute', top: -40, right: -30, width: 130, height: 130, borderRadius: '50%', background: 'rgba(255,255,255,0.07)' }} />
+
+              <p style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 22, marginBottom: 12, color: '#fff' }}>
+                {dados.colorimetria.estacao}
               </p>
+              <div className="flex flex-wrap gap-2">
+                <Tag>{dados.colorimetria.subtom}</Tag>
+                <Tag>rosto {dados.analise_facial.formato_rosto}</Tag>
+                <Tag>contraste {dados.colorimetria.contraste_pessoal ?? dados.colorimetria.contraste}</Tag>
+              </div>
+              {dados.colorimetria.descricao_estacao && (
+                <p style={{ fontSize: 13, marginTop: 14, opacity: 0.85, lineHeight: 1.5 }}>
+                  {dados.colorimetria.descricao_estacao}
+                </p>
+              )}
             </div>
-          </div>
-        </section>
+          </section>
 
-        {/* ── CTA: Gerar imagem personalizada ── */}
-        <section>
-          <div
-            style={{
-              backgroundColor: '#1B5E5A', borderRadius: 20,
-              padding: '28px 20px', display: 'flex', flexDirection: 'column',
-              alignItems: 'center', gap: 12, textAlign: 'center',
-            }}
-          >
-            <span style={{ fontSize: 36, color: '#D4A843' }}>✦</span>
-            <p style={{ fontWeight: 800, fontSize: 20, color: '#fff', lineHeight: 1.2 }}>
-              Veja como você ficaria
-            </p>
-            <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.8)', lineHeight: 1.5 }}>
-              Gere uma imagem com os looks recomendados para o seu rosto
-            </p>
-            <PremiumGate
-              isPremium={premium}
-              feature="VISAGISMO_IMAGEM"
-              creditCost={CREDIT_COSTS.VISAGISMO_IMAGEM}
-              label="Criar minha imagem"
-              description="Gere uma imagem personalizada com os tons recomendados para o seu tipo de rosto e colorimetria."
-            >
-              <Link
-                href="/app/visagismo/gerar"
-                style={{
-                  display: 'block', padding: '14px 32px', borderRadius: 14,
-                  backgroundColor: '#fff', color: '#1B5E5A',
-                  fontSize: 15, fontWeight: 700, textDecoration: 'none',
-                  marginTop: 4,
-                }}
+          {/* ── SEÇÃO 2: Paleta de cores ── */}
+          <section>
+            <SectionLabel>Paleta de cores</SectionLabel>
+            <SectionCard>
+              <SubLabel>Cores que te valorizam</SubLabel>
+              <div className="flex flex-wrap gap-2 mb-5">
+                {dados.paleta_cores.cores_ideais.map((cor) => (
+                  <div key={cor.hex} className="flex flex-col items-center gap-1" style={{ width: 48 }}>
+                    <Circulo hex={cor.hex} />
+                    <p style={{ fontSize: 9, color: 'var(--foreground-muted)', textAlign: 'center', lineHeight: 1.2 }}>{cor.nome}</p>
+                  </div>
+                ))}
+              </div>
+
+              <p className="text-caption mb-3" style={{ fontWeight: 600 }}>Cores a evitar</p>
+              <div className="flex flex-wrap gap-2 mb-4">
+                {dados.paleta_cores.cores_evitar.map((cor) => (
+                  <div key={cor.hex} className="flex flex-col items-center gap-1" style={{ width: 48 }}>
+                    <Circulo hex={cor.hex} opacity={0.5} />
+                    <p style={{ fontSize: 9, color: 'var(--foreground-muted)', textAlign: 'center', lineHeight: 1.2 }}>{cor.nome}</p>
+                  </div>
+                ))}
+              </div>
+
+              <PremiumGate
+                isPremium={premium}
+                feature="VISAGISMO_IMAGEM"
+                creditCost={CREDIT_COSTS.VISAGISMO_IMAGEM}
+                label="Gerar look com estas cores"
+                description="Crie um look virtual usando as cores da sua paleta personalizada."
               >
-                Criar minha imagem
-              </Link>
-            </PremiumGate>
-          </div>
-        </section>
+                <PremiumButton>Gerar look com estas cores</PremiumButton>
+              </PremiumGate>
+            </SectionCard>
+          </section>
 
-      </main>
-    </PageContainer>
+          {/* ── SEÇÃO 3: Maquiagem ── */}
+          <section>
+            <SectionLabel>Maquiagem</SectionLabel>
+            <div className="flex flex-col gap-4">
+
+              {/* Batom */}
+              <SectionCard>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="flex items-center justify-center rounded-lg flex-shrink-0"
+                    style={{ width: 28, height: 28, background: 'rgba(255,51,102,0.08)' }}>
+                    <span style={{ fontSize: 14 }}>💄</span>
+                  </div>
+                  <SubLabel>Batom</SubLabel>
+                </div>
+                <div className="flex flex-wrap gap-3 mb-4">
+                  {dados.maquiagem.batom.map((b) => (
+                    <div key={b.hex} className="flex flex-col items-center gap-1" style={{ width: 56 }}>
+                      <Circulo hex={b.hex} />
+                      <p style={{ fontSize: 10, color: 'var(--foreground-muted)', textAlign: 'center', lineHeight: 1.2 }}>{b.nome}</p>
+                      <p style={{ fontSize: 9, color: 'var(--foreground-muted)', textAlign: 'center' }}>{b.acabamento}</p>
+                    </div>
+                  ))}
+                </div>
+                <PremiumGate isPremium={premium} feature="VISAGISMO_IMAGEM" creditCost={CREDIT_COSTS.VISAGISMO_IMAGEM} label="Experimentar este batom" description="Aplique virtualmente um dos batons recomendados na sua foto.">
+                  <PremiumButton>Experimentar este batom</PremiumButton>
+                </PremiumGate>
+              </SectionCard>
+
+              {/* Sombra */}
+              <SectionCard>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="flex items-center justify-center rounded-lg flex-shrink-0"
+                    style={{ width: 28, height: 28, background: 'rgba(255,51,102,0.08)' }}>
+                    <Eye size={14} color="var(--color-primary)" />
+                  </div>
+                  <SubLabel>Sombra</SubLabel>
+                </div>
+                <div className="flex flex-wrap gap-3 mb-4">
+                  {dados.maquiagem.sombra.map((s) => (
+                    <div key={`${s.hex}-${s.ocasiao}`} className="flex flex-col items-center gap-1" style={{ width: 56 }}>
+                      <Circulo hex={s.hex} />
+                      <p style={{ fontSize: 10, color: 'var(--foreground-muted)', textAlign: 'center', lineHeight: 1.2 }}>{s.nome}</p>
+                    </div>
+                  ))}
+                </div>
+                <PremiumGate isPremium={premium} feature="VISAGISMO_IMAGEM" creditCost={CREDIT_COSTS.VISAGISMO_IMAGEM} label="Testar este look de olho" description="Veja como fica o look de sombra recomendado na sua foto.">
+                  <PremiumButton>Testar este look de olho</PremiumButton>
+                </PremiumGate>
+              </SectionCard>
+
+              {/* Blush */}
+              <SectionCard>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="flex items-center justify-center rounded-lg flex-shrink-0"
+                    style={{ width: 28, height: 28, background: 'rgba(255,51,102,0.08)' }}>
+                    <span style={{ fontSize: 14 }}>🌸</span>
+                  </div>
+                  <SubLabel>Blush</SubLabel>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  {dados.maquiagem.blush.map((b) => (
+                    <div key={`${b.hex}-${b.tecnica}`} className="flex flex-col items-center gap-1" style={{ width: 56 }}>
+                      <Circulo hex={b.hex} />
+                      <p style={{ fontSize: 10, color: 'var(--foreground-muted)', textAlign: 'center', lineHeight: 1.2 }}>{b.nome}</p>
+                      <p style={{ fontSize: 9, color: 'var(--foreground-muted)', textAlign: 'center' }}>{b.tecnica}</p>
+                    </div>
+                  ))}
+                </div>
+              </SectionCard>
+
+              {/* Delineado */}
+              {dados.maquiagem.delineado.formatos_recomendados.length > 0 && (
+                <SectionCard>
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="flex items-center justify-center rounded-lg flex-shrink-0"
+                      style={{ width: 28, height: 28, background: 'rgba(255,51,102,0.08)' }}>
+                      <Palette size={14} color="var(--color-primary)" />
+                    </div>
+                    <SubLabel>Delineado</SubLabel>
+                  </div>
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {dados.maquiagem.delineado.formatos_recomendados.map((f) => (
+                      <span key={f} style={{
+                        fontSize: 12, background: 'rgba(255,51,102,0.08)', color: 'var(--color-primary)',
+                        borderRadius: 8, padding: '4px 10px', fontWeight: 600,
+                      }}>{f}</span>
+                    ))}
+                  </div>
+                  {dados.maquiagem.delineado.estilos_evitar.length > 0 && (
+                    <>
+                      <p className="text-caption mb-2" style={{ marginTop: 8 }}>Evitar:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {dados.maquiagem.delineado.estilos_evitar.map((e) => (
+                          <span key={e} style={{
+                            fontSize: 12, backgroundColor: 'var(--background)', color: 'var(--foreground-muted)',
+                            borderRadius: 8, padding: '4px 10px', border: '1.5px solid var(--color-silver)',
+                          }}>{e}</span>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </SectionCard>
+              )}
+            </div>
+          </section>
+
+          {/* ── SEÇÃO 4: Cabelo ── */}
+          <section>
+            <SectionLabel>Cabelo</SectionLabel>
+            <div className="flex flex-col gap-4">
+              <SectionCard>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="flex items-center justify-center rounded-lg flex-shrink-0"
+                    style={{ width: 28, height: 28, background: 'rgba(27,94,90,0.08)' }}>
+                    <Scissors size={14} color="var(--color-secondary)" />
+                  </div>
+                  <SubLabel>Cortes recomendados</SubLabel>
+                </div>
+                <div className="flex flex-col gap-3">
+                  {dados.cabelo.cortes_recomendados.map((c) => (
+                    <div key={c.nome} className="flex flex-col gap-1">
+                      <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-secondary)' }}>{c.nome}</p>
+                      <p className="text-caption" style={{ lineHeight: 1.5 }}>{c.motivo}</p>
+                    </div>
+                  ))}
+                </div>
+              </SectionCard>
+
+              {dados.cabelo.cores_harmonicas.length > 0 && (
+                <SectionCard>
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="flex items-center justify-center rounded-lg flex-shrink-0"
+                      style={{ width: 28, height: 28, background: 'rgba(212,168,67,0.10)' }}>
+                      <Palette size={14} color="#D4A843" />
+                    </div>
+                    <SubLabel>Cores harmônicas</SubLabel>
+                  </div>
+                  <div className="flex flex-wrap gap-3">
+                    {dados.cabelo.cores_harmonicas.map((c) => (
+                      <div key={c.hex} className="flex flex-col items-center gap-1" style={{ width: 56 }}>
+                        <Circulo hex={c.hex} />
+                        <p style={{ fontSize: 10, color: 'var(--foreground-muted)', textAlign: 'center', lineHeight: 1.2 }}>{c.nome}</p>
+                      </div>
+                    ))}
+                  </div>
+                </SectionCard>
+              )}
+            </div>
+          </section>
+
+          {/* ── SEÇÃO 5: Relatório ── */}
+          <section>
+            <SectionLabel>Relatório</SectionLabel>
+            <div className="flex flex-col gap-4">
+              <SectionCard>
+                <SubLabel>Seu perfil</SubLabel>
+                <p className="text-body" style={{ lineHeight: 1.7 }}>{dados.relatorio.resumo_perfil}</p>
+              </SectionCard>
+
+              {dados.relatorio.o_que_te_valoriza.length > 0 && (
+                <SectionCard>
+                  <SubLabel>O que te valoriza</SubLabel>
+                  <ul className="flex flex-col gap-3">
+                    {dados.relatorio.o_que_te_valoriza.map((item) => (
+                      <li key={item} className="flex gap-2 items-start">
+                        <CheckCircle2 size={15} color="var(--color-secondary)" style={{ flexShrink: 0, marginTop: 2 }} />
+                        <p className="text-body" style={{ lineHeight: 1.5 }}>{item}</p>
+                      </li>
+                    ))}
+                  </ul>
+                </SectionCard>
+              )}
+
+              {dados.relatorio.o_que_evitar.length > 0 && (
+                <SectionCard>
+                  <SubLabel>O que evitar</SubLabel>
+                  <ul className="flex flex-col gap-3">
+                    {dados.relatorio.o_que_evitar.map((item) => (
+                      <li key={item} className="flex gap-2 items-start">
+                        <XCircle size={15} color="var(--color-primary)" style={{ flexShrink: 0, marginTop: 2 }} />
+                        <p className="text-body" style={{ lineHeight: 1.5 }}>{item}</p>
+                      </li>
+                    ))}
+                  </ul>
+                </SectionCard>
+              )}
+
+              {/* Dica especial — gold */}
+              <div className="rounded-2xl relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #D4A843 0%, #B8922A 100%)', padding: '20px' }}>
+                <div style={{ position: 'absolute', top: -30, right: -20, width: 100, height: 100, borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }} />
+                <div className="flex items-center gap-2 mb-2">
+                  <Star size={16} color="#fff" fill="#fff" />
+                  <p style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 14, color: '#fff' }}>Dica especial</p>
+                </div>
+                <p style={{ fontSize: 14, lineHeight: 1.6, color: '#fff' }}>{dados.relatorio.dica_especial}</p>
+              </div>
+            </div>
+          </section>
+
+          {/* ── CTA: Gerar imagem ── */}
+          <section>
+            <div
+              className="relative overflow-hidden rounded-2xl flex flex-col items-center gap-3 text-center"
+              style={{
+                background: 'linear-gradient(135deg, #FF3366 0%, #C41A4A 100%)',
+                padding: '28px 20px',
+                boxShadow: '0 6px 24px rgba(255,51,102,0.28)',
+              }}
+            >
+              <div style={{ position: 'absolute', top: -50, right: -40, width: 160, height: 160, borderRadius: '50%', background: 'rgba(255,255,255,0.06)' }} />
+              <span style={{ fontSize: 36, color: '#F9D56E' }}>✦</span>
+              <p style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 20, color: '#fff', lineHeight: 1.2 }}>
+                Veja como você ficaria
+              </p>
+              <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.82)', lineHeight: 1.5 }}>
+                Gere uma imagem com os looks recomendados para o seu rosto
+              </p>
+              <PremiumGate
+                isPremium={premium}
+                feature="VISAGISMO_IMAGEM"
+                creditCost={CREDIT_COSTS.VISAGISMO_IMAGEM}
+                label="Criar minha imagem"
+                description="Gere uma imagem personalizada com os tons recomendados para o seu tipo de rosto e colorimetria."
+              >
+                <Link
+                  href="/app/visagismo/gerar"
+                  style={{
+                    display: 'inline-block', padding: '13px 32px', borderRadius: 14,
+                    backgroundColor: '#fff', color: 'var(--color-primary)',
+                    fontSize: 15, fontWeight: 700, textDecoration: 'none',
+                    fontFamily: 'var(--font-body)', marginTop: 4,
+                    boxShadow: '0 2px 12px rgba(0,0,0,0.12)',
+                  }}
+                >
+                  Criar minha imagem
+                </Link>
+              </PremiumGate>
+            </div>
+          </section>
+
+        </main>
+      </PageContainer>
     </PageTransition>
   )
 }
