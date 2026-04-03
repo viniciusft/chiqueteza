@@ -1,15 +1,29 @@
 'use client'
 
-import { motion } from 'framer-motion'
+import React from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { pageVariants, pageTransition } from '@/lib/animations/framer'
 
-export function PageTransition({ children }: { children: React.ReactNode }) {
+interface PageTransitionProps {
+  children: React.ReactNode
+  /** Chave única para forçar re-animação ao trocar de página */
+  pageKey?: string
+}
+
+export function PageTransition({ children, pageKey }: PageTransitionProps) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
-    >
-      {children}
-    </motion.div>
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={pageKey}
+        variants={pageVariants}
+        initial="initial"
+        animate="animate"
+        exit="exit"
+        transition={pageTransition}
+        style={{ willChange: 'transform, opacity' }}
+      >
+        {children}
+      </motion.div>
+    </AnimatePresence>
   )
 }

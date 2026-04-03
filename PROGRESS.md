@@ -1,11 +1,11 @@
 # CHIQUETEZA — Progress Tracking
 
 ## Status Geral
-- **Fase atual:** 1 (Design System Foundation)
-- **Nota atual:** 5.5/10
+- **Fase atual:** 2 (Componentes Core)
+- **Nota atual:** 6.5/10
 - **Nota alvo:** 9.5/10
 - **Ultima sessao:** 2026-04-03
-- **Proxima acao:** Task 2.1 — Button.tsx redesign (pink primary + ripple + variants)
+- **Proxima acao:** Task 2.8 — ServiceCard.tsx (novo componente)
 
 ## Contexto das Sessoes Anteriores
 As sessoes anteriores ja implementaram:
@@ -34,13 +34,13 @@ As sessoes anteriores ja implementaram:
 - [x] 1.4 — Instalar GSAP + lib/animations/gsap.ts + lib/animations/framer.ts + hooks.ts
 
 ## Fase 2: Componentes Core
-- [ ] 2.1 — Button.tsx redesign (ripple + pink primary + variants)
-- [ ] 2.2 — TabBar.tsx redesign (pink active + lucide-react + badges + glass)
-- [ ] 2.3 — SkeletonCard.tsx content-aware (SkeletonAppointment, SkeletonProfessional)
-- [ ] 2.4 — PageTransition.tsx amplificado (y:24, 400ms, ease-out-expo)
-- [ ] 2.5 — StaggerList.tsx (adicionar trigger="scroll" com GSAP)
-- [ ] 2.6 — EmptyState.tsx (SVG illustrations, gradient-pink-soft, shadow-pink)
-- [ ] 2.7 — ActionSheet.tsx (blur backdrop + bouncy spring + handle pink)
+- [x] 2.1 — Button.tsx redesign (ripple + pink primary + variants)
+- [x] 2.2 — TabBar.tsx redesign (pink active + lucide-react + badges + glass)
+- [x] 2.3 — SkeletonCard.tsx content-aware (SkeletonAppointment, SkeletonProfessional)
+- [x] 2.4 — PageTransition.tsx amplificado (y:24, 400ms, ease-out-expo, AnimatePresence)
+- [x] 2.5 — StaggerList.tsx (trigger="scroll" com useInView do Framer)
+- [x] 2.6 — EmptyState.tsx (SVG illustrations inline, gradient-pink-soft, shadow-pink)
+- [x] 2.7 — ActionSheet.tsx (blur backdrop + bouncy spring + handle pink gradient)
 - [ ] 2.8 — Novo: ServiceCard.tsx
 - [ ] 2.9 — Novo: ProfessionalCard.tsx (com foto)
 - [ ] 2.10 — Novo: TimeSlotPicker.tsx
@@ -83,3 +83,4 @@ As sessoes anteriores ja implementaram:
 | 8 | 2026-04-03 | Passo Zero | PROGRESS.md criado, PROMPT-AUDITORIA-CHIQUETEZA.md criado | Inicio do plano estruturado |
 | 9 | 2026-04-03 | 1.1 + 1.2 | tailwind.config.ts paleta completa; globals.css reescrito (pink primária, fundo #FFFBFC, text-page-title etc.) | Build ok |
 | 10 | 2026-04-03 | 1.3 + 1.4 | Inline styles removidos (TabBar, Button, EmptyState, ActionSheet, PremiumGate, Login, Home); GSAP instalado + lib/animations/{gsap,framer,hooks}.ts | Fase 1 completa |
+| 11 | 2026-04-03 | 2.1–2.7 | Button pink+ripple, TabBar glass+lucide, SkeletonCard content-aware, PageTransition y:24+expo, StaggerList useInView, EmptyState SVG, ActionSheet blur+bouncy | Build ok |
