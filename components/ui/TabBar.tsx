@@ -80,8 +80,9 @@ export default function TabBar() {
         left: 0,
         right: 0,
         zIndex: 30,
-        backgroundColor: '#fff',
-        borderTop: '1px solid #E8E8E8',
+        backgroundColor: 'var(--surface)',
+        borderTop: '1px solid var(--color-silver)',
+        boxShadow: '0 -2px 12px rgba(27, 94, 90, 0.06)',
         paddingBottom: 'env(safe-area-inset-bottom)',
         display: 'flex',
         justifyContent: 'center',
@@ -109,11 +110,13 @@ export default function TabBar() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: 3,
-                color: active ? '#1B5E5A' : '#999',
+                color: active ? 'var(--color-ever-green)' : 'var(--foreground-subtle)',
                 textDecoration: 'none',
                 fontWeight: active ? 700 : 400,
+                fontFamily: 'var(--font-body)',
                 position: 'relative',
-                transition: 'color 0.2s ease',
+                transition: 'color var(--transition-fast)',
+                minHeight: 44,
               }}
             >
               {active && (
@@ -124,13 +127,13 @@ export default function TabBar() {
                     left: '25%',
                     right: '25%',
                     height: 3,
-                    backgroundColor: '#1B5E5A',
-                    borderRadius: '0 0 3px 3px',
+                    backgroundColor: 'var(--color-ever-green)',
+                    borderRadius: '0 0 4px 4px',
                   }}
                 />
               )}
               {tab.icon}
-              <span style={{ fontSize: 9 }}>{tab.label}</span>
+              <span style={{ fontSize: 10, letterSpacing: '0.02em' }}>{tab.label}</span>
             </Link>
           )
         })}

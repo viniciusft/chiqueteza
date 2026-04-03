@@ -122,9 +122,9 @@ function HomeContent({ userId, nome: nomeInicial }: { userId: string; nome: stri
       <main className="flex flex-col px-5 py-8 gap-6">
 
         {/* Saudação */}
-        <div className="flex flex-col gap-0.5">
-          <span className="text-gray-500" style={{ fontSize: 14 }}>Olá,</span>
-          <span className="font-extrabold tracking-tight" style={{ fontSize: 26, color: '#171717' }}>
+        <div className="flex flex-col gap-1">
+          <span style={{ fontSize: 13, color: 'var(--foreground-muted)', fontFamily: 'var(--font-body)', fontWeight: 400 }}>Olá,</span>
+          <span style={{ fontSize: 28, color: 'var(--foreground)', fontFamily: 'var(--font-display)', fontWeight: 700, lineHeight: 1.15, letterSpacing: '-0.01em' }}>
             {nome} ✦
           </span>
         </div>
@@ -137,7 +137,7 @@ function HomeContent({ userId, nome: nomeInicial }: { userId: string; nome: stri
         {tudoEmDia && (
           <div
             className="flex flex-col items-center gap-2 py-10"
-            style={{ borderRadius: 20, backgroundColor: '#fff', border: '1.5px solid #E8E8E8' }}
+            style={{ borderRadius: 20, backgroundColor: 'var(--surface)', border: '1.5px solid var(--color-silver)', boxShadow: 'var(--shadow-sm)' }}
           >
             <span style={{ fontSize: 40 }}>✨</span>
             <p className="font-bold text-gray-700" style={{ fontSize: 16 }}>Tudo em dia por aqui ✦</p>
