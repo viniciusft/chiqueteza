@@ -2,30 +2,126 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── Design Tokens — Chiqueteza ─────────────────────────────── */
 :root {
-  --background: #F5F5F5;
-  --foreground: #171717;
-  --font-inter: 'Inter', system-ui, -apple-system, sans-serif;
+  /* Brand colors */
+  --color-ever-green:      #1B5E5A;
+  --color-ever-green-light:#E8F5F4;
+  --color-ever-green-mid:  #2D7A74;
+  --color-pink-peony:      #F472A0;
+  --color-pink-peony-light:#FFF0F6;
+  --color-wedding-band:    #D4A843;
+  --color-wedding-band-light: #FFF8E1;
+  --color-something-blue:  #A8C5CC;
+  --color-silver:          #E8E8E8;
+
+  /* Surfaces */
+  --background:            #EEF4F3;   /* fundo brand-tinted (era #F5F5F5) */
+  --surface:               #FFFFFF;
+  --surface-raised:        #FFFFFF;
+  --foreground:            #171717;
+  --foreground-muted:      #6B7280;
+  --foreground-subtle:     #9CA3AF;
+
+  /* Typography */
+  --font-display: var(--font-playfair, 'Playfair Display', Georgia, serif);
+  --font-body:    var(--font-dm-sans, 'DM Sans', 'Inter', system-ui, sans-serif);
+
+  /* Spacing scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  /* Radius */
+  --radius-sm:  8px;
+  --radius-md:  14px;
+  --radius-lg:  20px;
+  --radius-xl:  28px;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-sm:  0 1px 3px rgba(27, 94, 90, 0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md:  0 4px 16px rgba(27, 94, 90, 0.10), 0 2px 6px rgba(0,0,0,0.06);
+  --shadow-lg:  0 8px 32px rgba(27, 94, 90, 0.14), 0 4px 12px rgba(0,0,0,0.08);
+  --shadow-card: 0 2px 8px rgba(27, 94, 90, 0.08);
+
+  /* Transitions */
+  --transition-fast:   150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base:   250ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow:   400ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-spring: 500ms cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+/* ─── Base ────────────────────────────────────────────────────── */
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: var(--font-inter), sans-serif;
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
+/* ─── Utility classes ─────────────────────────────────────────── */
 @layer utilities {
   .text-balance {
     text-wrap: balance;
   }
+
+  /* Display font para headings de destaque */
+  .font-display {
+    font-family: var(--font-display);
+  }
+
+  /* Body font explícita */
+  .font-body {
+    font-family: var(--font-body);
+  }
+
+  /* Touch target mínimo 44px */
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
 }
 
+/* ─── Animations ──────────────────────────────────────────────── */
 @keyframes shimmer {
-  0% { background-position: 200% 0; }
+  0%   { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
 
-/* Masonry grid — react-masonry-css */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.animate-fade-in  { animation: fadeIn  var(--transition-base) both; }
+.animate-slide-up { animation: slideUp var(--transition-slow) both; }
+.animate-scale-in { animation: scaleIn var(--transition-base) both; }
+
+/* Stagger helpers */
+.stagger-1 { animation-delay: 60ms; }
+.stagger-2 { animation-delay: 120ms; }
+.stagger-3 { animation-delay: 180ms; }
+.stagger-4 { animation-delay: 240ms; }
+.stagger-5 { animation-delay: 300ms; }
+
+/* ─── Masonry grid — react-masonry-css ───────────────────────── */
 .masonry-grid {
   display: flex;
   width: 100%;
@@ -38,4 +134,12 @@ body {
 }
 .masonry-grid_column > * {
   break-inside: avoid;
+}
+
+/* ─── Scrollbar thin ─────────────────────────────────────────── */
+.scrollbar-none {
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
 }
