@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { motion, AnimatePresence } from 'framer-motion'
 import dynamic from 'next/dynamic'
 const Masonry = dynamic(() => import('react-masonry-css'), { ssr: false })
 import { createClient } from '@/lib/supabase/client'
@@ -297,9 +298,17 @@ export default function LooksPage() {
           ))}
         </div>
 
+        <AnimatePresence mode="wait">
+
         {/* ===== ABA MEUS LOOKS ===== */}
         {aba === 'meus_looks' && (
-          <>
+          <motion.div
+            key="meus_looks"
+            initial={{ opacity: 0, x: -18 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 18 }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+          >
             {loading && (
               <div style={{ display: 'flex', gap: 8, padding: '0 8px' }}>
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -475,12 +484,18 @@ export default function LooksPage() {
                 ))}
               </Masonry>
             )}
-          </>
+          </motion.div>
         )}
 
         {/* ===== ABA FAVORITOS ===== */}
         {aba === 'favoritos' && (
-          <>
+          <motion.div
+            key="favoritos"
+            initial={{ opacity: 0, x: 18 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -18 }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+          >
             {/* Chips de coleções */}
             <div style={{
               padding: '0 20px 16px',
@@ -599,8 +614,10 @@ export default function LooksPage() {
                 ))}
               </Masonry>
             )}
-          </>
+          </motion.div>
         )}
+
+        </AnimatePresence>
       </main>
 
       {/* FAB — só na aba Meus Looks */}

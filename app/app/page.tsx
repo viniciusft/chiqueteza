@@ -1,8 +1,8 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { motion } from 'framer-motion'
+import { motion, useInView } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
 import AppHeader from '@/components/ui/AppHeader'
 import PageContainer from '@/components/ui/PageContainer'
@@ -86,6 +86,15 @@ function ProximoAgendamento({ proximo }: { proximo: Agendamento }) {
     hour: '2-digit', minute: '2-digit',
   })
 
+  // Progress ring: fraction of 30-day window elapsed
+  const msAte = new Date(proximo.data_hora).getTime() - Date.now()
+  const diasAte = Math.max(0, Math.ceil(msAte / (1000 * 60 * 60 * 24)))
+  const progress = Math.max(0.05, Math.min(1, 1 - diasAte / 30))
+
+  const ringRef = useRef<SVGCircleElement>(null)
+  const inView = useInView({ current: ringRef.current?.closest('[data-ring]') as Element | null }, { once: true })
+  const circumference = 2 * Math.PI * 20 // r=20
+
   return (
     <div
       className="flex items-center gap-3 px-4 py-4 rounded-2xl"
@@ -95,12 +104,28 @@ function ProximoAgendamento({ proximo }: { proximo: Agendamento }) {
         boxShadow: '0 2px 12px rgba(255,51,102,0.08)',
       }}
     >
-      {/* Ícone */}
+      {/* Progress ring */}
       <div
-        className="flex items-center justify-center rounded-xl flex-shrink-0"
-        style={{ width: 48, height: 48, background: 'rgba(255,51,102,0.08)' }}
+        data-ring=""
+        className="flex-shrink-0 relative flex items-center justify-center"
+        style={{ width: 52, height: 52 }}
       >
-        <CalendarDays size={22} color="var(--color-primary)" />
+        <svg width="52" height="52" style={{ position: 'absolute', top: 0, left: 0, transform: 'rotate(-90deg)' }}>
+          {/* Track */}
+          <circle cx="26" cy="26" r="20" fill="none" stroke="rgba(255,51,102,0.12)" strokeWidth="3" />
+          {/* Progress */}
+          <motion.circle
+            ref={ringRef}
+            cx="26" cy="26" r="20" fill="none"
+            stroke="#FF3366" strokeWidth="3"
+            strokeLinecap="round"
+            strokeDasharray={circumference}
+            initial={{ strokeDashoffset: circumference }}
+            animate={{ strokeDashoffset: circumference * (1 - progress) }}
+            transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1], delay: 0.3 }}
+          />
+        </svg>
+        <CalendarDays size={20} color="var(--color-primary)" />
       </div>
 
       <div className="flex-1 min-w-0">
