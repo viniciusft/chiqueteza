@@ -14,6 +14,7 @@ import { SkeletonList } from '@/components/ui/SkeletonCard'
 import { useCache } from '@/lib/cache/useCache'
 import { CACHE_KEYS } from '@/lib/cache/keys'
 import EmptyState from '@/components/ui/EmptyState'
+import { StaggerList, StaggerItem } from '@/components/ui/StaggerList'
 import { AlertTriangle, TrendingUp } from 'lucide-react'
 
 function diasAtraso(ultimoProcedimento: string, frequenciaDias: number): number {
@@ -181,9 +182,13 @@ function RotinaContent({ userId }: { userId: string }) {
                   descricao="Nenhum agendamento futuro. Que tal marcar seu próximo horário?"
                 />
               ) : (
-                (agendamentos ?? []).map((ag) => (
-                  <AgendamentoCard key={ag.id} agendamento={ag} />
-                ))
+                <StaggerList trigger="scroll" className="flex flex-col gap-2">
+                  {(agendamentos ?? []).map((ag) => (
+                    <StaggerItem key={ag.id}>
+                      <AgendamentoCard agendamento={ag} />
+                    </StaggerItem>
+                  ))}
+                </StaggerList>
               )}
             </section>
 
@@ -219,45 +224,48 @@ function RotinaContent({ userId }: { userId: string }) {
             {historico.length > 0 && (
               <section className="flex flex-col gap-2">
                 <h2 className="text-label">Histórico</h2>
-                {historico.map((ag) => {
-                  const cfg = statusConfig[ag.status] ?? statusConfig.agendado
-                  const dataFmt = new Date(ag.data_hora).toLocaleDateString('pt-BR', {
-                    day: 'numeric', month: 'short', year: 'numeric',
-                  })
-                  return (
-                    <div
-                      key={ag.id}
-                      className="flex items-center justify-between px-4 py-3 rounded-xl"
-                      style={{ border: '1.5px solid var(--color-silver)', backgroundColor: 'var(--surface)' }}
-                    >
-                      <div className="flex flex-col gap-0.5 flex-1 min-w-0 pr-2">
-                        <p className="text-card-title truncate">{ag.servico_nome}</p>
-                        <p className="text-caption">
-                          {dataFmt}
-                          {ag.profissional?.nome ? ` · ${ag.profissional.nome}` : ''}
-                        </p>
-                      </div>
-                      <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                        <span
-                          style={{
-                            fontSize: 10, fontWeight: 700, letterSpacing: '0.04em',
-                            textTransform: 'uppercase',
-                            color: cfg.color,
-                            background: cfg.bg,
-                            borderRadius: 6, padding: '2px 8px',
-                          }}
+                <StaggerList trigger="scroll" className="flex flex-col gap-2">
+                  {historico.map((ag) => {
+                    const cfg = statusConfig[ag.status] ?? statusConfig.agendado
+                    const dataFmt = new Date(ag.data_hora).toLocaleDateString('pt-BR', {
+                      day: 'numeric', month: 'short', year: 'numeric',
+                    })
+                    return (
+                      <StaggerItem key={ag.id}>
+                        <div
+                          className="flex items-center justify-between px-4 py-3 rounded-xl"
+                          style={{ border: '1.5px solid var(--color-silver)', backgroundColor: 'var(--surface)' }}
                         >
-                          {cfg.label}
-                        </span>
-                        {ag.valor && (
-                          <span className="text-caption">
-                            {Number(ag.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
+                          <div className="flex flex-col gap-0.5 flex-1 min-w-0 pr-2">
+                            <p className="text-card-title truncate">{ag.servico_nome}</p>
+                            <p className="text-caption">
+                              {dataFmt}
+                              {ag.profissional?.nome ? ` · ${ag.profissional.nome}` : ''}
+                            </p>
+                          </div>
+                          <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                            <span
+                              style={{
+                                fontSize: 10, fontWeight: 700, letterSpacing: '0.04em',
+                                textTransform: 'uppercase',
+                                color: cfg.color,
+                                background: cfg.bg,
+                                borderRadius: 6, padding: '2px 8px',
+                              }}
+                            >
+                              {cfg.label}
+                            </span>
+                            {ag.valor && (
+                              <span className="text-caption">
+                                {Number(ag.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </StaggerItem>
+                    )
+                  })}
+                </StaggerList>
               </section>
             )}
 

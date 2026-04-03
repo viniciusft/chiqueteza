@@ -7,7 +7,8 @@
 - **Ultima sessao:** 2026-04-03
 - **Fase atual:** 3 (Fases 1-3 completas)
 - **Nota atual:** 8.0/10
-- **Proxima acao:** Fase 4 — Animações e micro-interactions (4.2 like pulse, 4.3 card hover, 4.5 booking confetti)
+- **Nota atual:** 8.5/10
+- **Proxima acao:** Fase 5 — Polish Final (5.1 inline styles, 5.2 emojis-icone, 5.5 WCAG)
 
 ## Contexto das Sessoes Anteriores
 As sessoes anteriores ja implementaram:
@@ -58,11 +59,11 @@ As sessoes anteriores ja implementaram:
 - [x] 3.8 — Profissionais (FAB pink gradient + Plus icon, contador na caderneta)
 
 ## Fase 4: Animacoes & Micro-interactions
-- [ ] 4.1 — GSAP ScrollTrigger em todas as secoes
-- [ ] 4.2 — Like/Favorite animations (pulse + particles)
-- [ ] 4.3 — Card hover/tap feedback (scale + shadow)
+- [x] 4.1 — Scroll reveals: StaggerList trigger="scroll" em Rotina (agendamentos + histórico)
+- [x] 4.2 — Like animation: Heart lucide + scale/rotate spring + 6 partículas no curtir na Galeria
+- [x] 4.3 — Card tap: AgendamentoCard motion.div whileTap, lucide icons (CalendarDays, MessageCircle, MoreHorizontal)
 - [ ] 4.4 — Page transitions (shared layout)
-- [ ] 4.5 — Booking confirmation (confetti + checkmark)
+- [x] 4.5 — Booking confirmation: SuccessScreen com checkmark SVG animado (pathLength) + 6 partículas + redirect 2s
 - [ ] 4.6 — Tab content slide transition
 - [ ] 4.7 — Number counters (GSAP snap)
 - [ ] 4.8 — Progress ring (proximo agendamento)
@@ -88,3 +89,4 @@ As sessoes anteriores ja implementaram:
 | 11 | 2026-04-03 | 2.1–2.7 | Button pink+ripple, TabBar glass+lucide, SkeletonCard content-aware, PageTransition y:24+expo, StaggerList useInView, EmptyState SVG, ActionSheet blur+bouncy | Build ok |
 | 12 | 2026-04-03 | 2.8–2.10 + 3.1–3.3 | ServiceCard, ProfessionalCard, TimeSlotPicker; Landing hero pink, Login/Cadastro upgrade, Home HeroGreeting + quick actions | Build ok |
 | 13 | 2026-04-03 | 3.4–3.8 | Visagismo pink card + lucide; Rotina AlertTriangle + gasto card; Profissionais FAB pink; Galeria toggle/skeleton/CTA pink | Build ok — Fase 3 completa |
+| 14 | 2026-04-03 | 4.1–4.3 + 4.5 | AgendamentoCard motion+lucide; SuccessScreen checkmark+partículas; Like heart+partículas Galeria; StaggerList scroll Rotina | Build ok |
