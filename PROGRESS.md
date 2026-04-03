@@ -5,7 +5,8 @@
 - **Nota atual:** 6.5/10
 - **Nota alvo:** 9.5/10
 - **Ultima sessao:** 2026-04-03
-- **Proxima acao:** Task 3.1 — Landing page (hero visual + gradients)
+- **Proxima acao:** Task 3.4 — Visagismo (flow redesign + animations)
+- **Nota atual:** 7.5/10
 
 ## Contexto das Sessoes Anteriores
 As sessoes anteriores ja implementaram:
@@ -46,9 +47,9 @@ As sessoes anteriores ja implementaram:
 - [x] 2.10 — Novo: TimeSlotPicker.tsx (grid de slots, gradient pink no selected, spring animation)
 
 ## Fase 3: Paginas Principais
-- [ ] 3.1 — Landing page (hero visual + gradients)
-- [ ] 3.2 — Login/Cadastro (visual upgrade)
-- [ ] 3.3 — Home/Dashboard (hero + quick actions + look do dia)
+- [x] 3.1 — Landing page (hero pink gradient, features, animações, CTA)
+- [x] 3.2 — Login/Cadastro (hero pink, InputField com focus ring, ArrowLeft, motion)
+- [x] 3.3 — Home/Dashboard (HeroGreeting pink, quick actions, AlertCard, ProximoAgendamento)
 - [ ] 3.4 — Visagismo (flow redesign + animations)
 - [ ] 3.5 — Galeria (masonry polish + interactions)
 - [ ] 3.6 — Looks (unificar com galeria, tabs internas)
@@ -84,3 +85,4 @@ As sessoes anteriores ja implementaram:
 | 9 | 2026-04-03 | 1.1 + 1.2 | tailwind.config.ts paleta completa; globals.css reescrito (pink primária, fundo #FFFBFC, text-page-title etc.) | Build ok |
 | 10 | 2026-04-03 | 1.3 + 1.4 | Inline styles removidos (TabBar, Button, EmptyState, ActionSheet, PremiumGate, Login, Home); GSAP instalado + lib/animations/{gsap,framer,hooks}.ts | Fase 1 completa |
 | 11 | 2026-04-03 | 2.1–2.7 | Button pink+ripple, TabBar glass+lucide, SkeletonCard content-aware, PageTransition y:24+expo, StaggerList useInView, EmptyState SVG, ActionSheet blur+bouncy | Build ok |
+| 12 | 2026-04-03 | 2.8–2.10 + 3.1–3.3 | ServiceCard, ProfessionalCard, TimeSlotPicker; Landing hero pink, Login/Cadastro upgrade, Home HeroGreeting + quick actions | Build ok |
