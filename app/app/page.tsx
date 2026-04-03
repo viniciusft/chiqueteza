@@ -140,10 +140,12 @@ function HomeContent({ userId, nome: nomeInicial }: { userId: string; nome: stri
             className="flex flex-col items-center gap-2 py-10"
             style={{ borderRadius: 20, backgroundColor: 'var(--surface)', border: '1.5px solid var(--color-silver)', boxShadow: 'var(--shadow-sm)' }}
           >
-            <span style={{ fontSize: 40 }}>✨</span>
-            <p className="font-bold text-gray-700" style={{ fontSize: 16 }}>Tudo em dia por aqui ✦</p>
-            <p className="text-gray-400 text-center" style={{ fontSize: 13 }}>
-              Nenhum alerta e nenhum agendamento próximo.
+            <span style={{ fontSize: 42 }}>✨</span>
+            <p style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 17, color: 'var(--foreground)' }}>
+              Você está em dia!
+            </p>
+            <p style={{ fontSize: 13, color: 'var(--foreground-muted)', textAlign: 'center', maxWidth: 220 }}>
+              Nenhum alerta e nenhum agendamento próximo. Aproveite!
             </p>
           </div>
         )}

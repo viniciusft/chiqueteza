@@ -12,6 +12,7 @@ import { PullToRefresh } from '@/components/ui/PullToRefresh'
 import { SkeletonList } from '@/components/ui/SkeletonCard'
 import { useCache } from '@/lib/cache/useCache'
 import { CACHE_KEYS } from '@/lib/cache/keys'
+import EmptyState from '@/components/ui/EmptyState'
 
 function diasAtraso(ultimoProcedimento: string, frequenciaDias: number): number {
   const ultimo = new Date(ultimoProcedimento)
@@ -190,13 +191,11 @@ function RotinaContent({ userId }: { userId: string }) {
           {showSkeleton ? (
             <SkeletonList count={3} height={76} />
           ) : (agendamentos ?? []).length === 0 ? (
-            <div
-              className="flex flex-col items-center gap-2 py-8"
-              style={{ borderRadius: 16, backgroundColor: '#fff', border: '1.5px solid #E8E8E8' }}
-            >
-              <span style={{ fontSize: 32 }}>📅</span>
-              <p className="text-gray-400 text-sm">Nenhum agendamento futuro</p>
-            </div>
+            <EmptyState
+              emoji="📅"
+              titulo="Agenda livre!"
+              descricao="Nenhum agendamento futuro. Que tal marcar seu próximo horário?"
+            />
           ) : (
             (agendamentos ?? []).map((ag) => (
               <AgendamentoCard key={ag.id} agendamento={ag} />

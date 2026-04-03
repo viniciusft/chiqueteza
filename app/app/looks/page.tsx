@@ -6,6 +6,7 @@ import Masonry from 'react-masonry-css'
 import { createClient } from '@/lib/supabase/client'
 import AppHeader from '@/components/ui/AppHeader'
 import PageContainer from '@/components/ui/PageContainer'
+import EmptyState from '@/components/ui/EmptyState'
 import { playClick } from '@/lib/sound'
 
 interface LookDiario {
@@ -314,21 +315,25 @@ export default function LooksPage() {
             )}
 
             {!loading && looks.length === 0 && (
-              <div className="flex flex-col items-center gap-4 py-16 px-5">
-                <span style={{ fontSize: 56 }}>📸</span>
-                <p className="font-bold text-gray-700" style={{ fontSize: 17 }}>Nenhum look ainda</p>
-                <p className="text-gray-400 text-center" style={{ fontSize: 14 }}>
-                  Registre seu primeiro look e acompanhe sua evolução!
-                </p>
-                <button
-                  onClick={() => router.push('/app/looks/novo')}
-                  style={{
-                    marginTop: 4, padding: '14px 28px', borderRadius: 14, border: 'none',
-                    backgroundColor: '#1B5E5A', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer',
-                  }}
-                >
-                  Registrar primeiro look
-                </button>
+              <div style={{ padding: '0 20px' }}>
+                <EmptyState
+                  emoji="📸"
+                  titulo="Seu diário começa aqui"
+                  descricao="Registre seus looks favoritos e acompanhe sua evolução de beleza ao longo do tempo."
+                  acao={
+                    <button
+                      onClick={() => router.push('/app/looks/novo')}
+                      style={{
+                        padding: '13px 28px', borderRadius: 14, border: 'none',
+                        backgroundColor: 'var(--color-ever-green)', color: '#fff',
+                        fontSize: 15, fontWeight: 700, cursor: 'pointer',
+                        fontFamily: 'var(--font-body)',
+                      }}
+                    >
+                      Registrar primeiro look
+                    </button>
+                  }
+                />
               </div>
             )}
 
@@ -531,23 +536,27 @@ export default function LooksPage() {
             )}
 
             {!loadingFavoritos && looksFavoritos.length === 0 && (
-              <div className="flex flex-col items-center gap-4 py-16 px-5">
-                <span style={{ fontSize: 56 }}>🔖</span>
-                <p className="font-bold text-gray-700" style={{ fontSize: 17 }}>
-                  {colecaoSelecionada ? 'Nenhum look nesta coleção' : 'Nenhum favorito ainda'}
-                </p>
-                <p className="text-gray-400 text-center" style={{ fontSize: 14 }}>
-                  Explore a galeria pública e salve looks que você ama!
-                </p>
-                <button
-                  onClick={() => router.push('/app/galeria')}
-                  style={{
-                    marginTop: 4, padding: '14px 28px', borderRadius: 14, border: 'none',
-                    backgroundColor: '#1B5E5A', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer',
-                  }}
-                >
-                  Explorar galeria
-                </button>
+              <div style={{ padding: '0 20px' }}>
+                <EmptyState
+                  emoji="🔖"
+                  titulo={colecaoSelecionada ? 'Coleção vazia' : 'Nenhum favorito ainda'}
+                  descricao={colecaoSelecionada
+                    ? 'Salve looks da galeria nesta coleção para encontrá-los aqui.'
+                    : 'Explore a galeria e salve os looks que inspiram você.'}
+                  acao={
+                    <button
+                      onClick={() => router.push('/app/galeria')}
+                      style={{
+                        padding: '13px 28px', borderRadius: 14, border: 'none',
+                        backgroundColor: 'var(--color-ever-green)', color: '#fff',
+                        fontSize: 15, fontWeight: 700, cursor: 'pointer',
+                        fontFamily: 'var(--font-body)',
+                      }}
+                    >
+                      Explorar galeria
+                    </button>
+                  }
+                />
               </div>
             )}
 
