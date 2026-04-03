@@ -292,7 +292,7 @@ function LooksNovoContent({ publicoInicial }: { publicoInicial: boolean }) {
                   padding: '14px',
                   borderRadius: 14,
                   border: 'none',
-                  backgroundColor: '#1B5E5A',
+                  background: 'linear-gradient(135deg, #FF3366, #C41A4A)',
                   color: '#fff',
                   fontSize: 15,
                   fontWeight: 700,
@@ -372,14 +372,14 @@ function LooksNovoContent({ publicoInicial }: { publicoInicial: boolean }) {
                     gap: 8,
                     padding: '12px 14px',
                     borderRadius: 14,
-                    border: `1.5px solid ${ativo ? '#1B5E5A' : '#E8E8E8'}`,
-                    backgroundColor: ativo ? '#E8F5F4' : '#fff',
+                    border: `1.5px solid ${ativo ? '#FF3366' : '#E8E8E8'}`,
+                    backgroundColor: ativo ? 'rgba(255,51,102,0.06)' : '#fff',
                     cursor: 'pointer',
                     transition: 'all 0.15s',
                   }}
                 >
                   <span style={{ fontSize: 20 }}>{c.emoji}</span>
-                  <span style={{ fontSize: 13, fontWeight: ativo ? 700 : 500, color: ativo ? '#1B5E5A' : '#444' }}>
+                  <span style={{ fontSize: 13, fontWeight: ativo ? 700 : 500, color: ativo ? 'var(--color-primary)' : '#444' }}>
                     {c.label}
                   </span>
                 </button>
@@ -406,14 +406,14 @@ function LooksNovoContent({ publicoInicial }: { publicoInicial: boolean }) {
                     gap: 6,
                     padding: '12px 8px',
                     borderRadius: 14,
-                    border: `1.5px solid ${ativo ? '#1B5E5A' : '#E8E8E8'}`,
-                    backgroundColor: ativo ? '#E8F5F4' : '#fff',
+                    border: `1.5px solid ${ativo ? '#FF3366' : '#E8E8E8'}`,
+                    backgroundColor: ativo ? 'rgba(255,51,102,0.06)' : '#fff',
                     cursor: 'pointer',
                     transition: 'all 0.15s',
                   }}
                 >
                   <span style={{ fontSize: 26 }}>{a.emoji}</span>
-                  <span style={{ fontSize: 12, fontWeight: ativo ? 700 : 500, color: ativo ? '#1B5E5A' : '#666' }}>
+                  <span style={{ fontSize: 12, fontWeight: ativo ? 700 : 500, color: ativo ? 'var(--color-primary)' : '#666' }}>
                     {a.label}
                   </span>
                 </button>
@@ -486,8 +486,8 @@ function LooksNovoContent({ publicoInicial }: { publicoInicial: boolean }) {
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 5,
-                    backgroundColor: '#E8F5F4',
-                    color: '#1B5E5A',
+                    background: 'linear-gradient(90deg, #FF3366, #F472A0)',
+                    color: '#fff',
                     borderRadius: 20,
                     padding: '5px 12px',
                     fontSize: 13,
@@ -497,7 +497,7 @@ function LooksNovoContent({ publicoInicial }: { publicoInicial: boolean }) {
                   #{tag}
                   <button
                     onClick={() => setHashtags((prev) => prev.filter((t) => t !== tag))}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#1B5E5A', fontSize: 14, lineHeight: 1, padding: 0 }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#fff', fontSize: 14, lineHeight: 1, padding: 0 }}
                   >
                     ×
                   </button>
@@ -562,7 +562,7 @@ function LooksNovoContent({ publicoInicial }: { publicoInicial: boolean }) {
               width: 46,
               height: 28,
               borderRadius: 14,
-              backgroundColor: isPublico ? '#1B5E5A' : '#D0D0D0',
+              backgroundColor: isPublico ? '#FF3366' : '#D0D0D0',
               position: 'relative',
               transition: 'background-color 0.2s',
               flexShrink: 0,
@@ -597,7 +597,7 @@ function LooksNovoContent({ publicoInicial }: { publicoInicial: boolean }) {
             padding: '16px',
             borderRadius: 16,
             border: 'none',
-            backgroundColor: salvando ? '#A0C4C2' : '#1B5E5A',
+            background: salvando ? 'rgba(255,51,102,0.5)' : 'linear-gradient(135deg, #FF3366, #C41A4A)',
             color: '#fff',
             fontSize: 16,
             fontWeight: 700,
