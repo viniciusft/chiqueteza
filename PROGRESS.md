@@ -8,7 +8,7 @@
 - **Fase atual:** 3 (Fases 1-3 completas)
 - **Nota atual:** 8.0/10
 - **Nota atual:** 8.5/10
-- **Proxima acao:** Fase 5 — Polish Final (5.1 inline styles, 5.2 emojis-icone, 5.5 WCAG)
+- **Proxima acao:** Fase 5 concluída — tarefas pendentes: 5.3 (onboarding), 5.7 (teste dispositivos reais)
 
 ## Contexto das Sessoes Anteriores
 As sessoes anteriores ja implementaram:
@@ -75,8 +75,8 @@ As sessoes anteriores ja implementaram:
 - [x] 5.2 — Eliminar TODOS os emojis-como-icone (Lock lucide no PremiumGate; lucide icons no visagismo/resultado)
 - [ ] 5.3 — Onboarding flow (3 telas)
 - [ ] 5.4 — Dark mode tokens (futuro)
-- [ ] 5.5 — Audit WCAG AA contraste
-- [ ] 5.6 — Performance (lazy load, code-split)
+- [x] 5.5 — Audit WCAG AA contraste (foreground-muted #A3A3A3→#737373; #888→#666, #999/#bbb→#767676 em 6 arquivos)
+- [x] 5.6 — Performance (Masonry dynamic import; loading=lazy+decoding=async em imagens das grades)
 - [ ] 5.7 — Teste em dispositivos reais
 
 ## Log de Sessoes
@@ -91,3 +91,4 @@ As sessoes anteriores ja implementaram:
 | 13 | 2026-04-03 | 3.4–3.8 | Visagismo pink card + lucide; Rotina AlertTriangle + gasto card; Profissionais FAB pink; Galeria toggle/skeleton/CTA pink | Build ok — Fase 3 completa |
 | 14 | 2026-04-03 | 4.1–4.3 + 4.5 | AgendamentoCard motion+lucide; SuccessScreen checkmark+partículas; Like heart+partículas Galeria; StaggerList scroll Rotina | Build ok |
 | 15 | 2026-04-03 | 5.1 + 5.2 | looks/page.tsx pink (tabs, tags, chips, skeletons, FAB); looks/novo pink (seleções, hashtags, toggle, CTA); visagismo/resultado lucide+pink; Logo+AppHeader+PremiumGate redesign | Build ok |
+| 16 | 2026-04-03 | 5.5 + 5.6 | WCAG AA: foreground-muted darkened, #888/#999/#bbb → AA-compliant em 6 arquivos; Masonry dynamic import; lazy images | Build ok |
