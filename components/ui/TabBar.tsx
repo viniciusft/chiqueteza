@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { motion } from 'framer-motion'
 import { playClick } from '@/lib/sound'
 
 interface Tab {
@@ -119,20 +120,31 @@ export default function TabBar() {
                 minHeight: 44,
               }}
             >
+              {/* Indicador ativo animado com layoutId */}
               {active && (
-                <div
+                <motion.div
+                  layoutId="tab-indicator"
                   style={{
                     position: 'absolute',
                     top: 0,
-                    left: '25%',
-                    right: '25%',
+                    left: '20%',
+                    right: '20%',
                     height: 3,
                     backgroundColor: 'var(--color-ever-green)',
                     borderRadius: '0 0 4px 4px',
                   }}
+                  transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                 />
               )}
-              {tab.icon}
+
+              {/* Ícone com scale ao ativar */}
+              <motion.div
+                animate={{ scale: active ? 1.1 : 1 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+              >
+                {tab.icon}
+              </motion.div>
+
               <span style={{ fontSize: 10, letterSpacing: '0.02em' }}>{tab.label}</span>
             </Link>
           )
