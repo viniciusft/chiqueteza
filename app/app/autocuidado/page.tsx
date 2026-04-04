@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence, useInView } from 'framer-motion'
-import { Plus, ChevronLeft, ChevronRight, Flame, Check, X, Bell, BellOff } from 'lucide-react'
+import { Plus, ChevronLeft, ChevronRight, Flame, X, Bell, BellOff, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -176,15 +176,32 @@ function ProgressoHoje({ feitas, total }: { feitas: number; total: number }) {
 // ─── Card de rotina ────────────────────────────────────────────────────
 
 function RotinaCard({
-  rotina, concluida, onToggle,
+  rotina, concluida, onToggle, onDelete,
 }: {
   rotina: RotinaBeleza
   concluida: boolean
   onToggle: () => void
+  onDelete?: (id: string) => void
 }) {
   return (
+    <div style={{ position: 'relative', marginBottom: 8 }}>
+      {/* Fundo vermelho (delete) */}
+      {onDelete && (
+        <div style={{
+          position: 'absolute', right: 0, top: 0, bottom: 0, width: 72,
+          background: 'linear-gradient(135deg, #EF4444, #DC2626)',
+          borderRadius: '0 14px 14px 0',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <Trash2 size={20} color="#fff" />
+        </div>
+      )}
     <motion.div
       layout
+      drag={onDelete ? 'x' : false}
+      dragConstraints={{ left: -72, right: 0 }}
+      dragElastic={0.08}
+      onDragEnd={(_, info) => { if (info.offset.x < -60 && onDelete) onDelete(rotina.id) }}
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       style={{
@@ -192,7 +209,7 @@ function RotinaCard({
         background: 'var(--surface)',
         border: `1.5px solid ${concluida ? 'rgba(255,51,102,0.18)' : '#EDEDED'}`,
         borderRadius: 14, padding: '14px 16px',
-        marginBottom: 8,
+        position: 'relative',
         transition: 'border 0.18s',
       }}
     >
@@ -221,6 +238,7 @@ function RotinaCard({
         </div>
       )}
     </motion.div>
+    </div>
   )
 }
 
@@ -688,6 +706,18 @@ function AutocuidadoContent({ userId }: { userId: string }) {
     }
   }
 
+  async function handleDeleteRotina(rotinaId: string) {
+    const backup = rotinas.find(r => r.id === rotinaId)
+    setRotinas(prev => prev.filter(r => r.id !== rotinaId))
+    const { error } = await supabase.from('checklist_rotinas').delete().eq('id', rotinaId)
+    if (error) {
+      if (backup) setRotinas(prev => [backup, ...prev])
+      toast.error('Erro ao remover rotina')
+    } else {
+      toast.success('Rotina removida')
+    }
+  }
+
   // ─── Render ─────────────────────────────────────────────────────────
 
   return (
@@ -743,22 +773,46 @@ function AutocuidadoContent({ userId }: { userId: string }) {
                   ))}
                 </div>
               ) : rotinasDeHoje.length === 0 ? (
-                <EmptyState
-                  emoji="🌿"
-                  titulo="Nenhuma rotina para hoje"
-                  descricao="Crie sua primeira rotina de autocuidado"
-                  acao={
-                    <motion.button whileTap={{ scale: 0.96 }} onClick={() => setSheetAberto(true)}
-                      style={{ padding: '10px 24px', borderRadius: 12, border: 'none', cursor: 'pointer',
-                        background: 'linear-gradient(135deg, #FF3366, #C41A4A)', color: '#fff',
-                        fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-body)' }}>
-                      Criar rotina
-                    </motion.button>
-                  }
-                />
+                <motion.div
+                  initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+                  style={{
+                    textAlign: 'center', padding: '40px 24px',
+                    background: 'linear-gradient(135deg, #FFF0F3 0%, #FFFBFC 60%, #FFF0F3 100%)',
+                    borderRadius: 20, border: '1.5px solid rgba(255,51,102,0.12)',
+                  }}
+                >
+                  <div style={{ fontSize: 48, marginBottom: 12 }}>🌿</div>
+                  <p style={{ fontWeight: 700, fontSize: 16, color: 'var(--foreground)', margin: '0 0 8px' }}>
+                    Comece seu autocuidado hoje
+                  </p>
+                  <p style={{ fontSize: 14, color: 'var(--foreground-muted)', margin: '0 0 20px', lineHeight: 1.5 }}>
+                    Pequenos gestos diários fazem toda a diferença. Crie sua primeira rotina e sinta a mudança!
+                  </p>
+                  <motion.button
+                    whileTap={{ scale: 0.96 }} onClick={() => setSheetAberto(true)}
+                    style={{
+                      padding: '12px 28px', borderRadius: 14, border: 'none', cursor: 'pointer',
+                      background: 'linear-gradient(135deg, #FF3366, #C41A4A)', color: '#fff',
+                      fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-body)',
+                      display: 'inline-flex', alignItems: 'center', gap: 8,
+                    }}
+                  >
+                    <Plus size={18} /> Criar minha primeira rotina
+                  </motion.button>
+                </motion.div>
               ) : (
                 <>
                   <ProgressoHoje feitas={concluidas.size} total={rotinasDeHoje.length} />
+                  {concluidas.size > 0 && concluidas.size < rotinasDeHoje.length && (
+                    <p style={{
+                      textAlign: 'center', fontSize: 13, color: 'var(--foreground-muted)',
+                      margin: '4px 0 12px', fontStyle: 'italic',
+                    }}>
+                      {rotinasDeHoje.length - concluidas.size === 1
+                        ? 'Só mais uma! Você está quase lá 💪'
+                        : `Faltam ${rotinasDeHoje.length - concluidas.size}. Continue assim! ✨`}
+                    </p>
+                  )}
                   <div style={{ marginTop: 8 }}>
                     {rotinasDeHoje.map(r => (
                       <RotinaCard
@@ -766,6 +820,7 @@ function AutocuidadoContent({ userId }: { userId: string }) {
                         rotina={r}
                         concluida={concluidas.has(r.id)}
                         onToggle={() => toggleCompletacao(r.id)}
+                        onDelete={handleDeleteRotina}
                       />
                     ))}
                   </div>
