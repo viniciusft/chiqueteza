@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence, useInView } from 'framer-motion'
-import { Plus, ChevronLeft, ChevronRight, Flame, Check, X, Bell, BellOff } from 'lucide-react'
+import { Plus, ChevronLeft, ChevronRight, Flame, X, Bell, BellOff, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -75,10 +75,9 @@ function diaDaSemanaHoje(): number {
 function rotinaDeHoje(r: RotinaBeleza): boolean {
   if (!r.ativa) return false
   if (r.frequencia === 'diaria') return true
-  if (r.frequencia === 'semanal' || r.frequencia === 'personalizada') {
-    return (r.dias_semana ?? []).includes(diaDaSemanaHoje())
-  }
-  return false
+  // semanal/personalizada: verifica dias_semana; null = todos os dias
+  if (!r.dias_semana) return true
+  return r.dias_semana.includes(diaDaSemanaHoje())
 }
 
 // ─── Checkbox animado ─────────────────────────────────────────────────
@@ -177,15 +176,32 @@ function ProgressoHoje({ feitas, total }: { feitas: number; total: number }) {
 // ─── Card de rotina ────────────────────────────────────────────────────
 
 function RotinaCard({
-  rotina, concluida, onToggle,
+  rotina, concluida, onToggle, onDelete,
 }: {
   rotina: RotinaBeleza
   concluida: boolean
   onToggle: () => void
+  onDelete?: (id: string) => void
 }) {
   return (
+    <div style={{ position: 'relative', marginBottom: 8 }}>
+      {/* Fundo vermelho (delete) */}
+      {onDelete && (
+        <div style={{
+          position: 'absolute', right: 0, top: 0, bottom: 0, width: 72,
+          background: 'linear-gradient(135deg, #EF4444, #DC2626)',
+          borderRadius: '0 14px 14px 0',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <Trash2 size={20} color="#fff" />
+        </div>
+      )}
     <motion.div
       layout
+      drag={onDelete ? 'x' : false}
+      dragConstraints={{ left: -72, right: 0 }}
+      dragElastic={0.08}
+      onDragEnd={(_, info) => { if (info.offset.x < -60 && onDelete) onDelete(rotina.id) }}
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       style={{
@@ -193,7 +209,7 @@ function RotinaCard({
         background: 'var(--surface)',
         border: `1.5px solid ${concluida ? 'rgba(255,51,102,0.18)' : '#EDEDED'}`,
         borderRadius: 14, padding: '14px 16px',
-        marginBottom: 8,
+        position: 'relative',
         transition: 'border 0.18s',
       }}
     >
@@ -222,6 +238,7 @@ function RotinaCard({
         </div>
       )}
     </motion.div>
+    </div>
   )
 }
 
@@ -291,6 +308,21 @@ function MiniCalendario({ completacoes }: { completacoes: Completacao[] }) {
   )
 }
 
+// ─── Templates ────────────────────────────────────────────────────────
+
+const TEMPLATES = [
+  { emoji: '🧴', nome: 'Hidratante facial', categoria: 'pele' },
+  { emoji: '☀️', nome: 'Protetor solar', categoria: 'pele' },
+  { emoji: '💧', nome: 'Beber água', categoria: 'saude' },
+  { emoji: '💊', nome: 'Vitaminas', categoria: 'saude' },
+  { emoji: '🧖', nome: 'Máscara facial', categoria: 'pele' },
+  { emoji: '🏃', nome: 'Exercício', categoria: 'exercicio' },
+  { emoji: '🧘', nome: 'Meditação', categoria: 'mente' },
+  { emoji: '💆', nome: 'Cuidado com cabelo', categoria: 'cabelo' },
+  { emoji: '🫧', nome: 'Limpeza de pele', categoria: 'pele' },
+  { emoji: '💅', nome: 'Cuidado com unhas', categoria: 'unhas' },
+] as const
+
 // ─── Formulário nova rotina ────────────────────────────────────────────
 
 function FormNovaRotina({ onSalvar, onClose }: { onSalvar: () => void; onClose: () => void }) {
@@ -299,8 +331,8 @@ function FormNovaRotina({ onSalvar, onClose }: { onSalvar: () => void; onClose: 
   const [emojiSelecionado, setEmojiSelecionado] = useState('✨')
   const [nome, setNome] = useState('')
   const [categoria, setCategoria] = useState('pele')
-  const [frequencia, setFrequencia] = useState<'diaria' | 'semanal'>('diaria')
-  const [diasSemana, setDiasSemana] = useState<number[]>([])
+  const [mostrarEmojis, setMostrarEmojis] = useState(false)
+  const [diasSemana, setDiasSemana] = useState<number[]>([0,1,2,3,4,5,6]) // todos = diária por default
   const [lembrete, setLembrete] = useState(false)
   const [lembreteHora, setLembreteHora] = useState('08:00')
 
@@ -310,30 +342,31 @@ function FormNovaRotina({ onSalvar, onClose }: { onSalvar: () => void; onClose: 
 
   async function salvar() {
     if (!nome.trim()) { toast.error('Informe o nome da rotina'); return }
-    if (frequencia === 'semanal' && diasSemana.length === 0) {
-      toast.error('Selecione pelo menos um dia da semana')
-      return
-    }
     setSalvando(true)
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { toast.error('Sessão expirada'); setSalvando(false); return }
 
-    const { error } = await supabase.from('checklist_rotinas').insert({
+    // frequencia: se todos os 7 dias selecionados (ou nenhum selecionado) = diaria
+    const todosOsDias = diasSemana.length === 7 || diasSemana.length === 0
+    const freqFinal = todosOsDias ? 'diaria' : 'semanal'
+    const diasFinal = todosOsDias ? null : diasSemana
+
+    const payload: Record<string, unknown> = {
       usuario_id: user.id,
       emoji: emojiSelecionado,
       nome: nome.trim(),
       categoria,
-      frequencia,
-      dias_semana: frequencia === 'semanal' ? diasSemana : null,
+      frequencia: freqFinal,
+      dias_semana: diasFinal,
       lembrete_ativo: lembrete,
       lembrete_hora: lembrete ? lembreteHora : null,
-      streak_atual: 0,
-      streak_maximo: 0,
-      ativa: true,
-    })
+    }
+
+    const { error } = await supabase.from('checklist_rotinas').insert(payload)
 
     if (error) {
-      toast.error('Erro ao salvar rotina')
+      console.error('[autocuidado] insert error:', error)
+      toast.error(`Erro ao salvar: ${error.message}`)
       setSalvando(false)
       return
     }
@@ -345,14 +378,66 @@ function FormNovaRotina({ onSalvar, onClose }: { onSalvar: () => void; onClose: 
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {/* Emoji picker */}
+
+      {/* Templates rápidos */}
       <div>
+        <p style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 600, color: 'var(--foreground-muted)' }}>
+          ⚡ Adicionar rapidamente
+        </p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {TEMPLATES.map(t => (
+            <motion.button
+              key={t.nome} type="button" whileTap={{ scale: 0.92 }}
+              onClick={() => {
+                setEmojiSelecionado(t.emoji)
+                setNome(t.nome)
+                setCategoria(t.categoria)
+              }}
+              style={{
+                padding: '7px 12px', borderRadius: 20, border: '1.5px solid #E8E8E8',
+                background: nome === t.nome ? 'rgba(255,51,102,0.08)' : '#FAFAFA',
+                borderColor: nome === t.nome ? '#FF3366' : '#E8E8E8',
+                color: nome === t.nome ? '#FF3366' : 'var(--foreground)',
+                fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                fontFamily: 'var(--font-body)',
+              }}
+            >
+              {t.emoji} {t.nome}
+            </motion.button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ height: 1, background: '#F0F0F0' }} />
+
+      {/* Emoji picker (colapsável) */}
+      <div>
+        <button
+          type="button"
+          onClick={() => setMostrarEmojis(v => !v)}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 8, background: 'none',
+            border: 'none', cursor: 'pointer', padding: 0, marginBottom: mostrarEmojis ? 10 : 0,
+          }}
+        >
+          <span style={{ fontSize: 24 }}>{emojiSelecionado}</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--foreground-muted)' }}>
+            {mostrarEmojis ? '▲ Fechar emojis' : '▼ Trocar emoji'}
+          </span>
+        </button>
+        <AnimatePresence>
+          {mostrarEmojis && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }}
+              style={{ overflow: 'hidden' }}
+            >
         <p style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 600, color: 'var(--foreground-muted)' }}>Emoji</p>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {EMOJIS.map(e => (
             <motion.button
-              key={e} whileTap={{ scale: 0.85 }}
-              onClick={() => setEmojiSelecionado(e)}
+              key={e} type="button" whileTap={{ scale: 0.85 }}
+              onClick={() => { setEmojiSelecionado(e); setMostrarEmojis(false) }}
               style={{
                 width: 40, height: 40, borderRadius: 10, fontSize: 20,
                 border: e === emojiSelecionado ? '2px solid #FF3366' : '1.5px solid #E8E8E8',
@@ -364,6 +449,9 @@ function FormNovaRotina({ onSalvar, onClose }: { onSalvar: () => void; onClose: 
             </motion.button>
           ))}
         </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Nome */}
@@ -404,55 +492,37 @@ function FormNovaRotina({ onSalvar, onClose }: { onSalvar: () => void; onClose: 
         </div>
       </div>
 
-      {/* Frequência */}
+      {/* Frequência — seletor livre de dias */}
       <div>
-        <p style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 600, color: 'var(--foreground-muted)' }}>Frequência</p>
-        <div style={{ display: 'flex', gap: 8 }}>
-          {(['diaria', 'semanal'] as const).map(f => (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--foreground-muted)' }}>Quando fazer</p>
+          <span style={{ fontSize: 12, color: '#FF3366', fontWeight: 600 }}>
+            {diasSemana.length === 7 ? '☀️ Todos os dias' :
+             diasSemana.length === 0 ? 'Nenhum dia' :
+             diasSemana.length === 5 && !diasSemana.includes(0) && !diasSemana.includes(6) ? '💼 Dias úteis' :
+             `${diasSemana.length}× por semana`}
+          </span>
+        </div>
+        <div style={{ display: 'flex', gap: 6, justifyContent: 'space-between' }}>
+          {DIAS_SEMANA.map((d, i) => (
             <motion.button
-              key={f} whileTap={{ scale: 0.94 }}
-              onClick={() => setFrequencia(f)}
+              key={i} whileTap={{ scale: 0.88 }} type="button"
+              onClick={() => toggleDia(i)}
               style={{
-                flex: 1, padding: '10px', borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: 'pointer',
-                border: `1.5px solid ${frequencia === f ? '#FF3366' : '#E8E8E8'}`,
-                background: frequencia === f ? 'rgba(255,51,102,0.06)' : '#fff',
-                color: frequencia === f ? '#FF3366' : 'var(--foreground)',
+                flex: 1, padding: '9px 0', borderRadius: 10, fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                border: `1.5px solid ${diasSemana.includes(i) ? '#FF3366' : '#E8E8E8'}`,
+                background: diasSemana.includes(i) ? 'rgba(255,51,102,0.10)' : '#FAFAFA',
+                color: diasSemana.includes(i) ? '#FF3366' : 'var(--foreground-muted)',
+                transition: 'all 0.15s',
               }}
             >
-              {f === 'diaria' ? '☀️ Diária' : '📅 Semanal'}
+              {d}
             </motion.button>
           ))}
         </div>
-
-        {/* Dias da semana */}
-        <AnimatePresence>
-          {frequencia === 'semanal' && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.22 }}
-              style={{ overflow: 'hidden' }}
-            >
-              <div style={{ display: 'flex', gap: 6, marginTop: 12, justifyContent: 'space-between' }}>
-                {DIAS_SEMANA.map((d, i) => (
-                  <motion.button
-                    key={i} whileTap={{ scale: 0.9 }}
-                    onClick={() => toggleDia(i)}
-                    style={{
-                      flex: 1, padding: '8px 0', borderRadius: 10, fontSize: 11, fontWeight: 600, cursor: 'pointer',
-                      border: `1.5px solid ${diasSemana.includes(i) ? '#FF3366' : '#E8E8E8'}`,
-                      background: diasSemana.includes(i) ? 'rgba(255,51,102,0.08)' : '#fff',
-                      color: diasSemana.includes(i) ? '#FF3366' : 'var(--foreground-muted)',
-                    }}
-                  >
-                    {d}
-                  </motion.button>
-                ))}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--foreground-muted)', textAlign: 'center' }}>
+          Toque nos dias para selecionar
+        </p>
       </div>
 
       {/* Lembrete */}
@@ -636,6 +706,18 @@ function AutocuidadoContent({ userId }: { userId: string }) {
     }
   }
 
+  async function handleDeleteRotina(rotinaId: string) {
+    const backup = rotinas.find(r => r.id === rotinaId)
+    setRotinas(prev => prev.filter(r => r.id !== rotinaId))
+    const { error } = await supabase.from('checklist_rotinas').delete().eq('id', rotinaId)
+    if (error) {
+      if (backup) setRotinas(prev => [backup, ...prev])
+      toast.error('Erro ao remover rotina')
+    } else {
+      toast.success('Rotina removida')
+    }
+  }
+
   // ─── Render ─────────────────────────────────────────────────────────
 
   return (
@@ -691,22 +773,46 @@ function AutocuidadoContent({ userId }: { userId: string }) {
                   ))}
                 </div>
               ) : rotinasDeHoje.length === 0 ? (
-                <EmptyState
-                  emoji="🌿"
-                  titulo="Nenhuma rotina para hoje"
-                  descricao="Crie sua primeira rotina de autocuidado"
-                  acao={
-                    <motion.button whileTap={{ scale: 0.96 }} onClick={() => setSheetAberto(true)}
-                      style={{ padding: '10px 24px', borderRadius: 12, border: 'none', cursor: 'pointer',
-                        background: 'linear-gradient(135deg, #FF3366, #C41A4A)', color: '#fff',
-                        fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-body)' }}>
-                      Criar rotina
-                    </motion.button>
-                  }
-                />
+                <motion.div
+                  initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+                  style={{
+                    textAlign: 'center', padding: '40px 24px',
+                    background: 'linear-gradient(135deg, #FFF0F3 0%, #FFFBFC 60%, #FFF0F3 100%)',
+                    borderRadius: 20, border: '1.5px solid rgba(255,51,102,0.12)',
+                  }}
+                >
+                  <div style={{ fontSize: 48, marginBottom: 12 }}>🌿</div>
+                  <p style={{ fontWeight: 700, fontSize: 16, color: 'var(--foreground)', margin: '0 0 8px' }}>
+                    Comece seu autocuidado hoje
+                  </p>
+                  <p style={{ fontSize: 14, color: 'var(--foreground-muted)', margin: '0 0 20px', lineHeight: 1.5 }}>
+                    Pequenos gestos diários fazem toda a diferença. Crie sua primeira rotina e sinta a mudança!
+                  </p>
+                  <motion.button
+                    whileTap={{ scale: 0.96 }} onClick={() => setSheetAberto(true)}
+                    style={{
+                      padding: '12px 28px', borderRadius: 14, border: 'none', cursor: 'pointer',
+                      background: 'linear-gradient(135deg, #FF3366, #C41A4A)', color: '#fff',
+                      fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-body)',
+                      display: 'inline-flex', alignItems: 'center', gap: 8,
+                    }}
+                  >
+                    <Plus size={18} /> Criar minha primeira rotina
+                  </motion.button>
+                </motion.div>
               ) : (
                 <>
                   <ProgressoHoje feitas={concluidas.size} total={rotinasDeHoje.length} />
+                  {concluidas.size > 0 && concluidas.size < rotinasDeHoje.length && (
+                    <p style={{
+                      textAlign: 'center', fontSize: 13, color: 'var(--foreground-muted)',
+                      margin: '4px 0 12px', fontStyle: 'italic',
+                    }}>
+                      {rotinasDeHoje.length - concluidas.size === 1
+                        ? 'Só mais uma! Você está quase lá 💪'
+                        : `Faltam ${rotinasDeHoje.length - concluidas.size}. Continue assim! ✨`}
+                    </p>
+                  )}
                   <div style={{ marginTop: 8 }}>
                     {rotinasDeHoje.map(r => (
                       <RotinaCard
@@ -714,6 +820,7 @@ function AutocuidadoContent({ userId }: { userId: string }) {
                         rotina={r}
                         concluida={concluidas.has(r.id)}
                         onToggle={() => toggleCompletacao(r.id)}
+                        onDelete={handleDeleteRotina}
                       />
                     ))}
                   </div>

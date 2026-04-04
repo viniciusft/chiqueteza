@@ -2,11 +2,11 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Plus, Search, X, ExternalLink, ChevronDown, ChevronUp,
-  ShoppingBag, Trash2, ArrowLeft,
+  ShoppingBag, Trash2, Camera,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
@@ -28,7 +28,7 @@ interface ProdutoWishlist {
   preco_estimado: number | null
   foto_url: string | null
   link_compra: string | null
-  status: 'quero' | 'tenho' | 'comprei'
+  status: 'quero' | 'tenho' | 'comprei' // tenho exibido como comprei
   prioridade: 'alta' | 'media' | 'baixa'
   notas: string | null
   tags: string[] | null
@@ -50,16 +50,14 @@ const CATEGORIAS = [
 
 type CategoriaValue = (typeof CATEGORIAS)[number]['value']
 
-const STATUS_CYCLE: Record<ProdutoWishlist['status'], ProdutoWishlist['status']> = {
-  quero: 'tenho',
-  tenho: 'comprei',
-  comprei: 'quero',
+// tenho → comprei na UI; DB mantém o valor original para compat
+function statusEfetivo(s: ProdutoWishlist['status']): 'quero' | 'comprei' {
+  return s === 'quero' ? 'quero' : 'comprei'
 }
 
-const STATUS_CONFIG: Record<ProdutoWishlist['status'], { label: string; color: string; bg: string; emoji: string }> = {
-  quero:   { label: 'Quero',   color: '#FF3366', bg: 'rgba(255,51,102,0.09)',  emoji: '💭' },
-  tenho:   { label: 'Tenho',   color: '#1B5E5A', bg: 'rgba(27,94,90,0.09)',   emoji: '✅' },
-  comprei: { label: 'Comprei', color: '#D4A843', bg: 'rgba(212,168,67,0.12)', emoji: '🛍️' },
+const STATUS_CONFIG: Record<'quero' | 'comprei', { label: string; color: string; bg: string; emoji: string }> = {
+  quero:   { label: 'Quero',   color: '#FF3366', bg: 'rgba(255,51,102,0.09)', emoji: '💭' },
+  comprei: { label: 'Comprei', color: '#1B5E5A', bg: 'rgba(27,94,90,0.09)',  emoji: '🛍️' },
 }
 
 const PRIORIDADE_CONFIG: Record<ProdutoWishlist['prioridade'], { color: string; dot: string }> = {
@@ -112,7 +110,8 @@ function ProdutoCard({
   onDelete: (id: string, nome: string) => void
   showConfetti: boolean
 }) {
-  const status = STATUS_CONFIG[produto.status]
+  const efetivo = statusEfetivo(produto.status)
+  const status = STATUS_CONFIG[efetivo]
   const prio = PRIORIDADE_CONFIG[produto.prioridade]
 
   return (
@@ -221,22 +220,42 @@ function ProdutoCard({
             </div>
           </div>
 
-          {/* Status toggle */}
-          <motion.button
-            whileTap={{ scale: 0.88 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 22 }}
-            onClick={() => onStatusChange(produto.id, STATUS_CYCLE[produto.status])}
-            style={{
-              flexShrink: 0,
-              padding: '5px 10px', borderRadius: 20,
-              border: `1.5px solid ${status.color}`,
-              background: status.bg, color: status.color,
-              fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 700,
-              cursor: 'pointer', whiteSpace: 'nowrap',
-            }}
-          >
-            {status.label}
-          </motion.button>
+          {/* Ação de status */}
+          {efetivo === 'quero' ? (
+            <motion.button
+              whileTap={{ scale: 0.88 }}
+              onClick={() => onStatusChange(produto.id, 'comprei')}
+              style={{
+                flexShrink: 0,
+                padding: '6px 10px', borderRadius: 20,
+                border: '1.5px solid #1B5E5A',
+                background: 'rgba(27,94,90,0.09)', color: '#1B5E5A',
+                fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 700,
+                cursor: 'pointer', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 4,
+              }}
+            >
+              ✓ Comprei!
+            </motion.button>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+              <span style={{
+                padding: '4px 8px', borderRadius: 20, fontSize: 10, fontWeight: 700,
+                background: 'rgba(27,94,90,0.09)', color: '#1B5E5A', whiteSpace: 'nowrap',
+              }}>
+                🛍️ Comprado
+              </span>
+              <motion.button
+                whileTap={{ scale: 0.9 }}
+                onClick={() => onStatusChange(produto.id, 'quero')}
+                style={{
+                  fontSize: 10, color: '#A3A3A3', background: 'none',
+                  border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', padding: 0,
+                }}
+              >
+                ↩ desfazer
+              </motion.button>
+            </div>
+          )}
         </div>
       </motion.div>
     </div>
@@ -311,19 +330,52 @@ const FORM_EMPTY = {
   subcategoria: '',
   preco_estimado: '',
   link_compra: '',
-  foto_url: '',
   prioridade: 'media' as ProdutoWishlist['prioridade'],
   notas: '',
 }
 
+async function comprimirFoto(file: File): Promise<{ blob: Blob; preview: string }> {
+  return new Promise((resolve) => {
+    const img = new Image()
+    const url = URL.createObjectURL(file)
+    img.onload = () => {
+      const MAX = 800
+      let { width, height } = img
+      if (width > height) { if (width > MAX) { height = Math.round(height * MAX / width); width = MAX } }
+      else { if (height > MAX) { width = Math.round(width * MAX / height); height = MAX } }
+      const canvas = document.createElement('canvas')
+      canvas.width = width; canvas.height = height
+      canvas.getContext('2d')!.drawImage(img, 0, 0, width, height)
+      URL.revokeObjectURL(url)
+      canvas.toBlob(blob => {
+        resolve({ blob: blob!, preview: canvas.toDataURL('image/jpeg', 0.82) })
+      }, 'image/jpeg', 0.82)
+    }
+    img.src = url
+  })
+}
+
 function FormAdicionarProduto({
-  onSalvar, salvando,
+  userId, onSalvar, salvando,
 }: {
-  onSalvar: (dados: typeof FORM_EMPTY) => Promise<void>
+  userId: string
+  onSalvar: (dados: typeof FORM_EMPTY & { foto_blob: Blob | null }) => Promise<void>
   salvando: boolean
 }) {
   const [form, setForm] = useState(FORM_EMPTY)
   const set = (k: keyof typeof FORM_EMPTY, v: string) => setForm(f => ({ ...f, [k]: v }))
+  const inputFotoRef = useRef<HTMLInputElement>(null)
+  const [fotoBlob, setFotoBlob] = useState<Blob | null>(null)
+  const [fotoPreview, setFotoPreview] = useState<string | null>(null)
+
+  async function handleFoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const { blob, preview } = await comprimirFoto(file)
+    setFotoBlob(blob)
+    setFotoPreview(preview)
+    e.target.value = ''
+  }
 
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '11px 14px', borderRadius: 12,
@@ -334,7 +386,7 @@ function FormAdicionarProduto({
 
   return (
     <form
-      onSubmit={async e => { e.preventDefault(); await onSalvar(form) }}
+      onSubmit={async e => { e.preventDefault(); await onSalvar({ ...form, foto_blob: fotoBlob }) }}
       style={{ display: 'flex', flexDirection: 'column', gap: 14 }}
     >
       {/* Nome */}
@@ -433,18 +485,46 @@ function FormAdicionarProduto({
         />
       </div>
 
-      {/* URL de foto */}
+      {/* Upload de foto */}
       <div>
-        <label style={{ fontSize: 12, fontWeight: 700, color: '#525252', marginBottom: 6, display: 'block' }}>
-          URL da foto (opcional)
+        <label style={{ fontSize: 12, fontWeight: 700, color: '#525252', marginBottom: 8, display: 'block' }}>
+          Foto do produto (opcional)
         </label>
-        <input
-          type="url"
-          placeholder="https://..."
-          value={form.foto_url}
-          onChange={e => set('foto_url', e.target.value)}
-          style={inputStyle}
-        />
+        <input ref={inputFotoRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFoto} />
+        {fotoPreview ? (
+          <div style={{ position: 'relative', display: 'inline-block' }}>
+            <img
+              src={fotoPreview} alt="Preview"
+              style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 12, display: 'block', border: '2px solid #FF3366' }}
+            />
+            <button
+              type="button"
+              onClick={() => { setFotoBlob(null); setFotoPreview(null) }}
+              style={{
+                position: 'absolute', top: -8, right: -8,
+                width: 22, height: 22, borderRadius: '50%',
+                background: '#EF4444', border: 'none', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff',
+              }}
+            >
+              <X size={12} />
+            </button>
+          </div>
+        ) : (
+          <motion.button
+            type="button"
+            whileTap={{ scale: 0.96 }}
+            onClick={() => inputFotoRef.current?.click()}
+            style={{
+              width: '100%', padding: '14px', borderRadius: 12,
+              border: '1.5px dashed #E8E8E8', background: '#FAFAFA',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              cursor: 'pointer', color: '#A3A3A3', fontFamily: 'var(--font-body)', fontSize: 14,
+            }}
+          >
+            <Camera size={18} /> Adicionar foto
+          </motion.button>
+        )}
       </div>
 
       {/* Prioridade */}
@@ -524,7 +604,7 @@ export default function WishlistPage() {
   const [busca, setBusca] = useState('')
   const [filtroCategoria, setFiltroCategoria] = useState<CategoriaValue>(null)
   const [confettiId, setConfettiId] = useState<string | null>(null)
-  const [secoesAbertas, setSecoesAbertas] = useState({ quero: true, tenho: true, comprei: false })
+  const [secoesAbertas, setSecoesAbertas] = useState({ quero: true, comprei: false })
 
   const carregarProdutos = useCallback(async (uid: string) => {
     const supabase = createClient()
@@ -557,16 +637,18 @@ export default function WishlistPage() {
   })
 
   const grupos = {
-    quero: filtrados.filter(p => p.status === 'quero'),
-    tenho: filtrados.filter(p => p.status === 'tenho'),
-    comprei: filtrados.filter(p => p.status === 'comprei'),
+    quero:   filtrados.filter(p => p.status === 'quero'),
+    comprei: filtrados.filter(p => p.status !== 'quero'), // tenho + comprei
   }
+
+  const totalEstimado = grupos.quero
+    .filter(p => p.preco_estimado)
+    .reduce((acc, p) => acc + (p.preco_estimado ?? 0), 0)
 
   // Totais (sem filtro de busca — para o header)
   const totais = {
-    quero: produtos.filter(p => p.status === 'quero').length,
-    tenho: produtos.filter(p => p.status === 'tenho').length,
-    comprei: produtos.filter(p => p.status === 'comprei').length,
+    quero:   produtos.filter(p => p.status === 'quero').length,
+    comprei: produtos.filter(p => p.status !== 'quero').length,
   }
 
   async function handleStatusChange(id: string, novoStatus: ProdutoWishlist['status']) {
@@ -581,7 +663,7 @@ export default function WishlistPage() {
 
     setProdutos(prev => prev.map(p => p.id === id ? { ...p, status: novoStatus } : p))
 
-    if (novoStatus === 'comprei') {
+    if (novoStatus === 'comprei' || novoStatus === 'tenho') {
       setSecoesAbertas(s => ({ ...s, comprei: true }))
       setConfettiId(id)
       setTimeout(() => setConfettiId(null), 1200)
@@ -610,10 +692,25 @@ export default function WishlistPage() {
     toast.success(`"${nome}" removido da wishlist`)
   }
 
-  async function handleSalvar(dados: typeof FORM_EMPTY) {
+  async function handleSalvar(dados: typeof FORM_EMPTY & { foto_blob: Blob | null }) {
     if (!userId) return
     setSalvando(true)
     const supabase = createClient()
+
+    // Upload da foto
+    let fotoUrl: string | null = null
+    if (dados.foto_blob) {
+      const path = `${userId}/${crypto.randomUUID()}.jpg`
+      const { error: uploadErr } = await supabase.storage
+        .from('wishlist-fotos')
+        .upload(path, dados.foto_blob, { contentType: 'image/jpeg' })
+      if (uploadErr) {
+        toast('Foto não salva — crie o bucket wishlist-fotos no Supabase', { icon: '⚠️' })
+      } else {
+        fotoUrl = supabase.storage.from('wishlist-fotos').getPublicUrl(path).data.publicUrl
+      }
+    }
+
     const { data, error } = await supabase
       .from('wishlist_produtos')
       .insert({
@@ -624,7 +721,7 @@ export default function WishlistPage() {
         subcategoria: dados.subcategoria.trim() || null,
         preco_estimado: dados.preco_estimado ? parseFloat(dados.preco_estimado) : null,
         link_compra: dados.link_compra.trim() || null,
-        foto_url: dados.foto_url.trim() || null,
+        foto_url: fotoUrl,
         prioridade: dados.prioridade,
         notas: dados.notas.trim() || null,
         status: 'quero',
@@ -670,11 +767,10 @@ export default function WishlistPage() {
 
           {temProdutos && (
             <p className="text-caption">
-              {totais.quero > 0 && `${totais.quero} quero`}
-              {totais.quero > 0 && totais.tenho > 0 && ' · '}
-              {totais.tenho > 0 && `${totais.tenho} tenho`}
-              {(totais.quero > 0 || totais.tenho > 0) && totais.comprei > 0 && ' · '}
-              {totais.comprei > 0 && `${totais.comprei} comprei`}
+              {totais.quero > 0 && `${totais.quero} na lista`}
+              {totais.quero > 0 && totais.comprei > 0 && ' · '}
+              {totais.comprei > 0 && `${totais.comprei} comprado${totais.comprei > 1 ? 's' : ''}`}
+              {totalEstimado > 0 && ` · ${totalEstimado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} estimado`}
             </p>
           )}
         </div>
@@ -770,7 +866,9 @@ export default function WishlistPage() {
         {!loading && temResultados && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <Secao
-              emoji="💭" titulo="Quero" produtos={grupos.quero}
+              emoji="💭"
+              titulo={`Quero${totalEstimado > 0 ? ` · ${totalEstimado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}` : ''}`}
+              produtos={grupos.quero}
               aberta={secoesAbertas.quero}
               onToggle={() => setSecoesAbertas(s => ({ ...s, quero: !s.quero }))}
               onStatusChange={handleStatusChange}
@@ -778,15 +876,8 @@ export default function WishlistPage() {
               confettiId={confettiId}
             />
             <Secao
-              emoji="✅" titulo="Tenho" produtos={grupos.tenho}
-              aberta={secoesAbertas.tenho}
-              onToggle={() => setSecoesAbertas(s => ({ ...s, tenho: !s.tenho }))}
-              onStatusChange={handleStatusChange}
-              onDelete={handleDelete}
-              confettiId={confettiId}
-            />
-            <Secao
-              emoji="🛍️" titulo="Comprei" produtos={grupos.comprei}
+              emoji="🛍️" titulo="Comprados"
+              produtos={grupos.comprei}
               aberta={secoesAbertas.comprei}
               onToggle={() => setSecoesAbertas(s => ({ ...s, comprei: !s.comprei }))}
               onStatusChange={handleStatusChange}
@@ -822,7 +913,7 @@ export default function WishlistPage() {
         onClose={() => setSheetAberto(false)}
         title="Adicionar produto"
       >
-        <FormAdicionarProduto onSalvar={handleSalvar} salvando={salvando} />
+        <FormAdicionarProduto userId={userId ?? ''} onSalvar={handleSalvar} salvando={salvando} />
       </BottomSheet>
     </PageContainer>
   )
