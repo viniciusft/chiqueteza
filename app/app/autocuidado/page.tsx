@@ -290,6 +290,21 @@ function MiniCalendario({ completacoes }: { completacoes: Completacao[] }) {
   )
 }
 
+// ─── Templates ────────────────────────────────────────────────────────
+
+const TEMPLATES = [
+  { emoji: '🧴', nome: 'Hidratante facial', categoria: 'pele' },
+  { emoji: '☀️', nome: 'Protetor solar', categoria: 'pele' },
+  { emoji: '💧', nome: 'Beber água', categoria: 'saude' },
+  { emoji: '💊', nome: 'Vitaminas', categoria: 'saude' },
+  { emoji: '🧖', nome: 'Máscara facial', categoria: 'pele' },
+  { emoji: '🏃', nome: 'Exercício', categoria: 'exercicio' },
+  { emoji: '🧘', nome: 'Meditação', categoria: 'mente' },
+  { emoji: '💆', nome: 'Cuidado com cabelo', categoria: 'cabelo' },
+  { emoji: '🫧', nome: 'Limpeza de pele', categoria: 'pele' },
+  { emoji: '💅', nome: 'Cuidado com unhas', categoria: 'unhas' },
+] as const
+
 // ─── Formulário nova rotina ────────────────────────────────────────────
 
 function FormNovaRotina({ onSalvar, onClose }: { onSalvar: () => void; onClose: () => void }) {
@@ -298,6 +313,7 @@ function FormNovaRotina({ onSalvar, onClose }: { onSalvar: () => void; onClose: 
   const [emojiSelecionado, setEmojiSelecionado] = useState('✨')
   const [nome, setNome] = useState('')
   const [categoria, setCategoria] = useState('pele')
+  const [mostrarEmojis, setMostrarEmojis] = useState(false)
   const [diasSemana, setDiasSemana] = useState<number[]>([0,1,2,3,4,5,6]) // todos = diária por default
   const [lembrete, setLembrete] = useState(false)
   const [lembreteHora, setLembreteHora] = useState('08:00')
@@ -344,14 +360,66 @@ function FormNovaRotina({ onSalvar, onClose }: { onSalvar: () => void; onClose: 
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {/* Emoji picker */}
+
+      {/* Templates rápidos */}
       <div>
+        <p style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 600, color: 'var(--foreground-muted)' }}>
+          ⚡ Adicionar rapidamente
+        </p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {TEMPLATES.map(t => (
+            <motion.button
+              key={t.nome} type="button" whileTap={{ scale: 0.92 }}
+              onClick={() => {
+                setEmojiSelecionado(t.emoji)
+                setNome(t.nome)
+                setCategoria(t.categoria)
+              }}
+              style={{
+                padding: '7px 12px', borderRadius: 20, border: '1.5px solid #E8E8E8',
+                background: nome === t.nome ? 'rgba(255,51,102,0.08)' : '#FAFAFA',
+                borderColor: nome === t.nome ? '#FF3366' : '#E8E8E8',
+                color: nome === t.nome ? '#FF3366' : 'var(--foreground)',
+                fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                fontFamily: 'var(--font-body)',
+              }}
+            >
+              {t.emoji} {t.nome}
+            </motion.button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ height: 1, background: '#F0F0F0' }} />
+
+      {/* Emoji picker (colapsável) */}
+      <div>
+        <button
+          type="button"
+          onClick={() => setMostrarEmojis(v => !v)}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 8, background: 'none',
+            border: 'none', cursor: 'pointer', padding: 0, marginBottom: mostrarEmojis ? 10 : 0,
+          }}
+        >
+          <span style={{ fontSize: 24 }}>{emojiSelecionado}</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--foreground-muted)' }}>
+            {mostrarEmojis ? '▲ Fechar emojis' : '▼ Trocar emoji'}
+          </span>
+        </button>
+        <AnimatePresence>
+          {mostrarEmojis && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }}
+              style={{ overflow: 'hidden' }}
+            >
         <p style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 600, color: 'var(--foreground-muted)' }}>Emoji</p>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {EMOJIS.map(e => (
             <motion.button
-              key={e} whileTap={{ scale: 0.85 }}
-              onClick={() => setEmojiSelecionado(e)}
+              key={e} type="button" whileTap={{ scale: 0.85 }}
+              onClick={() => { setEmojiSelecionado(e); setMostrarEmojis(false) }}
               style={{
                 width: 40, height: 40, borderRadius: 10, fontSize: 20,
                 border: e === emojiSelecionado ? '2px solid #FF3366' : '1.5px solid #E8E8E8',
@@ -363,6 +431,9 @@ function FormNovaRotina({ onSalvar, onClose }: { onSalvar: () => void; onClose: 
             </motion.button>
           ))}
         </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Nome */}
