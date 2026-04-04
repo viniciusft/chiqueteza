@@ -12,7 +12,7 @@ import { SkeletonList, SkeletonAppointment, SkeletonAlert } from '@/components/u
 import { StaggerList, StaggerItem } from '@/components/ui/StaggerList'
 import { setCache } from '@/lib/cache'
 import { CACHE_KEYS } from '@/lib/cache/keys'
-import { Sparkles, CalendarDays, Users, AlertTriangle, MessageCircle } from 'lucide-react'
+import { Sparkles, CalendarDays, Users, AlertTriangle, MessageCircle, ShoppingBag, Heart } from 'lucide-react'
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 
@@ -329,6 +329,29 @@ function HomeContent({ userId, nome: nomeInicial }: { userId: string; nome: stri
               label="Profissionais"
               accent="rgba(212,168,67,0.12)"
             />
+          </motion.div>
+
+          {/* Quick actions — linha 2 */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: 0.14 }}
+            className="flex items-start gap-2"
+            style={{ marginTop: -8 }}
+          >
+            <QuickAction
+              href="/app/wishlist"
+              icon={<ShoppingBag size={22} color="#FF3366" />}
+              label="Wishlist"
+              accent="rgba(255,51,102,0.10)"
+            />
+            <QuickAction
+              href="/app/autocuidado"
+              icon={<Heart size={22} color="#1B5E5A" />}
+              label="Autocuidado"
+              accent="rgba(27,94,90,0.10)"
+            />
+            <div style={{ flex: 1 }} />
           </motion.div>
 
           {/* Loading */}
