@@ -75,10 +75,9 @@ function diaDaSemanaHoje(): number {
 function rotinaDeHoje(r: RotinaBeleza): boolean {
   if (!r.ativa) return false
   if (r.frequencia === 'diaria') return true
-  if (r.frequencia === 'semanal' || r.frequencia === 'personalizada') {
-    return (r.dias_semana ?? []).includes(diaDaSemanaHoje())
-  }
-  return false
+  // semanal/personalizada: verifica dias_semana; null = todos os dias
+  if (!r.dias_semana) return true
+  return r.dias_semana.includes(diaDaSemanaHoje())
 }
 
 // ─── Checkbox animado ─────────────────────────────────────────────────
@@ -299,8 +298,7 @@ function FormNovaRotina({ onSalvar, onClose }: { onSalvar: () => void; onClose: 
   const [emojiSelecionado, setEmojiSelecionado] = useState('✨')
   const [nome, setNome] = useState('')
   const [categoria, setCategoria] = useState('pele')
-  const [frequencia, setFrequencia] = useState<'diaria' | 'semanal'>('diaria')
-  const [diasSemana, setDiasSemana] = useState<number[]>([])
+  const [diasSemana, setDiasSemana] = useState<number[]>([0,1,2,3,4,5,6]) // todos = diária por default
   const [lembrete, setLembrete] = useState(false)
   const [lembreteHora, setLembreteHora] = useState('08:00')
 
@@ -310,30 +308,31 @@ function FormNovaRotina({ onSalvar, onClose }: { onSalvar: () => void; onClose: 
 
   async function salvar() {
     if (!nome.trim()) { toast.error('Informe o nome da rotina'); return }
-    if (frequencia === 'semanal' && diasSemana.length === 0) {
-      toast.error('Selecione pelo menos um dia da semana')
-      return
-    }
     setSalvando(true)
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { toast.error('Sessão expirada'); setSalvando(false); return }
 
-    const { error } = await supabase.from('checklist_rotinas').insert({
+    // frequencia: se todos os 7 dias selecionados (ou nenhum selecionado) = diaria
+    const todosOsDias = diasSemana.length === 7 || diasSemana.length === 0
+    const freqFinal = todosOsDias ? 'diaria' : 'semanal'
+    const diasFinal = todosOsDias ? null : diasSemana
+
+    const payload: Record<string, unknown> = {
       usuario_id: user.id,
       emoji: emojiSelecionado,
       nome: nome.trim(),
       categoria,
-      frequencia,
-      dias_semana: frequencia === 'semanal' ? diasSemana : null,
+      frequencia: freqFinal,
+      dias_semana: diasFinal,
       lembrete_ativo: lembrete,
       lembrete_hora: lembrete ? lembreteHora : null,
-      streak_atual: 0,
-      streak_maximo: 0,
-      ativa: true,
-    })
+    }
+
+    const { error } = await supabase.from('checklist_rotinas').insert(payload)
 
     if (error) {
-      toast.error('Erro ao salvar rotina')
+      console.error('[autocuidado] insert error:', error)
+      toast.error(`Erro ao salvar: ${error.message}`)
       setSalvando(false)
       return
     }
@@ -404,55 +403,37 @@ function FormNovaRotina({ onSalvar, onClose }: { onSalvar: () => void; onClose: 
         </div>
       </div>
 
-      {/* Frequência */}
+      {/* Frequência — seletor livre de dias */}
       <div>
-        <p style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 600, color: 'var(--foreground-muted)' }}>Frequência</p>
-        <div style={{ display: 'flex', gap: 8 }}>
-          {(['diaria', 'semanal'] as const).map(f => (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--foreground-muted)' }}>Quando fazer</p>
+          <span style={{ fontSize: 12, color: '#FF3366', fontWeight: 600 }}>
+            {diasSemana.length === 7 ? '☀️ Todos os dias' :
+             diasSemana.length === 0 ? 'Nenhum dia' :
+             diasSemana.length === 5 && !diasSemana.includes(0) && !diasSemana.includes(6) ? '💼 Dias úteis' :
+             `${diasSemana.length}× por semana`}
+          </span>
+        </div>
+        <div style={{ display: 'flex', gap: 6, justifyContent: 'space-between' }}>
+          {DIAS_SEMANA.map((d, i) => (
             <motion.button
-              key={f} whileTap={{ scale: 0.94 }}
-              onClick={() => setFrequencia(f)}
+              key={i} whileTap={{ scale: 0.88 }} type="button"
+              onClick={() => toggleDia(i)}
               style={{
-                flex: 1, padding: '10px', borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: 'pointer',
-                border: `1.5px solid ${frequencia === f ? '#FF3366' : '#E8E8E8'}`,
-                background: frequencia === f ? 'rgba(255,51,102,0.06)' : '#fff',
-                color: frequencia === f ? '#FF3366' : 'var(--foreground)',
+                flex: 1, padding: '9px 0', borderRadius: 10, fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                border: `1.5px solid ${diasSemana.includes(i) ? '#FF3366' : '#E8E8E8'}`,
+                background: diasSemana.includes(i) ? 'rgba(255,51,102,0.10)' : '#FAFAFA',
+                color: diasSemana.includes(i) ? '#FF3366' : 'var(--foreground-muted)',
+                transition: 'all 0.15s',
               }}
             >
-              {f === 'diaria' ? '☀️ Diária' : '📅 Semanal'}
+              {d}
             </motion.button>
           ))}
         </div>
-
-        {/* Dias da semana */}
-        <AnimatePresence>
-          {frequencia === 'semanal' && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.22 }}
-              style={{ overflow: 'hidden' }}
-            >
-              <div style={{ display: 'flex', gap: 6, marginTop: 12, justifyContent: 'space-between' }}>
-                {DIAS_SEMANA.map((d, i) => (
-                  <motion.button
-                    key={i} whileTap={{ scale: 0.9 }}
-                    onClick={() => toggleDia(i)}
-                    style={{
-                      flex: 1, padding: '8px 0', borderRadius: 10, fontSize: 11, fontWeight: 600, cursor: 'pointer',
-                      border: `1.5px solid ${diasSemana.includes(i) ? '#FF3366' : '#E8E8E8'}`,
-                      background: diasSemana.includes(i) ? 'rgba(255,51,102,0.08)' : '#fff',
-                      color: diasSemana.includes(i) ? '#FF3366' : 'var(--foreground-muted)',
-                    }}
-                  >
-                    {d}
-                  </motion.button>
-                ))}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--foreground-muted)', textAlign: 'center' }}>
+          Toque nos dias para selecionar
+        </p>
       </div>
 
       {/* Lembrete */}
