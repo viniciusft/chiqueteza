@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence, useInView } from 'framer-motion'
-import { Plus, ChevronLeft, ChevronRight, Flame, X, Bell, BellOff, Trash2 } from 'lucide-react'
+import { Plus, ChevronLeft, ChevronRight, Flame, X, Bell, BellOff, Trash2, Pencil, GripVertical } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -12,6 +12,24 @@ import AppHeader from '@/components/ui/AppHeader'
 import PageContainer from '@/components/ui/PageContainer'
 import EmptyState from '@/components/ui/EmptyState'
 import BottomSheet from '@/components/ui/BottomSheet'
+import {
+  DndContext,
+  PointerSensor,
+  TouchSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+  closestCenter,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+  sortableKeyboardCoordinates,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 // ─── Types ────────────────────────────────────────────────────────────
 
@@ -176,68 +194,144 @@ function ProgressoHoje({ feitas, total }: { feitas: number; total: number }) {
 // ─── Card de rotina ────────────────────────────────────────────────────
 
 function RotinaCard({
-  rotina, concluida, onToggle, onDelete,
+  rotina, concluida, onToggle, onEdit, onDelete, dragHandleProps,
 }: {
   rotina: RotinaBeleza
   concluida: boolean
   onToggle: () => void
+  onEdit?: (r: RotinaBeleza) => void
   onDelete?: (id: string) => void
+  dragHandleProps?: React.HTMLAttributes<HTMLDivElement>
 }) {
-  return (
-    <div style={{ position: 'relative', marginBottom: 8 }}>
-      {/* Fundo vermelho (delete) */}
-      {onDelete && (
-        <div style={{
-          position: 'absolute', right: 0, top: 0, bottom: 0, width: 72,
-          background: 'linear-gradient(135deg, #EF4444, #DC2626)',
-          borderRadius: '0 14px 14px 0',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <Trash2 size={20} color="#fff" />
-        </div>
-      )}
-    <motion.div
-      layout
-      drag={onDelete ? 'x' : false}
-      dragConstraints={{ left: -72, right: 0 }}
-      dragElastic={0.08}
-      onDragEnd={(_, info) => { if (info.offset.x < -60 && onDelete) onDelete(rotina.id) }}
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      style={{
-        display: 'flex', alignItems: 'center', gap: 14,
-        background: 'var(--surface)',
-        border: `1.5px solid ${concluida ? 'rgba(255,51,102,0.18)' : '#EDEDED'}`,
-        borderRadius: 14, padding: '14px 16px',
-        position: 'relative',
-        transition: 'border 0.18s',
-      }}
-    >
-      <AnimatedCheckbox checked={concluida} onToggle={onToggle} />
+  const [confirmando, setConfirmando] = useState(false)
 
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{
-          margin: 0, fontSize: 15, fontWeight: 600,
-          color: concluida ? 'var(--foreground-muted)' : 'var(--foreground)',
-          textDecoration: concluida ? 'line-through' : 'none',
-          transition: 'color 0.18s, text-decoration 0.18s',
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        }}>
-          {rotina.emoji ? `${rotina.emoji} ` : ''}{rotina.nome}
-        </p>
-        <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--foreground-muted)' }}>
-          {CATEGORIAS.find(c => c.value === rotina.categoria)?.label ?? rotina.categoria}
-          {rotina.frequencia === 'diaria' ? ' · Diária' : ` · ${(rotina.dias_semana ?? []).map(d => DIAS_SEMANA[Number(d)]).join(', ')}`}
-        </p>
+  return (
+    <motion.div layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 8 }}>
+      {/* Linha principal */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        background: 'var(--surface)',
+        border: `1.5px solid ${concluida ? 'rgba(255,51,102,0.15)' : '#EDEDED'}`,
+        borderRadius: confirmando ? '14px 14px 0 0' : 14,
+        padding: '13px 12px',
+        transition: 'border 0.18s, border-radius 0.15s',
+      }}>
+        {/* Handle de drag — só renderiza se passado */}
+        {dragHandleProps && (
+          <div {...dragHandleProps} style={{ cursor: 'grab', color: '#C8C8C8', flexShrink: 0, touchAction: 'none' }}>
+            <GripVertical size={18} />
+          </div>
+        )}
+
+        <AnimatedCheckbox checked={concluida} onToggle={onToggle} />
+
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{
+            margin: 0, fontSize: 15, fontWeight: 600,
+            color: concluida ? 'var(--foreground-muted)' : 'var(--foreground)',
+            textDecoration: concluida ? 'line-through' : 'none',
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>
+            {rotina.emoji ? `${rotina.emoji} ` : ''}{rotina.nome}
+          </p>
+          <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--foreground-muted)' }}>
+            {CATEGORIAS.find(c => c.value === rotina.categoria)?.label ?? rotina.categoria}
+            {rotina.frequencia === 'diaria' ? ' · Diária' : ` · ${(rotina.dias_semana ?? []).map(d => DIAS_SEMANA[Number(d)]).join(', ')}`}
+          </p>
+        </div>
+
+        {/* Streak */}
+        {rotina.streak_atual > 2 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
+            <Flame size={13} color="#FF8C00" fill="#FF8C00" />
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#FF8C00' }}>{rotina.streak_atual}</span>
+          </div>
+        )}
+
+        {/* Botões de ação */}
+        {(onEdit || onDelete) && (
+          <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
+            {onEdit && (
+              <motion.button whileTap={{ scale: 0.85 }} onClick={() => onEdit(rotina)}
+                style={{ width: 32, height: 32, borderRadius: 8, border: 'none', background: 'rgba(27,94,90,0.08)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Pencil size={14} color="#1B5E5A" />
+              </motion.button>
+            )}
+            {onDelete && (
+              <motion.button whileTap={{ scale: 0.85 }}
+                onClick={() => setConfirmando(v => !v)}
+                style={{ width: 32, height: 32, borderRadius: 8, border: 'none', background: confirmando ? 'rgba(239,68,68,0.12)' : 'rgba(239,68,68,0.06)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Trash2 size={14} color="#EF4444" />
+              </motion.button>
+            )}
+          </div>
+        )}
       </div>
 
-      {rotina.streak_atual > 2 && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
-          <Flame size={14} color="#FF8C00" fill="#FF8C00" />
-          <span style={{ fontSize: 12, fontWeight: 700, color: '#FF8C00' }}>{rotina.streak_atual}</span>
-        </div>
-      )}
+      {/* Confirmação de exclusão */}
+      <AnimatePresence>
+        {confirmando && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.18 }}
+            style={{ overflow: 'hidden' }}
+          >
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              background: 'rgba(239,68,68,0.06)', border: '1.5px solid rgba(239,68,68,0.18)',
+              borderTop: 'none', borderRadius: '0 0 14px 14px', padding: '10px 14px',
+            }}>
+              <span style={{ fontSize: 13, color: '#EF4444', fontWeight: 600 }}>
+                Remover "{rotina.nome}"?
+              </span>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={() => setConfirmando(false)}
+                  style={{ padding: '6px 14px', borderRadius: 8, border: '1.5px solid #E8E8E8', background: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer', color: 'var(--foreground)' }}>
+                  Cancelar
+                </button>
+                <button onClick={() => { setConfirmando(false); onDelete?.(rotina.id) }}
+                  style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: '#EF4444', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                  Remover
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
+  )
+}
+
+// ─── Sortable card (DnD wrapper) ──────────────────────────────────────
+
+function SortableRotinaCard({
+  rotina, concluida, onToggle, onEdit, onDelete,
+}: {
+  rotina: RotinaBeleza
+  concluida: boolean
+  onToggle: () => void
+  onEdit?: (r: RotinaBeleza) => void
+  onDelete?: (id: string) => void
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: rotina.id })
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 10 : undefined,
+  }
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <RotinaCard
+        rotina={rotina}
+        concluida={concluida}
+        onToggle={onToggle}
+        onEdit={onEdit}
+        onDelete={onDelete}
+        dragHandleProps={{ ...attributes, ...listeners }}
+      />
     </div>
   )
 }
@@ -325,16 +419,30 @@ const TEMPLATES = [
 
 // ─── Formulário nova rotina ────────────────────────────────────────────
 
-function FormNovaRotina({ onSalvar, onClose }: { onSalvar: () => void; onClose: () => void }) {
+function FormNovaRotina({
+  onSalvar,
+  onClose,
+  rotinaParaEditar,
+}: {
+  onSalvar: () => void
+  onClose: () => void
+  rotinaParaEditar?: RotinaBeleza
+}) {
   const supabase = createClient()
+  const editando = !!rotinaParaEditar
   const [salvando, setSalvando] = useState(false)
-  const [emojiSelecionado, setEmojiSelecionado] = useState('✨')
-  const [nome, setNome] = useState('')
-  const [categoria, setCategoria] = useState('pele')
+  const [emojiSelecionado, setEmojiSelecionado] = useState(rotinaParaEditar?.emoji ?? '✨')
+  const [nome, setNome] = useState(rotinaParaEditar?.nome ?? '')
+  const [categoria, setCategoria] = useState(rotinaParaEditar?.categoria ?? 'pele')
   const [mostrarEmojis, setMostrarEmojis] = useState(false)
-  const [diasSemana, setDiasSemana] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]) // todos = diária por default
-  const [lembrete, setLembrete] = useState(false)
-  const [lembreteHora, setLembreteHora] = useState('08:00')
+  const [diasSemana, setDiasSemana] = useState<number[]>(() => {
+    if (!rotinaParaEditar || rotinaParaEditar.frequencia === 'diaria' || !rotinaParaEditar.dias_semana) {
+      return [0, 1, 2, 3, 4, 5, 6]
+    }
+    return rotinaParaEditar.dias_semana.map(Number)
+  })
+  const [lembrete, setLembrete] = useState(rotinaParaEditar?.lembrete_ativo ?? false)
+  const [lembreteHora, setLembreteHora] = useState(rotinaParaEditar?.hora_lembrete ?? '08:00')
 
   function toggleDia(d: number) {
     setDiasSemana(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d])
@@ -353,7 +461,6 @@ function FormNovaRotina({ onSalvar, onClose }: { onSalvar: () => void; onClose: 
     const diasFinal = todosOsDias ? null : diasSemana.map(String)
 
     const payload: Record<string, unknown> = {
-      usuario_id: user.id,
       emoji: emojiSelecionado,
       nome: nome.trim(),
       categoria,
@@ -363,16 +470,27 @@ function FormNovaRotina({ onSalvar, onClose }: { onSalvar: () => void; onClose: 
       hora_lembrete: lembrete ? lembreteHora : null,
     }
 
-    const { error } = await supabase.from('checklist_rotinas').insert(payload)
+    let error
+    if (editando && rotinaParaEditar) {
+      const { error: e } = await supabase
+        .from('checklist_rotinas')
+        .update(payload)
+        .eq('id', rotinaParaEditar.id)
+      error = e
+    } else {
+      payload.usuario_id = user.id
+      const { error: e } = await supabase.from('checklist_rotinas').insert(payload)
+      error = e
+    }
 
     if (error) {
-      console.error('[autocuidado] insert error:', error)
+      console.error('[autocuidado] save error:', error)
       toast.error(`Erro ao salvar: ${error.message}`)
       setSalvando(false)
       return
     }
 
-    toast.success('Rotina criada!')
+    toast.success(editando ? 'Rotina atualizada!' : 'Rotina criada!')
     onSalvar()
     onClose()
   }
@@ -581,7 +699,7 @@ function FormNovaRotina({ onSalvar, onClose }: { onSalvar: () => void; onClose: 
           fontFamily: 'var(--font-body)',
         }}
       >
-        {salvando ? 'Salvando…' : 'Criar rotina'}
+        {salvando ? 'Salvando…' : editando ? 'Salvar alterações' : 'Criar rotina'}
       </motion.button>
     </div>
   )
@@ -598,6 +716,29 @@ function AutocuidadoContent({ userId }: { userId: string }) {
   const [todasCompletacoes, setTodasCompletacoes] = useState<Completacao[]>([])
   const [carregando, setCarregando] = useState(true)
   const [sheetAberto, setSheetAberto] = useState(false)
+  const [sheetEditando, setSheetEditando] = useState<RotinaBeleza | null>(null)
+
+  const sensors = useSensors(
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+
+    setRotinas(prev => {
+      const oldIndex = prev.findIndex(r => r.id === active.id)
+      const newIndex = prev.findIndex(r => r.id === over.id)
+      const reordered = arrayMove(prev, oldIndex, newIndex)
+      // Persist ordem ao banco (fire-and-forget)
+      reordered.forEach((r, idx) => {
+        supabase.from('checklist_rotinas').update({ ordem: idx }).eq('id', r.id).then(() => {})
+      })
+      return reordered
+    })
+  }
 
   const rotinasDeHoje = rotinas.filter(rotinaDeHoje)
   const concluidas = new Set(
@@ -821,6 +962,7 @@ function AutocuidadoContent({ userId }: { userId: string }) {
                         rotina={r}
                         concluida={concluidas.has(r.id)}
                         onToggle={() => toggleCompletacao(r.id)}
+                        onEdit={r => setSheetEditando(r)}
                         onDelete={handleDeleteRotina}
                       />
                     ))}
@@ -861,25 +1003,23 @@ function AutocuidadoContent({ userId }: { userId: string }) {
                 />
               ) : (
                 <>
-                  {CATEGORIAS.map(cat => {
-                    const catRotinas = rotinas.filter(r => r.categoria === cat.value)
-                    if (catRotinas.length === 0) return null
-                    return (
-                      <div key={cat.value} style={{ marginBottom: 20 }}>
-                        <p style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 700, color: 'var(--foreground-muted)' }}>
-                          {cat.emoji} {cat.label}
-                        </p>
-                        {catRotinas.map(r => (
-                          <RotinaCard
-                            key={r.id}
-                            rotina={r}
-                            concluida={concluidas.has(r.id)}
-                            onToggle={() => toggleCompletacao(r.id)}
-                          />
-                        ))}
-                      </div>
-                    )
-                  })}
+                  <p style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--foreground-muted)', textAlign: 'center' }}>
+                    Segure e arraste para reordenar
+                  </p>
+                  <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                    <SortableContext items={rotinas.map(r => r.id)} strategy={verticalListSortingStrategy}>
+                      {rotinas.map(r => (
+                        <SortableRotinaCard
+                          key={r.id}
+                          rotina={r}
+                          concluida={concluidas.has(r.id)}
+                          onToggle={() => toggleCompletacao(r.id)}
+                          onEdit={r => setSheetEditando(r)}
+                          onDelete={handleDeleteRotina}
+                        />
+                      ))}
+                    </SortableContext>
+                  </DndContext>
                 </>
               )}
             </motion.div>
@@ -971,6 +1111,22 @@ function AutocuidadoContent({ userId }: { userId: string }) {
           onSalvar={carregarDados}
           onClose={() => setSheetAberto(false)}
         />
+      </BottomSheet>
+
+      {/* BottomSheet editar rotina */}
+      <BottomSheet
+        isOpen={!!sheetEditando}
+        onClose={() => setSheetEditando(null)}
+        title="Editar rotina"
+        maxHeight="92dvh"
+      >
+        {sheetEditando && (
+          <FormNovaRotina
+            rotinaParaEditar={sheetEditando}
+            onSalvar={carregarDados}
+            onClose={() => setSheetEditando(null)}
+          />
+        )}
       </BottomSheet>
     </>
   )
