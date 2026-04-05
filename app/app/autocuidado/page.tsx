@@ -194,14 +194,14 @@ function ProgressoHoje({ feitas, total }: { feitas: number; total: number }) {
 // ─── Card de rotina ────────────────────────────────────────────────────
 
 function RotinaCard({
-  rotina, concluida, onToggle, onEdit, onDelete, dragHandleProps,
+  rotina, concluida, onToggle, onEdit, onDelete, isDraggable,
 }: {
   rotina: RotinaBeleza
   concluida: boolean
   onToggle: () => void
   onEdit?: (r: RotinaBeleza) => void
   onDelete?: (id: string) => void
-  dragHandleProps?: React.HTMLAttributes<HTMLDivElement>
+  isDraggable?: boolean
 }) {
   const [confirmando, setConfirmando] = useState(false)
 
@@ -216,10 +216,10 @@ function RotinaCard({
         padding: '13px 12px',
         transition: 'border 0.18s, border-radius 0.15s',
       }}>
-        {/* Handle de drag — só renderiza se passado */}
-        {dragHandleProps && (
-          <div {...dragHandleProps} style={{ cursor: 'grab', color: '#C8C8C8', flexShrink: 0, touchAction: 'none' }}>
-            <GripVertical size={18} />
+        {/* Indicador visual de drag — apenas ícone, sem handle funcional */}
+        {isDraggable && (
+          <div style={{ color: '#D0D0D0', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
+            <GripVertical size={16} />
           </div>
         )}
 
@@ -318,19 +318,25 @@ function SortableRotinaCard({
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
+    opacity: isDragging ? 0.45 : 1,
     zIndex: isDragging ? 10 : undefined,
+    cursor: isDragging ? 'grabbing' : 'grab',
   }
 
   return (
-    <div ref={setNodeRef} style={style}>
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+    >
       <RotinaCard
         rotina={rotina}
         concluida={concluida}
         onToggle={onToggle}
         onEdit={onEdit}
         onDelete={onDelete}
-        dragHandleProps={{ ...attributes, ...listeners }}
+        isDraggable
       />
     </div>
   )
@@ -740,6 +746,27 @@ function AutocuidadoContent({ userId }: { userId: string }) {
     })
   }
 
+  function handleDragEndHoje(event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+
+    setRotinas(prev => {
+      const hoje = prev.filter(rotinaDeHoje)
+      const oldIndex = hoje.findIndex(r => r.id === active.id)
+      const newIndex = hoje.findIndex(r => r.id === over.id)
+      const reorderedHoje = arrayMove(hoje, oldIndex, newIndex)
+
+      // Rebuild full rotinas array preserving non-hoje items positions
+      let hojeIdx = 0
+      const result = prev.map(r => rotinaDeHoje(r) ? reorderedHoje[hojeIdx++] : r)
+
+      result.forEach((r, idx) => {
+        supabase.from('checklist_rotinas').update({ ordem: idx }).eq('id', r.id).then(() => {})
+      })
+      return result
+    })
+  }
+
   const rotinasDeHoje = rotinas.filter(rotinaDeHoje)
   const concluidas = new Set(
     completacoes.filter(c => c.data_completada === hojeStr()).map(c => c.rotina_id)
@@ -956,16 +983,20 @@ function AutocuidadoContent({ userId }: { userId: string }) {
                     </p>
                   )}
                   <div style={{ marginTop: 8 }}>
-                    {rotinasDeHoje.map(r => (
-                      <RotinaCard
-                        key={r.id}
-                        rotina={r}
-                        concluida={concluidas.has(r.id)}
-                        onToggle={() => toggleCompletacao(r.id)}
-                        onEdit={r => setSheetEditando(r)}
-                        onDelete={handleDeleteRotina}
-                      />
-                    ))}
+                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEndHoje}>
+                      <SortableContext items={rotinasDeHoje.map(r => r.id)} strategy={verticalListSortingStrategy}>
+                        {rotinasDeHoje.map(r => (
+                          <SortableRotinaCard
+                            key={r.id}
+                            rotina={r}
+                            concluida={concluidas.has(r.id)}
+                            onToggle={() => toggleCompletacao(r.id)}
+                            onEdit={r => setSheetEditando(r)}
+                            onDelete={handleDeleteRotina}
+                          />
+                        ))}
+                      </SortableContext>
+                    </DndContext>
                   </div>
                 </>
               )}
