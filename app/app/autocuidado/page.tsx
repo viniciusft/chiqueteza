@@ -14,12 +14,14 @@ import EmptyState from '@/components/ui/EmptyState'
 import BottomSheet from '@/components/ui/BottomSheet'
 import {
   DndContext,
+  DragOverlay,
   PointerSensor,
   TouchSensor,
   KeyboardSensor,
   useSensor,
   useSensors,
   DragEndEvent,
+  DragStartEvent,
   closestCenter,
 } from '@dnd-kit/core'
 import {
@@ -225,16 +227,17 @@ function RotinaCard({
 
         <AnimatedCheckbox checked={concluida} onToggle={onToggle} />
 
-        <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ flex: 1, minWidth: 0, userSelect: 'none' }}>
           <p style={{
             margin: 0, fontSize: 15, fontWeight: 600,
             color: concluida ? 'var(--foreground-muted)' : 'var(--foreground)',
             textDecoration: concluida ? 'line-through' : 'none',
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            userSelect: 'none',
           }}>
             {rotina.emoji ? `${rotina.emoji} ` : ''}{rotina.nome}
           </p>
-          <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--foreground-muted)' }}>
+          <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--foreground-muted)', userSelect: 'none' }}>
             {CATEGORIAS.find(c => c.value === rotina.categoria)?.label ?? rotina.categoria}
             {rotina.frequencia === 'diaria' ? ' · Diária' : ` · ${(rotina.dias_semana ?? []).map(d => DIAS_SEMANA[Number(d)]).join(', ')}`}
           </p>
@@ -317,10 +320,10 @@ function SortableRotinaCard({
 
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.45 : 1,
-    zIndex: isDragging ? 10 : undefined,
-    cursor: isDragging ? 'grabbing' : 'grab',
+    transition: isDragging ? undefined : transition,
+    // Ghost no lugar original — visível mas desbotado
+    opacity: isDragging ? 0.3 : 1,
+    borderRadius: 14,
   }
 
   return (
@@ -723,6 +726,7 @@ function AutocuidadoContent({ userId }: { userId: string }) {
   const [carregando, setCarregando] = useState(true)
   const [sheetAberto, setSheetAberto] = useState(false)
   const [sheetEditando, setSheetEditando] = useState<RotinaBeleza | null>(null)
+  const [activeId, setActiveId] = useState<string | null>(null)
 
   const sensors = useSensors(
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
@@ -730,7 +734,12 @@ function AutocuidadoContent({ userId }: { userId: string }) {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
 
+  function handleDragStart(event: DragStartEvent) {
+    setActiveId(String(event.active.id))
+  }
+
   function handleDragEnd(event: DragEndEvent) {
+    setActiveId(null)
     const { active, over } = event
     if (!over || active.id === over.id) return
 
@@ -747,6 +756,7 @@ function AutocuidadoContent({ userId }: { userId: string }) {
   }
 
   function handleDragEndHoje(event: DragEndEvent) {
+    setActiveId(null)
     const { active, over } = event
     if (!over || active.id === over.id) return
 
@@ -983,7 +993,7 @@ function AutocuidadoContent({ userId }: { userId: string }) {
                     </p>
                   )}
                   <div style={{ marginTop: 8 }}>
-                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEndHoje}>
+                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEndHoje}>
                       <SortableContext items={rotinasDeHoje.map(r => r.id)} strategy={verticalListSortingStrategy}>
                         {rotinasDeHoje.map(r => (
                           <SortableRotinaCard
@@ -996,6 +1006,16 @@ function AutocuidadoContent({ userId }: { userId: string }) {
                           />
                         ))}
                       </SortableContext>
+                      <DragOverlay dropAnimation={{ duration: 180, easing: 'ease' }}>
+                        {activeId ? (() => {
+                          const r = rotinasDeHoje.find(x => x.id === activeId)
+                          return r ? (
+                            <div style={{ boxShadow: '0 8px 28px rgba(0,0,0,0.18)', borderRadius: 14, transform: 'scale(1.03)' }}>
+                              <RotinaCard rotina={r} concluida={concluidas.has(r.id)} onToggle={() => {}} isDraggable />
+                            </div>
+                          ) : null
+                        })() : null}
+                      </DragOverlay>
                     </DndContext>
                   </div>
                 </>
@@ -1037,7 +1057,7 @@ function AutocuidadoContent({ userId }: { userId: string }) {
                   <p style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--foreground-muted)', textAlign: 'center' }}>
                     Segure e arraste para reordenar
                   </p>
-                  <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                  <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
                     <SortableContext items={rotinas.map(r => r.id)} strategy={verticalListSortingStrategy}>
                       {rotinas.map(r => (
                         <SortableRotinaCard
@@ -1050,6 +1070,16 @@ function AutocuidadoContent({ userId }: { userId: string }) {
                         />
                       ))}
                     </SortableContext>
+                    <DragOverlay dropAnimation={{ duration: 180, easing: 'ease' }}>
+                      {activeId ? (() => {
+                        const r = rotinas.find(x => x.id === activeId)
+                        return r ? (
+                          <div style={{ boxShadow: '0 8px 28px rgba(0,0,0,0.18)', borderRadius: 14, transform: 'scale(1.03)' }}>
+                            <RotinaCard rotina={r} concluida={concluidas.has(r.id)} onToggle={() => {}} isDraggable />
+                          </div>
+                        ) : null
+                      })() : null}
+                    </DragOverlay>
                   </DndContext>
                 </>
               )}

@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { Home, Heart, Sparkles, CalendarDays, Users } from 'lucide-react'
+import { Home, Heart, Leaf, CalendarDays, Users } from 'lucide-react'
 import { playClick } from '@/lib/sound'
 
 interface Tab {
@@ -15,8 +15,8 @@ interface Tab {
 const tabs: Tab[] = [
   { label: 'Início',       href: '/app',               icon: Home },
   { label: 'Looks',        href: '/app/looks',          icon: Heart },
-  { label: 'Visagismo',    href: '/app/visagismo',      icon: Sparkles },
-  { label: 'Rotina',       href: '/app/rotina',         icon: CalendarDays },
+  { label: 'Autocuidado',  href: '/app/autocuidado',    icon: Leaf },
+  { label: 'Agenda',       href: '/app/rotina',         icon: CalendarDays },
   { label: 'Profissionais',href: '/app/profissionais',  icon: Users },
 ]
 
