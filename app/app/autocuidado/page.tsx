@@ -22,12 +22,12 @@ interface RotinaBeleza {
   nome: string
   categoria: string
   frequencia: 'diaria' | 'semanal' | 'personalizada'
-  dias_semana: number[] | null
+  dias_semana: string[] | null   // text[] no banco
   lembrete_ativo: boolean
-  lembrete_hora: string | null
+  hora_lembrete: string | null   // nome correto no banco
   streak_atual: number
   streak_maximo: number
-  ativa: boolean
+  ativo: boolean                 // nome correto no banco
   created_at: string
 }
 
@@ -73,11 +73,11 @@ function diaDaSemanaHoje(): number {
 }
 
 function rotinaDeHoje(r: RotinaBeleza): boolean {
-  if (!r.ativa) return false
+  if (!r.ativo) return false
   if (r.frequencia === 'diaria') return true
   // semanal/personalizada: verifica dias_semana; null = todos os dias
   if (!r.dias_semana) return true
-  return r.dias_semana.includes(diaDaSemanaHoje())
+  return r.dias_semana.includes(String(diaDaSemanaHoje()))
 }
 
 // ─── Checkbox animado ─────────────────────────────────────────────────
@@ -227,7 +227,7 @@ function RotinaCard({
         </p>
         <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--foreground-muted)' }}>
           {CATEGORIAS.find(c => c.value === rotina.categoria)?.label ?? rotina.categoria}
-          {rotina.frequencia === 'diaria' ? ' · Diária' : ` · ${(rotina.dias_semana ?? []).map(d => DIAS_SEMANA[d]).join(', ')}`}
+          {rotina.frequencia === 'diaria' ? ' · Diária' : ` · ${(rotina.dias_semana ?? []).map(d => DIAS_SEMANA[Number(d)]).join(', ')}`}
         </p>
       </div>
 
@@ -332,7 +332,7 @@ function FormNovaRotina({ onSalvar, onClose }: { onSalvar: () => void; onClose: 
   const [nome, setNome] = useState('')
   const [categoria, setCategoria] = useState('pele')
   const [mostrarEmojis, setMostrarEmojis] = useState(false)
-  const [diasSemana, setDiasSemana] = useState<number[]>([0,1,2,3,4,5,6]) // todos = diária por default
+  const [diasSemana, setDiasSemana] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]) // todos = diária por default
   const [lembrete, setLembrete] = useState(false)
   const [lembreteHora, setLembreteHora] = useState('08:00')
 
@@ -349,7 +349,8 @@ function FormNovaRotina({ onSalvar, onClose }: { onSalvar: () => void; onClose: 
     // frequencia: se todos os 7 dias selecionados (ou nenhum selecionado) = diaria
     const todosOsDias = diasSemana.length === 7 || diasSemana.length === 0
     const freqFinal = todosOsDias ? 'diaria' : 'semanal'
-    const diasFinal = todosOsDias ? null : diasSemana
+    // dias_semana é text[] no banco — converter number[] para string[]
+    const diasFinal = todosOsDias ? null : diasSemana.map(String)
 
     const payload: Record<string, unknown> = {
       usuario_id: user.id,
@@ -359,7 +360,7 @@ function FormNovaRotina({ onSalvar, onClose }: { onSalvar: () => void; onClose: 
       frequencia: freqFinal,
       dias_semana: diasFinal,
       lembrete_ativo: lembrete,
-      lembrete_hora: lembrete ? lembreteHora : null,
+      hora_lembrete: lembrete ? lembreteHora : null,
     }
 
     const { error } = await supabase.from('checklist_rotinas').insert(payload)
@@ -607,7 +608,7 @@ function AutocuidadoContent({ userId }: { userId: string }) {
 
   const carregarDados = useCallback(async () => {
     const [{ data: rots }, { data: comps }, { data: todasComps }] = await Promise.all([
-      supabase.from('checklist_rotinas').select('*').eq('usuario_id', userId).eq('ativa', true).order('created_at'),
+      supabase.from('checklist_rotinas').select('*').eq('usuario_id', userId).eq('ativo', true).order('created_at'),
       supabase.from('checklist_completacoes').select('*').eq('usuario_id', userId).eq('data_completada', hojeStr()),
       supabase.from('checklist_completacoes').select('*').eq('usuario_id', userId).order('data_completada', { ascending: false }).limit(365),
     ])

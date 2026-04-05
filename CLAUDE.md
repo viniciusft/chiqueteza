@@ -359,6 +359,28 @@ VAPID_PRIVATE_KEY
 
 ---
 
+## Checklist de Autocuidado
+
+### Tabelas
+- `checklist_rotinas`: id, usuario_id, nome, descricao, categoria, emoji, frequencia, dias_semana (text[]), hora_lembrete (time), lembrete_ativo, ativo, streak_atual, streak_maximo, total_completados, ordem, created_at, updated_at
+- `checklist_completacoes`: id, rotina_id, usuario_id, data_completada (date), created_at
+- UNIQUE constraint: `checklist_completacoes(rotina_id, usuario_id, data_completada)`
+
+### ⚠️ Nomes de colunas críticos
+- `hora_lembrete` (NÃO `lembrete_hora`) — tipo `time`
+- `lembrete_ativo` (boolean) — correto
+- `ativo` (NÃO `ativa`) — boolean
+- `dias_semana` é `text[]` — sempre converter `number[]` para `string[]` antes do insert (`.map(String)`)
+- `streak_atual` e `streak_maximo` existem e têm default 0 — podem ser incluídos nos updates
+- `frequencia`: 'diaria' | 'semanal' | 'personalizada'
+
+### Wishlist
+- `wishlist_produtos`: id, usuario_id, nome, marca, categoria, subcategoria, preco_estimado, foto_url, link_compra, status ('quero' | 'tenho' | 'comprei'), prioridade ('alta' | 'media' | 'baixa'), notas, tags, ordem, created_at
+- Storage: bucket `wishlist-fotos`, path `{userId}/{uuid}.jpg`
+- Status flow na UI: apenas `quero` e `comprei` (sem `tenho` — legado mantido no banco)
+
+---
+
 ## Sinergias com Âmbar Beauty Studio
 - Projetos completamente separados agora
 - Futuro: cliente Chiqueteza descobre o Âmbar como profissional
