@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, X, Camera, Trash2, ChevronDown } from 'lucide-react'
+import { Plus, X, Camera, Trash2, ChevronDown, Search, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -219,12 +219,103 @@ function ProdutoCard({
   )
 }
 
+// ─── Busca ML ─────────────────────────────────────────────────────────────────
+
+interface MLResultado {
+  id: string
+  titulo: string
+  preco: number
+  thumbnail: string
+  deeplink: string
+}
+
+function MLBuscaTab({ onSelecionar }: {
+  onSelecionar: (r: MLResultado) => void
+}) {
+  const [query, setQuery] = useState('')
+  const [resultados, setResultados] = useState<MLResultado[]>([])
+  const [buscando, setBuscando] = useState(false)
+  const [semResultados, setSemResultados] = useState(false)
+  const timerRef = useRef<ReturnType<typeof setTimeout>>()
+
+  function handleInput(v: string) {
+    setQuery(v)
+    clearTimeout(timerRef.current)
+    if (v.trim().length < 2) { setResultados([]); setSemResultados(false); return }
+    setBuscando(true)
+    timerRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/armario/buscar-ml?q=${encodeURIComponent(v)}`)
+        const data = await res.json()
+        setResultados(data.produtos ?? [])
+        setSemResultados((data.produtos ?? []).length === 0)
+      } catch {
+        setResultados([])
+      } finally {
+        setBuscando(false)
+      }
+    }, 400)
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ position: 'relative' }}>
+        <Search size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--foreground-muted)' }} />
+        <input
+          value={query}
+          onChange={e => handleInput(e.target.value)}
+          placeholder="ex: Protetor solar Isdin FPS 98..."
+          style={{ width: '100%', padding: '12px 14px 12px 40px', borderRadius: 12, border: '1.5px solid #E8E8E8', fontSize: 14, fontFamily: 'var(--font-body)', color: 'var(--foreground)', outline: 'none', boxSizing: 'border-box', background: 'var(--background)' }}
+        />
+        {buscando && <Loader2 size={16} style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--foreground-muted)', animation: 'spin 1s linear infinite' }} />}
+      </div>
+
+      {semResultados && !buscando && (
+        <p style={{ textAlign: 'center', fontSize: 13, color: 'var(--foreground-muted)', padding: '8px 0' }}>
+          Nenhum produto encontrado. Tente outro nome.
+        </p>
+      )}
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 320, overflowY: 'auto' }}>
+        {resultados.map(r => (
+          <motion.button key={r.id} type="button" whileTap={{ scale: 0.97 }}
+            onClick={() => onSelecionar(r)}
+            style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 12, border: '1.5px solid #EDEDED', background: '#FAFAFA', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)' }}>
+            <img src={r.thumbnail} alt={r.titulo} style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--foreground)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {r.titulo}
+              </p>
+              <p style={{ margin: '3px 0 0', fontSize: 12, color: '#1B5E5A', fontWeight: 700 }}>
+                R$ {r.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </p>
+            </div>
+          </motion.button>
+        ))}
+      </div>
+
+      {resultados.length > 0 && (
+        <p style={{ fontSize: 11, color: 'var(--foreground-muted)', textAlign: 'center' }}>
+          Toque para preencher o formulário automaticamente
+        </p>
+      )}
+    </div>
+  )
+}
+
 // ─── Formulário ───────────────────────────────────────────────────────────────
 
 const FORM_VAZIO = {
   nome: '', marca: '', categoria: '' as string, subcategoria: '', volume_total: '',
   frequencia_uso: 'diaria' as ArmarioProduto['frequencia_uso'],
   nivel_atual: 100, notas: '',
+}
+
+interface MLSelecionado {
+  ml_produto_id: string
+  ml_preco_atual: number
+  ml_deeplink: string
+  thumbnail: string
 }
 
 function FormAdicionarProduto({ userId, onSalvar, onClose, prefill }: {
@@ -234,6 +325,8 @@ function FormAdicionarProduto({ userId, onSalvar, onClose, prefill }: {
   prefill?: { nome: string; marca: string; categoria: string; foto_url: string; wishlist_id: string }
 }) {
   const supabase = createClient()
+  const [modo, setModo] = useState<'manual' | 'ml'>('manual')
+  const [mlSelecionado, setMlSelecionado] = useState<MLSelecionado | null>(null)
   const [form, setForm] = useState({
     ...FORM_VAZIO,
     nome: prefill?.nome ?? '',
@@ -245,6 +338,12 @@ function FormAdicionarProduto({ userId, onSalvar, onClose, prefill }: {
   const [fotoPreview, setFotoPreview] = useState<string | null>(null)
   const [salvando, setSalvando] = useState(false)
   const inputFotoRef = useRef<HTMLInputElement>(null)
+
+  function handleSelecionarML(r: MLResultado) {
+    setMlSelecionado({ ml_produto_id: r.id, ml_preco_atual: r.preco, ml_deeplink: r.deeplink, thumbnail: r.thumbnail })
+    set('nome', r.titulo)
+    setModo('manual')
+  }
 
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '11px 14px', borderRadius: 12, border: '1.5px solid #E8E8E8',
@@ -285,13 +384,17 @@ function FormAdicionarProduto({ userId, onSalvar, onClose, prefill }: {
       categoria: form.categoria || null,
       subcategoria: form.subcategoria.trim() || null,
       volume_total: form.volume_total.trim() || null,
-      foto_url,
+      foto_url: foto_url ?? (mlSelecionado?.thumbnail || null),
       frequencia_uso: form.frequencia_uso,
       nivel_atual: form.nivel_atual,
       data_abertura: hoje,
       data_fim_estimada: dataFim,
       notas: form.notas.trim() || null,
       wishlist_id: prefill?.wishlist_id || null,
+      ml_produto_id: mlSelecionado?.ml_produto_id ?? null,
+      ml_preco_atual: mlSelecionado?.ml_preco_atual ?? null,
+      ml_deeplink: mlSelecionado?.ml_deeplink ?? null,
+      origem: mlSelecionado ? 'busca_ml' : prefill?.wishlist_id ? 'da_wishlist' : 'manual',
     })
 
     if (error) { toast.error('Erro ao salvar'); console.error(error); setSalvando(false); return }
@@ -301,6 +404,42 @@ function FormAdicionarProduto({ userId, onSalvar, onClose, prefill }: {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* Seletor de modo */}
+      <div style={{ display: 'flex', gap: 6, background: '#F5F5F5', borderRadius: 12, padding: 4 }}>
+        {([
+          { id: 'manual', label: '✍️ Manual' },
+          { id: 'ml',     label: '🔍 Buscar no ML' },
+        ] as const).map(m => (
+          <button key={m.id} type="button" onClick={() => setModo(m.id)}
+            style={{ flex: 1, padding: '8px 0', borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, fontFamily: 'var(--font-body)', background: modo === m.id ? '#fff' : 'transparent', color: modo === m.id ? '#1B5E5A' : 'var(--foreground-muted)', boxShadow: modo === m.id ? '0 1px 4px rgba(0,0,0,0.08)' : 'none', transition: 'all 0.15s' }}>
+            {m.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Aba ML */}
+      {modo === 'ml' && (
+        <MLBuscaTab onSelecionar={handleSelecionarML} />
+      )}
+
+      {/* Produto ML selecionado */}
+      {mlSelecionado && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 12, background: 'rgba(27,94,90,0.06)', border: '1.5px solid rgba(27,94,90,0.18)' }}>
+          <img src={mlSelecionado.thumbnail} alt="produto" style={{ width: 36, height: 36, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: '#1B5E5A' }}>Produto do ML vinculado ✓</p>
+            <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--foreground-muted)' }}>
+              R$ {mlSelecionado.ml_preco_atual.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </p>
+          </div>
+          <button type="button" onClick={() => setMlSelecionado(null)}
+            style={{ width: 22, height: 22, borderRadius: '50%', background: 'rgba(239,68,68,0.1)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <X size={12} color="#EF4444" />
+          </button>
+        </div>
+      )}
+
+      {/* Formulário manual — sempre visível para edição */}
       {/* Nome */}
       <div>
         <label style={{ fontSize: 12, fontWeight: 700, color: '#525252', marginBottom: 6, display: 'block' }}>Nome *</label>
