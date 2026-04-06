@@ -16,7 +16,7 @@ interface GooglePlace {
   rating?: number
   userRatingCount?: number
   primaryType?: string
-  internationalPhoneNumber?: string
+  nationalPhoneNumber?: string
   location?: { latitude: number; longitude: number }
   websiteUri?: string
 }
@@ -52,6 +52,9 @@ export async function POST(req: NextRequest) {
     typeof body.raio_km === 'number' && body.raio_km > 0 ? body.raio_km : RAIO_KM_DEFAULT
   const categoria = typeof body.categoria === 'string' && body.categoria ? body.categoria : null
 
+  console.log('[BUSCA] Iniciando. lat:', lat, 'lng:', lng, 'raio_km:', raio_km, 'categoria:', categoria)
+  console.log('[BUSCA] API Key existe:', !!process.env.GOOGLE_PLACES_API_KEY)
+
   if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
     return NextResponse.json({ error: 'Coordenadas inválidas' }, { status: 400 })
   }
@@ -67,6 +70,8 @@ export async function POST(req: NextRequest) {
     .eq('cache_key', cacheKey)
     .gte('buscado_em', cacheExpiry)
     .maybeSingle()
+
+  console.log('[BUSCA] Cache hit:', !!cacheHit, '| cache_key:', cacheKey)
 
   // 3. Cache miss → Google Places API (New)
   if (!cacheHit) {
@@ -85,7 +90,7 @@ export async function POST(req: NextRequest) {
               'places.rating',
               'places.userRatingCount',
               'places.primaryType',
-              'places.internationalPhoneNumber',
+              'places.nationalPhoneNumber',
               'places.location',
               'places.websiteUri',
             ].join(','),
@@ -99,20 +104,26 @@ export async function POST(req: NextRequest) {
               },
             },
             maxResultCount: 20,
+            languageCode: 'pt-BR',
           }),
           signal: AbortSignal.timeout(10_000),
         })
 
+        console.log('[BUSCA] Google Places response status:', placesRes.status)
+
+        const json = (await placesRes.json()) as { places?: GooglePlace[]; error?: unknown }
+        console.log('[BUSCA] Google Places body snippet:', JSON.stringify(json).slice(0, 400))
+
         if (placesRes.ok) {
-          const json = (await placesRes.json()) as { places?: GooglePlace[] }
           const places = json.places ?? []
+          console.log('[BUSCA] Estabelecimentos a upsert:', places.length)
 
           if (places.length > 0) {
             const rows = places.map((p) => ({
               id: p.id,
               nome: p.displayName?.text ?? 'Sem nome',
               endereco: p.formattedAddress ?? null,
-              telefone: p.internationalPhoneNumber ?? null,
+              telefone: p.nationalPhoneNumber ?? null,
               website: p.websiteUri ?? null,
               latitude: p.location?.latitude ?? null,
               longitude: p.location?.longitude ?? null,
@@ -125,9 +136,15 @@ export async function POST(req: NextRequest) {
             }))
 
             // Upsert — trigger atualiza coluna localizacao automaticamente
-            await supabase
+            const { error: upsertErr } = await supabase
               .from('estabelecimentos')
               .upsert(rows, { onConflict: 'id', ignoreDuplicates: false })
+
+            if (upsertErr) {
+              console.error('[BUSCA] Upsert error:', upsertErr)
+            } else {
+              console.log('[BUSCA] Upsert concluído:', rows.length, 'registros')
+            }
           }
 
           // Salvar/atualizar cache
@@ -141,10 +158,14 @@ export async function POST(req: NextRequest) {
               },
               { onConflict: 'cache_key' }
             )
+        } else {
+          console.error('[BUSCA] Erro Google Places:', JSON.stringify(json))
         }
-      } catch {
-        // Google Places falhou — retorna dados do banco local sem erro
+      } catch (err) {
+        console.error('[BUSCA] Exceção na chamada Google Places:', err)
       }
+    } else {
+      console.warn('[BUSCA] GOOGLE_PLACES_API_KEY não configurada — pulando Places')
     }
   }
 
@@ -157,10 +178,12 @@ export async function POST(req: NextRequest) {
   })
 
   if (error) {
+    console.error('[BUSCA] RPC buscar_por_proximidade error:', error)
     return NextResponse.json({ error: 'Erro ao buscar estabelecimentos' }, { status: 500 })
   }
 
   const lista = (resultados as EstabelecimentoRPC[] | null) ?? []
+  console.log('[BUSCA] PostGIS resultado:', lista.length, 'estabelecimentos')
 
   return NextResponse.json({
     estabelecimentos: lista,
