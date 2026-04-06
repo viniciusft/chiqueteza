@@ -15,7 +15,7 @@ import { useCache } from '@/lib/cache/useCache'
 import { CACHE_KEYS } from '@/lib/cache/keys'
 import EmptyState from '@/components/ui/EmptyState'
 import { useLocalizacao } from '@/hooks/useLocalizacao'
-import { Plus, MapPin, ChevronDown, ChevronUp } from 'lucide-react'
+import { Plus, MapPin, ChevronDown, ChevronUp, Search, X } from 'lucide-react'
 
 interface Profissional {
   id: string
@@ -59,6 +59,9 @@ function SecaoPorProximidade({ userId }: { userId: string | null }) {
   const [expandido, setExpandido] = useState(true)
   const [jaAbriu, setJaAbriu] = useState(false)
   const [raio, setRaio] = useState<RaioKm>(5)
+  const [textoBusca, setTextoBusca] = useState('')
+  const [buscandoTexto, setBuscandoTexto] = useState(false)
+  const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const buscarEstabelecimentos = useCallback(async (lat: number, lng: number, raio_km: RaioKm) => {
     setBuscando(true)
@@ -92,6 +95,30 @@ function SecaoPorProximidade({ userId }: { userId: string | null }) {
     if (coordenadas) {
       await buscarEstabelecimentos(coordenadas.lat, coordenadas.lng, novoRaio)
     }
+  }
+
+  function handleTextoBusca(valor: string) {
+    setTextoBusca(valor)
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    if (valor.length < 2) {
+      // Restaura resultados da busca por GPS se disponível
+      if (valor === '' && coordenadas && jaAbriu) {
+        void buscarEstabelecimentos(coordenadas.lat, coordenadas.lng, raio)
+      }
+      return
+    }
+    debounceRef.current = setTimeout(async () => {
+      setBuscandoTexto(true)
+      try {
+        const res = await fetch(`/api/profissionais/buscar?q=${encodeURIComponent(valor)}`)
+        if (!res.ok) return
+        const data = (await res.json()) as { estabelecimentos: Estabelecimento[] }
+        setEstabelecimentos(data.estabelecimentos)
+        setJaAbriu(true)
+      } finally {
+        setBuscandoTexto(false)
+      }
+    }, 400)
   }
 
   // Se GPS já estava em cache, buscar automaticamente na primeira vez
@@ -147,6 +174,42 @@ function SecaoPorProximidade({ userId }: { userId: string | null }) {
               {listaFiltrada.length}
             </span>
             {expandido ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          </button>
+        )}
+      </div>
+
+      {/* Barra de busca textual */}
+      <div style={{ position: 'relative' }}>
+        <Search
+          size={15}
+          color="#A3A3A3"
+          style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}
+        />
+        <input
+          value={textoBusca}
+          onChange={(e) => handleTextoBusca(e.target.value)}
+          placeholder="Buscar por nome, ex: Salão Maria..."
+          style={{
+            width: '100%', padding: '11px 36px 11px 38px',
+            borderRadius: 12, border: '1.5px solid #E8E8E8',
+            fontSize: 14, fontFamily: 'var(--font-body)',
+            color: '#171717', background: '#FAFAFA', outline: 'none',
+            boxSizing: 'border-box',
+          }}
+        />
+        {(textoBusca || buscandoTexto) && (
+          <button
+            onClick={() => { setTextoBusca(''); if (coordenadas && jaAbriu) void buscarEstabelecimentos(coordenadas.lat, coordenadas.lng, raio) }}
+            style={{
+              position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+              background: 'none', border: 'none', cursor: 'pointer', padding: 4,
+              display: 'flex', alignItems: 'center',
+            }}
+          >
+            {buscandoTexto
+              ? <span style={{ fontSize: 11, color: '#A3A3A3' }}>...</span>
+              : <X size={14} color="#A3A3A3" />
+            }
           </button>
         )}
       </div>
