@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 const RAIO_KM_DEFAULT = 5
-const CACHE_DAYS = 30
+const CACHE_DAYS = 60
 
 // Geohash simples: arredonda lat/lng a 2 casas decimais (~1km de precisão)
 function buildCacheKey(lat: number, lng: number, raio_km: number): string {
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
   const cacheKey = buildCacheKey(lat, lng, raio_km)
   const cacheExpiry = new Date(Date.now() - CACHE_DAYS * 24 * 60 * 60 * 1000).toISOString()
 
-  // 2. Verificar cache (30 dias)
+  // 2. Verificar cache (60 dias)
   const { data: cacheHit } = await supabase
     .from('busca_cache')
     .select('buscado_em')
@@ -78,89 +78,100 @@ export async function POST(req: NextRequest) {
     const apiKey = process.env.GOOGLE_PLACES_API_KEY
     if (apiKey) {
       try {
-        const placesRes = await fetch('https://places.googleapis.com/v1/places:searchNearby', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Goog-Api-Key': apiKey,
-            'X-Goog-FieldMask': [
-              'places.id',
-              'places.displayName',
-              'places.formattedAddress',
-              'places.rating',
-              'places.userRatingCount',
-              'places.primaryType',
-              'places.nationalPhoneNumber',
-              'places.location',
-              'places.websiteUri',
-            ].join(','),
-          },
-          body: JSON.stringify({
-            includedTypes: ['beauty_salon', 'hair_care', 'nail_salon', 'spa', 'hair_removal', 'skin_care_clinic'],
-            locationRestriction: {
-              circle: {
-                center: { latitude: lat, longitude: lng },
-                radius: raio_km * 1000,
-              },
+        const FIELD_MASK = [
+          'places.id',
+          'places.displayName',
+          'places.formattedAddress',
+          'places.rating',
+          'places.userRatingCount',
+          'places.primaryType',
+          'places.nationalPhoneNumber',
+          'places.location',
+          'places.websiteUri',
+          'nextPageToken',
+        ].join(',')
+
+        const placesBody = {
+          includedTypes: ['beauty_salon', 'hair_care', 'nail_salon', 'spa', 'hair_removal', 'skin_care_clinic'],
+          locationRestriction: {
+            circle: {
+              center: { latitude: lat, longitude: lng },
+              radius: raio_km * 1000,
             },
-            maxResultCount: 20,
-            languageCode: 'pt-BR',
-          }),
-          signal: AbortSignal.timeout(10_000),
-        })
-
-        console.log('[BUSCA] Google Places response status:', placesRes.status)
-
-        const json = (await placesRes.json()) as { places?: GooglePlace[]; error?: unknown }
-        console.log('[BUSCA] Google Places body snippet:', JSON.stringify(json).slice(0, 400))
-
-        if (placesRes.ok) {
-          const places = json.places ?? []
-          console.log('[BUSCA] Estabelecimentos a upsert:', places.length)
-
-          if (places.length > 0) {
-            const rows = places.map((p) => ({
-              id: p.id,
-              nome: p.displayName?.text ?? 'Sem nome',
-              endereco: p.formattedAddress ?? null,
-              telefone: p.nationalPhoneNumber ?? null,
-              website: p.websiteUri ?? null,
-              latitude: p.location?.latitude ?? null,
-              longitude: p.location?.longitude ?? null,
-              avaliacao_google: p.rating ?? null,
-              total_avaliacoes: p.userRatingCount ?? null,
-              categoria: p.primaryType ?? null,
-              source: 'google_places',
-              place_id: p.id,
-              ativo: true,
-            }))
-
-            // Upsert — trigger atualiza coluna localizacao automaticamente
-            const { error: upsertErr } = await supabase
-              .from('estabelecimentos')
-              .upsert(rows, { onConflict: 'id', ignoreDuplicates: false })
-
-            if (upsertErr) {
-              console.error('[BUSCA] Upsert error:', upsertErr)
-            } else {
-              console.log('[BUSCA] Upsert concluído:', rows.length, 'registros')
-            }
-          }
-
-          // Salvar/atualizar cache
-          await supabase
-            .from('busca_cache')
-            .upsert(
-              {
-                cache_key: cacheKey,
-                results_count: places.length,
-                buscado_em: new Date().toISOString(),
-              },
-              { onConflict: 'cache_key' }
-            )
-        } else {
-          console.error('[BUSCA] Erro Google Places:', JSON.stringify(json))
+          },
+          maxResultCount: 20,
+          languageCode: 'pt-BR',
         }
+
+        const fetchPlacesPage = async (pageToken?: string): Promise<{ places: GooglePlace[]; nextPageToken?: string }> => {
+          const body = pageToken ? { ...placesBody, pageToken } : placesBody
+          const res = await fetch('https://places.googleapis.com/v1/places:searchNearby', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Goog-Api-Key': apiKey,
+              'X-Goog-FieldMask': FIELD_MASK,
+            },
+            body: JSON.stringify(body),
+            signal: AbortSignal.timeout(10_000),
+          })
+          if (!res.ok) return { places: [] }
+          const data = (await res.json()) as { places?: GooglePlace[]; nextPageToken?: string }
+          return { places: data.places ?? [], nextPageToken: data.nextPageToken }
+        }
+
+        // Primeira página
+        const page1 = await fetchPlacesPage()
+        let allPlaces = page1.places
+        console.log('[BUSCA] Google Places página 1:', allPlaces.length, 'resultados')
+
+        // Segunda página apenas para raio >= 10km (economiza quota)
+        if (raio_km >= 10 && page1.nextPageToken) {
+          const page2 = await fetchPlacesPage(page1.nextPageToken)
+          allPlaces = [...allPlaces, ...page2.places]
+          console.log('[BUSCA] Google Places página 2:', page2.places.length, 'resultados | total:', allPlaces.length)
+        }
+
+        if (allPlaces.length > 0) {
+          const rows = allPlaces.map((p) => ({
+            id: p.id,
+            nome: p.displayName?.text ?? 'Sem nome',
+            endereco: p.formattedAddress ?? null,
+            telefone: p.nationalPhoneNumber ?? null,
+            website: p.websiteUri ?? null,
+            latitude: p.location?.latitude ?? null,
+            longitude: p.location?.longitude ?? null,
+            avaliacao_google: p.rating ?? null,
+            total_avaliacoes: p.userRatingCount ?? null,
+            categoria: p.primaryType ?? null,
+            source: 'google_places',
+            place_id: p.id,
+            ativo: true,
+          }))
+
+          // Upsert — trigger atualiza coluna localizacao automaticamente
+          const { error: upsertErr } = await supabase
+            .from('estabelecimentos')
+            .upsert(rows, { onConflict: 'id', ignoreDuplicates: false })
+
+          if (upsertErr) {
+            console.error('[BUSCA] Upsert error:', upsertErr)
+          } else {
+            console.log('[BUSCA] Upsert concluído:', rows.length, 'registros')
+          }
+        }
+
+        // Salvar/atualizar cache
+        await supabase
+          .from('busca_cache')
+          .upsert(
+            {
+              cache_key: cacheKey,
+              results_count: allPlaces.length,
+              buscado_em: new Date().toISOString(),
+            },
+            { onConflict: 'cache_key' }
+          )
       } catch (err) {
         console.error('[BUSCA] Exceção na chamada Google Places:', err)
       }
@@ -190,4 +201,34 @@ export async function POST(req: NextRequest) {
     total: lista.length,
     cache_hit: !!cacheHit,
   })
+}
+
+// ─── GET — Busca textual no banco (sem GPS, sem chamar Google Places) ───
+
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url)
+  const q = searchParams.get('q')?.trim() ?? ''
+
+  if (q.length < 2) {
+    return NextResponse.json({ estabelecimentos: [], total: 0 })
+  }
+
+  const supabase = createAdminClient()
+
+  const { data, error } = await supabase
+    .from('estabelecimentos')
+    .select('id, nome, categoria, endereco, telefone, avaliacao_google, total_avaliacoes, foto_url, place_id, website, latitude, longitude')
+    .or(`nome.ilike.%${q}%,endereco.ilike.%${q}%`)
+    .eq('ativo', true)
+    .order('avaliacao_google', { ascending: false, nullsFirst: false })
+    .limit(30)
+
+  if (error) {
+    return NextResponse.json({ error: 'Erro na busca' }, { status: 500 })
+  }
+
+  // Busca textual não tem distância calculada — retornar 0 como placeholder
+  const lista = (data ?? []).map((e) => ({ ...e, distancia_metros: 0 }))
+
+  return NextResponse.json({ estabelecimentos: lista, total: lista.length })
 }

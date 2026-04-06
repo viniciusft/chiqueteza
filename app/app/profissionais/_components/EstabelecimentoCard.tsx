@@ -1,10 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { MapPin, Phone, Star, Navigation, Globe, BookmarkPlus, X, Check } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { MapPin, Phone, Star, Navigation, Globe, BookmarkPlus, Check, Share2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
+import BottomSheet from '@/components/ui/BottomSheet'
 
 export interface Estabelecimento {
   id: string
@@ -84,9 +85,9 @@ function Estrelas({ valor, total }: { valor: number; total: number | null }) {
   )
 }
 
-// ─── Bottom Sheet "Salvar na caderneta" ──────────────────────────────
+// ─── Conteúdo do BottomSheet de salvar ───────────────────────────────
 
-function SalvarSheet({
+function ConteudoSalvar({
   est,
   userId,
   onClose,
@@ -138,138 +139,95 @@ function SalvarSheet({
   }
 
   return (
-    <AnimatePresence>
-      <motion.div
-        key="overlay"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={onClose}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <p style={{ margin: 0, fontSize: 12, color: '#A3A3A3', fontFamily: 'var(--font-body)' }}>
+        Confirme as informações antes de salvar
+      </p>
+
+      {/* Nome */}
+      <div>
+        <label style={{ fontSize: 12, fontWeight: 700, color: '#525252', fontFamily: 'var(--font-body)', display: 'block', marginBottom: 6 }}>
+          Nome
+        </label>
+        <input
+          value={nome}
+          onChange={(e) => setNome(e.target.value)}
+          style={{
+            width: '100%', padding: '11px 14px', borderRadius: 12,
+            border: '1.5px solid #E8E8E8', fontSize: 14, fontFamily: 'var(--font-body)',
+            color: '#171717', background: '#FAFAFA', outline: 'none',
+            boxSizing: 'border-box',
+          }}
+        />
+      </div>
+
+      {/* Telefone */}
+      <div>
+        <label style={{ fontSize: 12, fontWeight: 700, color: '#525252', fontFamily: 'var(--font-body)', display: 'block', marginBottom: 6 }}>
+          Telefone
+        </label>
+        <input
+          value={telefone}
+          onChange={(e) => setTelefone(e.target.value)}
+          placeholder="(11) 9 9999-9999"
+          style={{
+            width: '100%', padding: '11px 14px', borderRadius: 12,
+            border: '1.5px solid #E8E8E8', fontSize: 14, fontFamily: 'var(--font-body)',
+            color: '#171717', background: '#FAFAFA', outline: 'none',
+            boxSizing: 'border-box',
+          }}
+        />
+      </div>
+
+      {/* Especialidades */}
+      {todasEspecialidades.length > 0 && (
+        <div>
+          <label style={{ fontSize: 12, fontWeight: 700, color: '#525252', fontFamily: 'var(--font-body)', display: 'block', marginBottom: 8 }}>
+            Especialidades
+          </label>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {todasEspecialidades.map((esp) => {
+              const ativo = especialidades.includes(esp)
+              return (
+                <button
+                  key={esp}
+                  onClick={() => toggleEspecialidade(esp)}
+                  style={{
+                    padding: '7px 14px', borderRadius: 20,
+                    border: '1.5px solid',
+                    borderColor: ativo ? 'var(--color-primary)' : '#E8E8E8',
+                    background: ativo ? 'rgba(255,51,102,0.06)' : '#fff',
+                    color: ativo ? 'var(--color-primary)' : '#666',
+                    fontSize: 13, fontWeight: ativo ? 700 : 500,
+                    cursor: 'pointer', fontFamily: 'var(--font-body)',
+                    display: 'flex', alignItems: 'center', gap: 5,
+                  }}
+                >
+                  {ativo && <Check size={12} />}
+                  {esp}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Botão salvar */}
+      <button
+        onClick={salvando ? undefined : salvar}
+        disabled={salvando || !nome.trim()}
         style={{
-          position: 'fixed', inset: 0, zIndex: 50,
-          background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(2px)',
-        }}
-      />
-      <motion.div
-        key="sheet"
-        initial={{ y: '100%' }}
-        animate={{ y: 0 }}
-        exit={{ y: '100%' }}
-        transition={{ type: 'spring', stiffness: 380, damping: 38 }}
-        style={{
-          position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
-          width: '100%', maxWidth: 430, zIndex: 51,
-          background: '#fff', borderRadius: '22px 22px 0 0',
-          padding: '20px 20px 40px',
-          boxShadow: '0 -8px 32px rgba(0,0,0,0.12)',
+          width: '100%', padding: '14px',
+          borderRadius: 14, border: 'none',
+          background: nome.trim() ? 'linear-gradient(135deg, #FF3366, #F472A0)' : '#E8E8E8',
+          color: nome.trim() ? '#fff' : '#A3A3A3',
+          fontSize: 15, fontWeight: 700, cursor: nome.trim() ? 'pointer' : 'default',
+          fontFamily: 'var(--font-body)',
         }}
       >
-        {/* Handle */}
-        <div style={{ width: 40, height: 4, borderRadius: 2, background: '#E8E8E8', margin: '0 auto 20px' }} />
-
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-          <div>
-            <p style={{ margin: 0, fontSize: 17, fontWeight: 800, color: '#171717', fontFamily: 'var(--font-body)' }}>
-              Salvar na caderneta
-            </p>
-            <p style={{ margin: '2px 0 0', fontSize: 12, color: '#A3A3A3', fontFamily: 'var(--font-body)' }}>
-              Confirme as informações antes de salvar
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            style={{ width: 32, height: 32, borderRadius: 10, border: 'none', background: '#F5F5F5', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          >
-            <X size={16} color="#767676" />
-          </button>
-        </div>
-
-        {/* Campo: Nome */}
-        <div style={{ marginBottom: 14 }}>
-          <label style={{ fontSize: 12, fontWeight: 700, color: '#525252', fontFamily: 'var(--font-body)', display: 'block', marginBottom: 6 }}>
-            Nome
-          </label>
-          <input
-            value={nome}
-            onChange={(e) => setNome(e.target.value)}
-            style={{
-              width: '100%', padding: '11px 14px', borderRadius: 12,
-              border: '1.5px solid #E8E8E8', fontSize: 14, fontFamily: 'var(--font-body)',
-              color: '#171717', background: '#FAFAFA', outline: 'none',
-              boxSizing: 'border-box',
-            }}
-          />
-        </div>
-
-        {/* Campo: Telefone */}
-        <div style={{ marginBottom: 14 }}>
-          <label style={{ fontSize: 12, fontWeight: 700, color: '#525252', fontFamily: 'var(--font-body)', display: 'block', marginBottom: 6 }}>
-            Telefone
-          </label>
-          <input
-            value={telefone}
-            onChange={(e) => setTelefone(e.target.value)}
-            placeholder="(11) 9 9999-9999"
-            style={{
-              width: '100%', padding: '11px 14px', borderRadius: 12,
-              border: '1.5px solid #E8E8E8', fontSize: 14, fontFamily: 'var(--font-body)',
-              color: '#171717', background: '#FAFAFA', outline: 'none',
-              boxSizing: 'border-box',
-            }}
-          />
-        </div>
-
-        {/* Especialidades */}
-        {todasEspecialidades.length > 0 && (
-          <div style={{ marginBottom: 20 }}>
-            <label style={{ fontSize: 12, fontWeight: 700, color: '#525252', fontFamily: 'var(--font-body)', display: 'block', marginBottom: 8 }}>
-              Especialidades
-            </label>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {todasEspecialidades.map((esp) => {
-                const ativo = especialidades.includes(esp)
-                return (
-                  <button
-                    key={esp}
-                    onClick={() => toggleEspecialidade(esp)}
-                    style={{
-                      padding: '7px 14px', borderRadius: 20,
-                      border: '1.5px solid',
-                      borderColor: ativo ? 'var(--color-primary)' : '#E8E8E8',
-                      background: ativo ? 'rgba(255,51,102,0.06)' : '#fff',
-                      color: ativo ? 'var(--color-primary)' : '#666',
-                      fontSize: 13, fontWeight: ativo ? 700 : 500,
-                      cursor: 'pointer', fontFamily: 'var(--font-body)',
-                      display: 'flex', alignItems: 'center', gap: 5,
-                    }}
-                  >
-                    {ativo && <Check size={12} />}
-                    {esp}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Botão salvar */}
-        <button
-          onClick={salvando ? undefined : salvar}
-          disabled={salvando || !nome.trim()}
-          style={{
-            width: '100%', padding: '14px',
-            borderRadius: 14, border: 'none',
-            background: nome.trim() ? 'linear-gradient(135deg, #FF3366, #F472A0)' : '#E8E8E8',
-            color: nome.trim() ? '#fff' : '#A3A3A3',
-            fontSize: 15, fontWeight: 700, cursor: nome.trim() ? 'pointer' : 'default',
-            fontFamily: 'var(--font-body)',
-          }}
-        >
-          {salvando ? 'Salvando...' : 'Salvar na caderneta'}
-        </button>
-      </motion.div>
-    </AnimatePresence>
+        {salvando ? 'Salvando...' : 'Salvar na caderneta'}
+      </button>
+    </div>
   )
 }
 
@@ -293,6 +251,32 @@ export default function EstabelecimentoCard({
     est.latitude && est.longitude
       ? `https://www.google.com/maps/dir/?api=1&destination=${est.latitude},${est.longitude}`
       : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(est.nome + ' ' + (est.endereco ?? ''))}`
+
+  const mapsShareUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(est.nome + ' ' + (est.endereco ?? ''))}`
+
+  async function handleCompartilhar() {
+    const linhas = [
+      `📍 Encontrei esse lugar incrível!`,
+      ``,
+      `💄 ${est.nome}`,
+      est.endereco ? `🏠 ${est.endereco}` : null,
+      est.avaliacao_google
+        ? `⭐ ${est.avaliacao_google.toFixed(1)} estrelas${est.total_avaliacoes ? ` (${est.total_avaliacoes.toLocaleString('pt-BR')} avaliações)` : ''}`
+        : null,
+      est.telefone ? `📱 ${est.telefone}` : null,
+      `🗺️ ${mapsShareUrl}`,
+      ``,
+      `Vi pelo Chiqueteza ✨`,
+    ]
+    const texto = linhas.filter((l) => l !== null).join('\n')
+
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      await navigator.share({ title: est.nome, text: texto })
+    } else {
+      await navigator.clipboard.writeText(texto)
+      toast.success('Link copiado!')
+    }
+  }
 
   return (
     <>
@@ -398,6 +382,20 @@ export default function EstabelecimentoCard({
 
             <div style={{ flex: 1 }} />
 
+            {/* Compartilhar */}
+            <button
+              onClick={handleCompartilhar}
+              style={{
+                width: 32, height: 32, borderRadius: 10,
+                background: 'rgba(100,100,100,0.07)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                border: 'none', cursor: 'pointer',
+              }}
+              title="Compartilhar"
+            >
+              <Share2 size={15} color="#525252" />
+            </button>
+
             {/* Navegar */}
             <a
               href={mapsUrl}
@@ -453,14 +451,20 @@ export default function EstabelecimentoCard({
         </div>
       </motion.div>
 
-      {/* Bottom sheet salvar */}
-      {sheetAberta && userId && (
-        <SalvarSheet
-          est={est}
-          userId={userId}
-          onClose={() => setSheetAberta(false)}
-        />
-      )}
+      {/* BottomSheet para salvar na caderneta */}
+      <BottomSheet
+        isOpen={sheetAberta && !!userId}
+        onClose={() => setSheetAberta(false)}
+        title="Salvar na caderneta"
+      >
+        {userId && (
+          <ConteudoSalvar
+            est={est}
+            userId={userId}
+            onClose={() => setSheetAberta(false)}
+          />
+        )}
+      </BottomSheet>
     </>
   )
 }
