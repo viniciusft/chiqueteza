@@ -12,7 +12,7 @@ import { SkeletonList, SkeletonAppointment, SkeletonAlert } from '@/components/u
 import { StaggerList, StaggerItem } from '@/components/ui/StaggerList'
 import { setCache } from '@/lib/cache'
 import { CACHE_KEYS } from '@/lib/cache/keys'
-import { Sparkles, CalendarDays, Users, AlertTriangle, MessageCircle, ShoppingBag, Heart } from 'lucide-react'
+import { Sparkles, CalendarDays, Users, AlertTriangle, MessageCircle, ShoppingBag, Heart, GlassWater } from 'lucide-react'
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 
@@ -43,10 +43,17 @@ interface Agendamento {
   profissional: { nome: string; telefone: string | null } | null
 }
 
+interface ProdutoAcabando {
+  id: string
+  nome: string
+  nivel_atual: number
+}
+
 interface HomeData {
   nome: string
   proximo: Agendamento | null
   alertas: ServicoBeleza[]
+  acabando: ProdutoAcabando[]
 }
 
 // ─── Quick action pill ───────────────────────────────────────────────
@@ -239,12 +246,13 @@ function HomeContent({ userId, nome: nomeInicial }: { userId: string; nome: stri
     nome: nomeInicial,
     proximo: null,
     alertas: [],
+    acabando: [],
   })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     void (async () => {
-      const [{ data: proximos }, { data: servicos }] = await Promise.all([
+      const [{ data: proximos }, { data: servicos }, { data: armarioAcabando }] = await Promise.all([
         supabase
           .from('agendamentos_rotina')
           .select('*, profissional:profissionais(nome, telefone)')
@@ -259,12 +267,18 @@ function HomeContent({ userId, nome: nomeInicial }: { userId: string; nome: stri
           .eq('usuario_id', userId)
           .eq('lembrete_ativo', true)
           .not('ultimo_procedimento', 'is', null),
+        supabase
+          .from('armario_produtos')
+          .select('id, nome, nivel_atual')
+          .eq('usuario_id', userId)
+          .eq('status', 'acabando')
+          .limit(5),
       ])
       const proximo = ((proximos ?? []) as Agendamento[])[0] ?? null
       const alertas = ((servicos ?? []) as ServicoBeleza[]).filter(
         (s) => s.ultimo_procedimento && diasAtraso(s.ultimo_procedimento, s.frequencia_dias) > 0
       )
-      setHomeData({ nome: nomeInicial, proximo, alertas })
+      setHomeData({ nome: nomeInicial, proximo, alertas, acabando: (armarioAcabando ?? []) as ProdutoAcabando[] })
       setLoading(false)
     })()
 
@@ -285,7 +299,7 @@ function HomeContent({ userId, nome: nomeInicial }: { userId: string; nome: stri
     }, 1000)
   }, [userId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const { nome, proximo, alertas } = homeData
+  const { nome, proximo, alertas, acabando } = homeData
   const tudoEmDia = !loading && !proximo && alertas.length === 0
 
   return (
@@ -351,8 +365,39 @@ function HomeContent({ userId, nome: nomeInicial }: { userId: string; nome: stri
               label="Autocuidado"
               accent="rgba(27,94,90,0.10)"
             />
-            <div style={{ flex: 1 }} />
+            <QuickAction
+              href="/app/armario"
+              icon={<GlassWater size={22} color="#D4A843" />}
+              label="Armário"
+              accent="rgba(212,168,67,0.12)"
+            />
           </motion.div>
+
+          {/* Armário — produtos acabando */}
+          {!loading && acabando.length > 0 && (
+            <Link href="/app/armario?aba=acabando" style={{ textDecoration: 'none' }}>
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                style={{
+                  background: 'rgba(239,68,68,0.06)',
+                  border: '1.5px solid rgba(239,68,68,0.18)',
+                  borderRadius: 16, padding: '14px 16px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                }}
+              >
+                <div>
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#EF4444' }}>
+                    🔴 {acabando.length} produto{acabando.length > 1 ? 's' : ''} acabando no armário
+                  </p>
+                  <p style={{ margin: '3px 0 0', fontSize: 12, color: 'var(--foreground-muted)' }}>
+                    {acabando.slice(0, 2).map(p => p.nome).join(', ')}{acabando.length > 2 ? ` e mais ${acabando.length - 2}` : ''}
+                  </p>
+                </div>
+                <span style={{ fontSize: 18 }}>🪞</span>
+              </motion.div>
+            </Link>
+          )}
 
           {/* Loading */}
           {loading && (
