@@ -667,7 +667,28 @@ export default function WishlistPage() {
       setSecoesAbertas(s => ({ ...s, comprei: true }))
       setConfettiId(id)
       setTimeout(() => setConfettiId(null), 1200)
-      toast.success('🛍️ Produto marcado como comprado!')
+      // Sugerir mover para o armário
+      const prod = produtos.find(p => p.id === id)
+      if (prod) {
+        toast.success('🛍️ Marcado como comprado!', {
+          action: {
+            label: 'Mover para Armário 🪞',
+            onClick: () => {
+              const params = new URLSearchParams({
+                nome: prod.nome,
+                marca: prod.marca ?? '',
+                categoria: prod.categoria ?? '',
+                foto_url: prod.foto_url ?? '',
+                wishlist_id: prod.id,
+              })
+              window.location.href = `/app/armario?${params.toString()}`
+            },
+          },
+          duration: 6000,
+        })
+      } else {
+        toast.success('🛍️ Produto marcado como comprado!')
+      }
     }
   }
 
