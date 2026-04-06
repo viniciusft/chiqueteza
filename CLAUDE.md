@@ -302,6 +302,18 @@ mas NÃO está implementado ainda. Provider será escolhido na V2.
 
 ---
 
+## Google Places API (profissionais/buscar)
+- Endpoint: `POST https://places.googleapis.com/v1/places:searchNearby`
+- **`X-Goog-FieldMask` é obrigatório** — sem ele retorna erro 400
+- Campos usados: `id, displayName, formattedAddress, rating, userRatingCount, primaryType, nationalPhoneNumber, location, websiteUri`
+- `languageCode: 'pt-BR'` para resultados em português
+- Upsert usa `onConflict: 'id'` (id do Google = place_id)
+- Cache 30 dias via tabela `busca_cache` (chave: `lat.toFixed(2),lng.toFixed(2),rXkm`)
+- GPS funcionando no Chrome mobile ✅
+- **Para debugar:** Vercel → projeto → Functions → logs → filtrar `[BUSCA]`
+
+---
+
 ## Variáveis de Ambiente
 ```
 NEXT_PUBLIC_SITE_URL
