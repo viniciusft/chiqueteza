@@ -64,12 +64,13 @@ export default function ProfissionalActions({
   }
 
   function gerarTexto() {
+    const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://chiqueteza.vercel.app'
     const esps = (especialidades ?? []).join(', ')
     const primeiraEsp = (especialidades ?? [])[0] ?? 'beleza'
     const av = avaliacao ?? 0
     const linhaFone = telefone ? `\n📱 ${telefone}` : ''
     const linhaIg = instagram ? `\n📸 Instagram: @${instagram.replace('@', '')}` : ''
-    return `✂️ Ei, te indico essa profissional incrível!\n\n👩 ${nome}\n💅 ${esps}\n⭐ Avaliação: ${av}/5 estrelas\n\nEla é muito boa no que faz e eu sempre fico satisfeita com o resultado. Se precisar de ${primeiraEsp}, vale muito entrar em contato!${linhaFone}${linhaIg}`
+    return `✂️ Ei, te indico esse profissional incrível!\n\n👤 ${nome}\n💅 ${esps}\n⭐ Avaliação: ${av}/5 estrelas\n\nMuito bom no que faz! Se precisar de ${primeiraEsp}, vale muito entrar em contato!${linhaFone}${linhaIg}\n\n(Encontrado via Chiqueteza: ${SITE_URL})`
   }
 
   async function handleCompartilhar(e: React.MouseEvent) {
