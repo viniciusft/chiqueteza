@@ -96,7 +96,7 @@ export async function POST(req: NextRequest) {
             ].join(','),
           },
           body: JSON.stringify({
-            includedTypes: ['beauty_salon', 'hair_care', 'nail_salon', 'spa'],
+            includedTypes: ['beauty_salon', 'hair_care', 'nail_salon', 'spa', 'hair_removal', 'skin_care_clinic'],
             locationRestriction: {
               circle: {
                 center: { latitude: lat, longitude: lng },
