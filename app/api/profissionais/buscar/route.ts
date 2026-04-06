@@ -203,6 +203,42 @@ export async function POST(req: NextRequest) {
   })
 }
 
+// ─── Alias semântico: termos em português → categorias Google Places ───
+// Necessário porque o banco armazena 'beauty_salon', não 'Maquiagem'
+
+const ALIAS_CATEGORIA: Record<string, string[]> = {
+  maquiagem: ['beauty_salon'],
+  make: ['beauty_salon'],
+  sobrancelha: ['beauty_salon'],
+  salao: ['beauty_salon', 'hair_care'],
+  beleza: ['beauty_salon', 'hair_care'],
+  cabelo: ['hair_care', 'beauty_salon'],
+  coloracao: ['hair_care'],
+  tintura: ['hair_care'],
+  corte: ['hair_care', 'beauty_salon'],
+  manicure: ['nail_salon'],
+  pedicure: ['nail_salon'],
+  unhas: ['nail_salon'],
+  gel: ['nail_salon'],
+  spa: ['spa'],
+  massagem: ['spa'],
+  relaxamento: ['spa'],
+  depilacao: ['hair_removal'],
+  laser: ['hair_removal'],
+  estetica: ['skin_care_clinic'],
+  skincare: ['skin_care_clinic'],
+  pele: ['skin_care_clinic'],
+  limpeza: ['skin_care_clinic'],
+  botox: ['skin_care_clinic'],
+}
+
+function normalizar(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+}
+
 // ─── GET — Busca textual no banco (sem GPS, sem chamar Google Places) ───
 
 export async function GET(req: NextRequest) {
@@ -215,10 +251,26 @@ export async function GET(req: NextRequest) {
 
   const supabase = createAdminClient()
 
+  // Resolver aliases: "Maquiagem" → ['beauty_salon'], "Salão" → ['beauty_salon','hair_care']
+  const qNorm = normalizar(q)
+  const categoriasAlias = Array.from(
+    new Set(
+      Object.entries(ALIAS_CATEGORIA)
+        .filter(([term]) => qNorm.includes(normalizar(term)))
+        .flatMap(([, cats]) => cats)
+    )
+  )
+
+  // Condições OR: nome/endereço + categorias resolvidas por alias
+  const orParts = [`nome.ilike.%${q}%`, `endereco.ilike.%${q}%`]
+  for (const cat of categoriasAlias) {
+    orParts.push(`categoria.eq.${cat}`)
+  }
+
   const { data, error } = await supabase
     .from('estabelecimentos')
     .select('id, nome, categoria, endereco, telefone, avaliacao_google, total_avaliacoes, foto_url, place_id, website, latitude, longitude')
-    .or(`nome.ilike.%${q}%,endereco.ilike.%${q}%`)
+    .or(orParts.join(','))
     .eq('ativo', true)
     .order('avaliacao_google', { ascending: false, nullsFirst: false })
     .limit(30)

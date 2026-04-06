@@ -103,12 +103,14 @@ function SecaoPorProximidade({ userId }: { userId: string | null }) {
     if (valor.length < 2) {
       // Restaura resultados da busca por GPS se disponível
       if (valor === '' && coordenadas && jaAbriu) {
+        setFiltro(null)
         void buscarEstabelecimentos(coordenadas.lat, coordenadas.lng, raio)
       }
       return
     }
     debounceRef.current = setTimeout(async () => {
       setBuscandoTexto(true)
+      setFiltro(null) // limpa chip de categoria — busca textual não filtra por categoria
       try {
         const res = await fetch(`/api/profissionais/buscar?q=${encodeURIComponent(valor)}`)
         if (!res.ok) return
