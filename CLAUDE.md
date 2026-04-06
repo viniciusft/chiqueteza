@@ -200,8 +200,8 @@ mas NÃO está implementado ainda. Provider será escolhido na V2.
 
 ### Implementado
 - Autenticação (Supabase Auth)
-- Tab bar 5 abas: Início | Looks | Visagismo | Rotina | Profissionais
-- Módulo Rotina: agendamentos, alertas, histórico, gasto mensal
+- Tab bar 5 abas: Início | Looks | Autocuidado | Agenda | Profissionais
+- Módulo Rotina (Agenda): agendamentos, alertas, histórico, gasto mensal
 - Módulo Profissionais: caderneta, galeria, WhatsApp, compartilhar
 - Ação rápida WhatsApp nos cards de agendamento
 - Sistema de planos e créditos (banco criado)
@@ -211,6 +211,12 @@ mas NÃO está implementado ainda. Provider será escolhido na V2.
 - Visagismo + Colorimetria: upload, análise Gemini, resultado, foto salva no Storage
 - Upload com preview mode e dois inputs separados (câmera / galeria)
 - Diário de Looks: registro pessoal + galeria pública com curtidas
+- Checklist de Autocuidado: rotinas, streaks, drag-and-drop, lembretes
+- Armário Digital: produtos em posse, nível de uso, ciclo completo
+- Integração Mercado Livre: busca API pública, deeplinks de afiliado
+- OCR de embalagem: Gemini Flash extrai nome/marca/categoria de foto
+- Wishlist → Armário: migração automática ao marcar como comprado
+- Jobs Inngest: verificação diária de preços ML + alertas de reposição
 
 ### Em desenvolvimento (V2)
 - Try-On de maquiagem
@@ -378,6 +384,65 @@ VAPID_PRIVATE_KEY
 - `wishlist_produtos`: id, usuario_id, nome, marca, categoria, subcategoria, preco_estimado, foto_url, link_compra, status ('quero' | 'tenho' | 'comprei'), prioridade ('alta' | 'media' | 'baixa'), notas, tags, ordem, created_at
 - Storage: bucket `wishlist-fotos`, path `{userId}/{uuid}.jpg`
 - Status flow na UI: apenas `quero` e `comprei` (sem `tenho` — legado mantido no banco)
+
+---
+
+## Armário Digital
+
+### Tabelas
+
+**`armario_produtos`** — produtos em posse da usuária
+- id, usuario_id → perfis
+- nome (NOT NULL), marca, categoria, subcategoria, volume_total, foto_url, ean
+- data_abertura (date), frequencia_uso ('diaria'|'semanal'|'mensal'|'raramente')
+- nivel_atual (int 0-100, default 100), data_validade, data_fim_estimada
+- ml_produto_id, ml_titulo, ml_preco_atual, ml_preco_minimo, ml_preco_checado_em, ml_permalink, ml_deeplink
+- status ('em_uso'|'acabando'|'finalizado'|'guardado') — calculado via trigger SQL
+- origem ('manual'|'busca_ml'|'ocr_foto'|'da_wishlist')
+- wishlist_id → wishlist_produtos (link bidirecional)
+- notas, tags (text[]), ordem, created_at, updated_at
+- Trigger: `trg_status_armario` → `fn_status_armario_auto()` — auto status por nivel_atual
+
+**`historico_precos`** — histórico de verificações de preço ML
+- id, armario_produto_id → armario_produtos, wishlist_produto_id → wishlist_produtos
+- ml_produto_id (NOT NULL), preco, disponivel, coletado_em
+- Índice: `idx_historico_preco_produto(ml_produto_id, coletado_em DESC)`
+
+**`wishlist_produtos`** — adicionadas 3 colunas:
+- armario_id → armario_produtos (link quando migrado)
+- ml_produto_id, ml_deeplink
+
+### Storage
+- Bucket: `armario-fotos` (público para leitura)
+- Path obrigatório: `{userId}/{uuid}.jpg`
+- Políticas RLS: INSERT apenas para usuária autenticada no próprio diretório
+
+### Regras importantes
+- Deeplinks de afiliado sempre gerados server-side (`app/api/armario/buscar-ml`) — nunca expor `ML_AFFILIATE_TRACKING_ID` no frontend
+- OCR de embalagem sempre via route handler server-side (`app/api/armario/ocr-foto`) — nunca expor `GEMINI_API_KEY` no frontend
+- `status` é calculado automaticamente pelo trigger SQL — não forçar manualmente
+- `data_fim_estimada`: calculado como `data_abertura + dias por frequência` (diaria=30, semanal=90, mensal=180, raramente=365)
+- Nível ≤ 15% → status muda para 'acabando' automaticamente
+
+### Variáveis de Ambiente (Armário)
+```
+ML_AFFILIATE_TRACKING_ID=          # Portal ML Afiliados após aprovação
+INNGEST_EVENT_KEY=                  # Portal inngest.com
+INNGEST_SIGNING_KEY=                # Portal inngest.com
+```
+
+### Jobs Inngest
+- `verificar-precos-ml`: cron `0 9 * * *` — checa preços via `getMLItemDetails()`, salva em `historico_precos`, atualiza `ml_preco_atual` e `ml_preco_minimo`
+- `alertas-reposicao`: cron `0 8 * * *` — detecta nivel ≤ 15% ou data_fim ≤ hoje+7dias, envia push notification
+- Webhook: `GET/POST/PUT /api/inngest`
+- Testar no dashboard: inngest.com → disparar função manualmente
+
+### Rotas
+- `/app/armario` — armário digital (auth obrigatório)
+- `/app/armario?nome=...&marca=...&wishlist_id=...` — abre form pré-preenchido (vindo da wishlist)
+- `/app/armario?aba=acabando` — abre na aba de produtos acabando
+- `GET /api/armario/buscar-ml?q=texto` — busca produtos na API ML (server-side)
+- `POST /api/armario/ocr-foto` — OCR de embalagem via Gemini (autenticado, server-side)
 
 ---
 
