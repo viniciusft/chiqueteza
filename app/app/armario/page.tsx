@@ -325,7 +325,7 @@ function FormAdicionarProduto({ userId, onSalvar, onClose, prefill }: {
   prefill?: { nome: string; marca: string; categoria: string; foto_url: string; wishlist_id: string }
 }) {
   const supabase = createClient()
-  const [modo, setModo] = useState<'manual' | 'ml'>('manual')
+  const [modo, setModo] = useState<'manual' | 'ml' | 'foto'>('manual')
   const [mlSelecionado, setMlSelecionado] = useState<MLSelecionado | null>(null)
   const [form, setForm] = useState({
     ...FORM_VAZIO,
@@ -337,12 +337,65 @@ function FormAdicionarProduto({ userId, onSalvar, onClose, prefill }: {
   const [fotoBlob, setFotoBlob] = useState<Blob | null>(null)
   const [fotoPreview, setFotoPreview] = useState<string | null>(null)
   const [salvando, setSalvando] = useState(false)
+  const [processandoOcr, setProcessandoOcr] = useState(false)
+  const [ocrPreview, setOcrPreview] = useState<string | null>(null)
   const inputFotoRef = useRef<HTMLInputElement>(null)
+  const inputOcrRef = useRef<HTMLInputElement>(null)
 
   function handleSelecionarML(r: MLResultado) {
     setMlSelecionado({ ml_produto_id: r.id, ml_preco_atual: r.preco, ml_deeplink: r.deeplink, thumbnail: r.thumbnail })
     set('nome', r.titulo)
     setModo('manual')
+  }
+
+  async function handleOcrFoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ''
+    setProcessandoOcr(true)
+
+    try {
+      const { blob, preview } = await comprimirFoto(file)
+      setOcrPreview(preview)
+
+      // Converter para base64
+      const buffer = await blob.arrayBuffer()
+      const bytes = new Uint8Array(buffer)
+      let bin = ''
+      for (let i = 0; i < bytes.byteLength; i++) bin += String.fromCharCode(bytes[i])
+      const base64 = btoa(bin)
+
+      const res = await fetch('/api/armario/ocr-foto', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${(await createClient().auth.getSession()).data.session?.access_token ?? ''}`,
+        },
+        body: JSON.stringify({ imageBase64: base64, mimeType: 'image/jpeg' }),
+      })
+
+      const data = await res.json()
+      if (data.produto) {
+        const p = data.produto
+        if (p.nome) set('nome', p.nome)
+        if (p.marca) set('marca', p.marca)
+        if (p.volume) set('volume_total', p.volume)
+        if (p.categoria) set('categoria', p.categoria)
+        if (p.subcategoria) set('subcategoria', p.subcategoria)
+        // Usar a foto como foto do produto também
+        setFotoBlob(blob); setFotoPreview(preview)
+        toast.success('Produto identificado! Confirme os dados 🔍')
+        setModo('manual')
+      } else {
+        toast('Não consegui identificar o produto. Preencha manualmente.')
+        setModo('manual')
+      }
+    } catch {
+      toast.error('Erro ao processar foto')
+      setModo('manual')
+    } finally {
+      setProcessandoOcr(false)
+    }
   }
 
   const inputStyle: React.CSSProperties = {
@@ -405,13 +458,14 @@ function FormAdicionarProduto({ userId, onSalvar, onClose, prefill }: {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* Seletor de modo */}
-      <div style={{ display: 'flex', gap: 6, background: '#F5F5F5', borderRadius: 12, padding: 4 }}>
+      <div style={{ display: 'flex', gap: 4, background: '#F5F5F5', borderRadius: 12, padding: 4 }}>
         {([
           { id: 'manual', label: '✍️ Manual' },
-          { id: 'ml',     label: '🔍 Buscar no ML' },
+          { id: 'ml',     label: '🔍 ML' },
+          { id: 'foto',   label: '📷 Foto' },
         ] as const).map(m => (
           <button key={m.id} type="button" onClick={() => setModo(m.id)}
-            style={{ flex: 1, padding: '8px 0', borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, fontFamily: 'var(--font-body)', background: modo === m.id ? '#fff' : 'transparent', color: modo === m.id ? '#1B5E5A' : 'var(--foreground-muted)', boxShadow: modo === m.id ? '0 1px 4px rgba(0,0,0,0.08)' : 'none', transition: 'all 0.15s' }}>
+            style={{ flex: 1, padding: '8px 0', borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 700, fontFamily: 'var(--font-body)', background: modo === m.id ? '#fff' : 'transparent', color: modo === m.id ? '#1B5E5A' : 'var(--foreground-muted)', boxShadow: modo === m.id ? '0 1px 4px rgba(0,0,0,0.08)' : 'none', transition: 'all 0.15s' }}>
             {m.label}
           </button>
         ))}
@@ -420,6 +474,28 @@ function FormAdicionarProduto({ userId, onSalvar, onClose, prefill }: {
       {/* Aba ML */}
       {modo === 'ml' && (
         <MLBuscaTab onSelecionar={handleSelecionarML} />
+      )}
+
+      {/* Aba Foto OCR */}
+      {modo === 'foto' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center', padding: '8px 0' }}>
+          <input ref={inputOcrRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={handleOcrFoto} />
+          {ocrPreview ? (
+            <img src={ocrPreview} alt="Embalagem" style={{ width: 140, height: 140, objectFit: 'cover', borderRadius: 16, border: '2px solid #1B5E5A' }} />
+          ) : null}
+          <motion.button type="button" whileTap={{ scale: 0.96 }}
+            onClick={() => inputOcrRef.current?.click()}
+            disabled={processandoOcr}
+            style={{ width: '100%', padding: '16px', borderRadius: 14, border: '2px dashed #1B5E5A', background: 'rgba(27,94,90,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, cursor: processandoOcr ? 'not-allowed' : 'pointer', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, color: '#1B5E5A', opacity: processandoOcr ? 0.7 : 1 }}>
+            {processandoOcr
+              ? <><Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} /> Identificando produto…</>
+              : <><Camera size={20} /> Fotografar embalagem</>
+            }
+          </motion.button>
+          <p style={{ margin: 0, fontSize: 11, color: 'var(--foreground-muted)', textAlign: 'center' }}>
+            A IA vai extrair nome, marca e categoria automaticamente
+          </p>
+        </div>
       )}
 
       {/* Produto ML selecionado */}
