@@ -246,7 +246,9 @@ export default function EstabelecimentoCard({
   const badge = badgeDistancia(est.distancia_metros)
   const categoriaLabel = est.categoria ? (CATEGORIA_LABELS[est.categoria] ?? est.categoria) : null
 
-  const waNumero = est.telefone?.replace(/\D/g, '')
+  // Remove formatação e o prefixo 55 se já estiver presente, para não duplicar
+  const waNumero = est.telefone?.replace(/\D/g, '').replace(/^55/, '') ?? ''
+  const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://chiqueteza.vercel.app'
   const mapsUrl =
     est.latitude && est.longitude
       ? `https://www.google.com/maps/dir/?api=1&destination=${est.latitude},${est.longitude}`
@@ -267,6 +269,7 @@ export default function EstabelecimentoCard({
       `🗺️ ${mapsShareUrl}`,
       ``,
       `Vi pelo Chiqueteza ✨`,
+      SITE_URL,
     ]
     const texto = linhas.filter((l) => l !== null).join('\n')
 
@@ -415,7 +418,7 @@ export default function EstabelecimentoCard({
             {/* WhatsApp */}
             {waNumero && (
               <a
-                href={`https://wa.me/${waNumero}`}
+                href={`https://wa.me/55${waNumero}?text=${encodeURIComponent(`Olá! Vi vocês no Chiqueteza e queria saber mais sobre os serviços 😊\n\n(Encontrei pelo app: ${SITE_URL})`)}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{
