@@ -35,17 +35,22 @@ interface Profissional {
 
 const FILTROS = [
   { label: 'Todos', value: null },
-  { label: 'Salões', value: 'beauty_salon' },
-  { label: 'Cabelo', value: 'hair_care' },
-  { label: 'Manicure', value: 'nail_salon' },
-  { label: 'Spa', value: 'spa' },
+  { label: '💄 Beleza', value: 'beauty_salon' },
+  { label: '✂️ Cabelo', value: 'hair_care' },
+  { label: '💅 Manicure', value: 'nail_salon' },
+  { label: '🧖 Spa', value: 'spa' },
+  { label: '🪒 Depilação', value: 'hair_removal' },
+  { label: '🧴 Estética', value: 'skin_care_clinic' },
 ] as const
 
 type FiltroValue = (typeof FILTROS)[number]['value']
 
+const RAIOS = [2, 5, 10] as const
+type RaioKm = (typeof RAIOS)[number]
+
 // ─── Seção Perto de Mim ───────────────────────────────────────────────
 
-function SecaoPorProximidade() {
+function SecaoPorProximidade({ userId }: { userId: string | null }) {
   const { coordenadas, carregando: carregandoGPS, erro: erroGPS, solicitar } = useLocalizacao()
   const [estabelecimentos, setEstabelecimentos] = useState<Estabelecimento[]>([])
   const [buscando, setBuscando] = useState(false)
@@ -53,15 +58,16 @@ function SecaoPorProximidade() {
   const [filtro, setFiltro] = useState<FiltroValue>(null)
   const [expandido, setExpandido] = useState(true)
   const [jaAbriu, setJaAbriu] = useState(false)
+  const [raio, setRaio] = useState<RaioKm>(5)
 
-  const buscarEstabelecimentos = useCallback(async (lat: number, lng: number) => {
+  const buscarEstabelecimentos = useCallback(async (lat: number, lng: number, raio_km: RaioKm) => {
     setBuscando(true)
     setErroBusca(null)
     try {
       const res = await fetch('/api/profissionais/buscar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lat, lng, raio_km: 5 }),
+        body: JSON.stringify({ lat, lng, raio_km }),
       })
       if (!res.ok) throw new Error('Falha na busca')
       const data = (await res.json()) as { estabelecimentos: Estabelecimento[] }
@@ -73,11 +79,18 @@ function SecaoPorProximidade() {
     }
   }, [])
 
-  async function handleBuscar() {
+  async function handleBuscar(raio_km: RaioKm = raio) {
     setJaAbriu(true)
     const coords = await solicitar()
     if (coords) {
-      await buscarEstabelecimentos(coords.lat, coords.lng)
+      await buscarEstabelecimentos(coords.lat, coords.lng, raio_km)
+    }
+  }
+
+  async function handleRaioChange(novoRaio: RaioKm) {
+    setRaio(novoRaio)
+    if (coordenadas) {
+      await buscarEstabelecimentos(coordenadas.lat, coordenadas.lng, novoRaio)
     }
   }
 
@@ -85,9 +98,9 @@ function SecaoPorProximidade() {
   useEffect(() => {
     if (coordenadas && !jaAbriu && estabelecimentos.length === 0) {
       setJaAbriu(true)
-      void buscarEstabelecimentos(coordenadas.lat, coordenadas.lng)
+      void buscarEstabelecimentos(coordenadas.lat, coordenadas.lng, raio)
     }
-  }, [coordenadas, jaAbriu, estabelecimentos.length, buscarEstabelecimentos])
+  }, [coordenadas, jaAbriu, estabelecimentos.length, buscarEstabelecimentos, raio])
 
   const carregando = carregandoGPS || buscando
   const erro = erroGPS ?? erroBusca
@@ -140,23 +153,44 @@ function SecaoPorProximidade() {
 
       {/* Botão de busca (estado inicial) */}
       {!jaAbriu && !carregando && (
-        <motion.button
-          onClick={handleBuscar}
-          whileTap={{ scale: 0.97 }}
-          transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-          style={{
-            width: '100%', padding: '14px',
-            borderRadius: 14, border: '1.5px dashed rgba(255,51,102,0.35)',
-            background: 'rgba(255,51,102,0.04)',
-            cursor: 'pointer', display: 'flex', alignItems: 'center',
-            justifyContent: 'center', gap: 8,
-            fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700,
-            color: 'var(--color-primary)',
-          }}
-        >
-          <MapPin size={16} />
-          Buscar salões perto de mim
-        </motion.button>
+        <div className="flex flex-col gap-2">
+          <motion.button
+            onClick={() => handleBuscar(raio)}
+            whileTap={{ scale: 0.97 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+            style={{
+              width: '100%', padding: '14px',
+              borderRadius: 14, border: '1.5px dashed rgba(255,51,102,0.35)',
+              background: 'rgba(255,51,102,0.04)',
+              cursor: 'pointer', display: 'flex', alignItems: 'center',
+              justifyContent: 'center', gap: 8,
+              fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700,
+              color: 'var(--color-primary)',
+            }}
+          >
+            <MapPin size={16} />
+            Buscar salões perto de mim
+          </motion.button>
+          {/* Seletor de raio */}
+          <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
+            {RAIOS.map((r) => (
+              <button
+                key={r}
+                onClick={() => setRaio(r)}
+                style={{
+                  padding: '4px 14px', borderRadius: 20, border: '1.5px solid',
+                  borderColor: raio === r ? 'var(--color-primary)' : '#E8E8E8',
+                  background: raio === r ? 'rgba(255,51,102,0.06)' : '#fff',
+                  color: raio === r ? 'var(--color-primary)' : '#999',
+                  fontSize: 12, fontWeight: raio === r ? 700 : 500,
+                  cursor: 'pointer', fontFamily: 'var(--font-body)',
+                }}
+              >
+                {r}km
+              </button>
+            ))}
+          </div>
+        </div>
       )}
 
       {/* Loading */}
@@ -182,7 +216,7 @@ function SecaoPorProximidade() {
             {erro}
           </p>
           <button
-            onClick={handleBuscar}
+            onClick={() => handleBuscar(raio)}
             style={{
               marginTop: 10, fontSize: 13, fontWeight: 700,
               color: 'var(--color-primary)', background: 'none',
@@ -237,7 +271,7 @@ function SecaoPorProximidade() {
             <div className="flex flex-col gap-3">
               {listaFiltrada.length > 0 ? (
                 listaFiltrada.map((est) => (
-                  <EstabelecimentoCard key={est.id} est={est} />
+                  <EstabelecimentoCard key={est.id} est={est} userId={userId} />
                 ))
               ) : (
                 <p style={{
@@ -249,19 +283,41 @@ function SecaoPorProximidade() {
               )}
             </div>
 
-            {/* Buscar raio maior */}
-            <button
-              onClick={handleBuscar}
-              style={{
-                marginTop: 12, width: '100%', padding: '10px',
-                borderRadius: 12, border: '1.5px solid #E8E8E8',
-                background: 'transparent', cursor: 'pointer',
-                fontSize: 13, fontWeight: 600, color: '#767676',
-                fontFamily: 'var(--font-body)',
-              }}
-            >
-              Atualizar resultados
-            </button>
+            {/* Seletor de raio + atualizar */}
+            <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 12, color: '#A3A3A3', fontFamily: 'var(--font-body)', whiteSpace: 'nowrap' }}>
+                Raio:
+              </span>
+              {RAIOS.map((r) => (
+                <button
+                  key={r}
+                  onClick={() => handleRaioChange(r)}
+                  style={{
+                    padding: '4px 12px', borderRadius: 20, border: '1.5px solid',
+                    borderColor: raio === r ? 'var(--color-primary)' : '#E8E8E8',
+                    background: raio === r ? 'rgba(255,51,102,0.06)' : '#fff',
+                    color: raio === r ? 'var(--color-primary)' : '#999',
+                    fontSize: 12, fontWeight: raio === r ? 700 : 500,
+                    cursor: 'pointer', fontFamily: 'var(--font-body)',
+                  }}
+                >
+                  {r}km
+                </button>
+              ))}
+              <div style={{ flex: 1 }} />
+              <button
+                onClick={() => handleBuscar(raio)}
+                style={{
+                  padding: '4px 12px', borderRadius: 20,
+                  border: '1.5px solid #E8E8E8',
+                  background: 'transparent', cursor: 'pointer',
+                  fontSize: 12, fontWeight: 600, color: '#767676',
+                  fontFamily: 'var(--font-body)',
+                }}
+              >
+                Atualizar
+              </button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -277,7 +333,7 @@ function SecaoPorProximidade() {
             Nenhum salão encontrado
           </p>
           <p style={{ fontSize: 13, color: '#767676', margin: 0 }}>
-            Não encontramos estabelecimentos num raio de 5km.
+            Não encontramos estabelecimentos num raio de {raio}km.
           </p>
         </div>
       )}
@@ -326,7 +382,7 @@ function ProfissionaisContent({ userId }: { userId: string }) {
             </div>
 
             {/* Busca por proximidade */}
-            <SecaoPorProximidade />
+            <SecaoPorProximidade userId={userId} />
 
             {/* Divisor */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
