@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { inngest } from '@/lib/inngest/client'
+import {
+  QUERIES_BUSCA,
+  fetchPlacesPorQuery,
+  placeParaRow,
+} from '@/lib/places/searchPlaces'
 
 const RAIO_KM_DEFAULT = 5
 const CACHE_DAYS = 60
@@ -9,16 +15,9 @@ function buildCacheKey(lat: number, lng: number, raio_km: number): string {
   return `${lat.toFixed(2)},${lng.toFixed(2)},r${raio_km}`
 }
 
-interface GooglePlace {
-  id: string
-  displayName?: { text: string }
-  formattedAddress?: string
-  rating?: number
-  userRatingCount?: number
-  primaryType?: string
-  nationalPhoneNumber?: string
-  location?: { latitude: number; longitude: number }
-  websiteUri?: string
+// Chave de granularidade de cidade (~10km de precisão)
+function buildCidadeKey(lat: number, lng: number): string {
+  return `cidade:${lat.toFixed(1)},${lng.toFixed(1)}`
 }
 
 interface EstabelecimentoRPC {
@@ -35,97 +34,6 @@ interface EstabelecimentoRPC {
   website: string | null
   latitude: number | null
   longitude: number | null
-}
-
-// ─── Busca paralela por termo de texto (searchText) ──────────────────────────
-// searchText suporta paginação real (nextPageToken no body da resposta)
-// Máximo: 6 queries × 60 resultados = até 360 únicos
-//
-// searchNearby NÃO suporta paginação — max 20/call, nextPageToken inválido no FieldMask
-
-const QUERIES_BUSCA = [
-  'salão de beleza',
-  'manicure pedicure unhas',
-  'spa massagem relaxamento',
-  'depilação laser',
-  'estética skincare',
-  'barbearia cabelo corte',
-] as const
-
-// nextPageToken NUNCA vai no FieldMask — aparece automaticamente no corpo da resposta
-const FIELD_MASK = [
-  'places.id',
-  'places.displayName',
-  'places.formattedAddress',
-  'places.rating',
-  'places.userRatingCount',
-  'places.primaryType',
-  'places.nationalPhoneNumber',
-  'places.location',
-  'places.websiteUri',
-].join(',')
-
-async function callPlacesAPI(
-  body: Record<string, unknown>,
-  apiKey: string
-): Promise<{ places: GooglePlace[]; nextPageToken?: string }> {
-  try {
-    const res = await fetch('https://places.googleapis.com/v1/places:searchText', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Goog-Api-Key': apiKey,
-        'X-Goog-FieldMask': FIELD_MASK,
-      },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(12_000),
-    })
-    if (!res.ok) {
-      const errBody = await res.text().catch(() => '(sem corpo)')
-      console.warn('[BUSCA] Google Places HTTP', res.status, ':', errBody.slice(0, 300))
-      return { places: [] }
-    }
-    const data = (await res.json()) as { places?: GooglePlace[]; nextPageToken?: string }
-    return { places: data.places ?? [], nextPageToken: data.nextPageToken }
-  } catch (err) {
-    console.warn('[BUSCA] callPlacesAPI exceção:', err instanceof Error ? err.message : err)
-    return { places: [] }
-  }
-}
-
-async function fetchPlacesPorQuery(
-  lat: number,
-  lng: number,
-  raio_km: number,
-  textQuery: string,
-  apiKey: string
-): Promise<{ places: GooglePlace[] }> {
-  const baseBody = {
-    textQuery,
-    pageSize: 20,
-    locationBias: {
-      circle: { center: { latitude: lat, longitude: lng }, radius: raio_km * 1000 },
-    },
-    languageCode: 'pt-BR',
-  }
-
-  // Página 1
-  const res1 = await callPlacesAPI(baseBody, apiKey)
-  const todos = [...res1.places]
-
-  // Página 2 — pageToken vai junto com textQuery e locationRestriction
-  if (res1.nextPageToken) {
-    const res2 = await callPlacesAPI({ ...baseBody, pageToken: res1.nextPageToken }, apiKey)
-    todos.push(...res2.places)
-
-    // Página 3
-    if (res2.nextPageToken) {
-      const res3 = await callPlacesAPI({ ...baseBody, pageToken: res2.nextPageToken }, apiKey)
-      todos.push(...res3.places)
-    }
-  }
-
-  return { places: todos }
 }
 
 // ─── POST — Busca por GPS + popular banco ────────────────────────────
@@ -154,7 +62,7 @@ export async function POST(req: NextRequest) {
   const cacheKey = buildCacheKey(lat, lng, raio_km)
   const cacheExpiry = new Date(Date.now() - CACHE_DAYS * 24 * 60 * 60 * 1000).toISOString()
 
-  // Verificar cache (60 dias)
+  // Verificar cache de ponto (60 dias)
   const { data: cacheHit } = await supabase
     .from('busca_cache')
     .select('buscado_em')
@@ -164,12 +72,11 @@ export async function POST(req: NextRequest) {
 
   console.log('[BUSCA] Cache hit:', !!cacheHit, '| cache_key:', cacheKey)
 
-  // Cache miss → Google Places: 6 queries em paralelo, até 3 páginas cada
+  // Cache miss → Fase 1: 6 queries do centro em paralelo
   if (!cacheHit) {
     const apiKey = process.env.GOOGLE_PLACES_API_KEY
     if (apiKey) {
       try {
-        // Promise.allSettled: coleta o que funcionou mesmo se 1 query falhar
         const settled = await Promise.allSettled(
           QUERIES_BUSCA.map((query) => fetchPlacesPorQuery(lat, lng, raio_km, query, apiKey))
         )
@@ -177,7 +84,7 @@ export async function POST(req: NextRequest) {
         const resultadosPorQuery = settled.map((r, i) => {
           if (r.status === 'rejected') {
             console.warn('[BUSCA] Query falhou:', QUERIES_BUSCA[i], r.reason)
-            return { places: [] as GooglePlace[] }
+            return { places: [] as ReturnType<typeof placeParaRow>[] }
           }
           return r.value
         })
@@ -187,7 +94,7 @@ export async function POST(req: NextRequest) {
           QUERIES_BUSCA.map((q, i) => [q, resultadosPorQuery[i].places.length])
         )
 
-        // Deduplicar por id (mesmo lugar pode aparecer em múltiplas queries)
+        // Deduplicar por id
         const seenIds = new Set<string>()
         const allPlaces = resultadosPorQuery
           .flatMap((r) => r.places)
@@ -200,21 +107,7 @@ export async function POST(req: NextRequest) {
         console.log('[BUSCA] Total únicos:', allPlaces.length, '| cobertura:', JSON.stringify(cobertura))
 
         if (allPlaces.length > 0) {
-          const rows = allPlaces.map((p) => ({
-            id: p.id,
-            nome: p.displayName?.text ?? 'Sem nome',
-            endereco: p.formattedAddress ?? null,
-            telefone: p.nationalPhoneNumber ?? null,
-            website: p.websiteUri ?? null,
-            latitude: p.location?.latitude ?? null,
-            longitude: p.location?.longitude ?? null,
-            avaliacao_google: p.rating ?? null,
-            total_avaliacoes: p.userRatingCount ?? null,
-            categoria: p.primaryType ?? null,
-            source: 'google_places',
-            place_id: p.id,
-            ativo: true,
-          }))
+          const rows = allPlaces.map(placeParaRow)
 
           const { error: upsertErr } = await supabase
             .from('estabelecimentos')
@@ -226,15 +119,48 @@ export async function POST(req: NextRequest) {
             console.log('[BUSCA] Upsert concluído:', rows.length, 'registros')
           }
 
-          // Cache salvo APENAS em sucesso — nunca salvar cache vazio (bloquearia retentativas)
+          // Cache salvo APENAS em sucesso
           await supabase
             .from('busca_cache')
             .upsert(
               { cache_key: cacheKey, results_count: allPlaces.length, buscado_em: new Date().toISOString() },
               { onConflict: 'cache_key' }
             )
+
+          // Fase 2: disparar job de grade hexagonal se a cidade ainda não foi populada
+          // Usa chave de granularidade ~10km para evitar jobs duplicados de pontos vizinhos
+          const cidadeKey = buildCidadeKey(lat, lng)
+          const { data: cidadeJaBuscada } = await supabase
+            .from('busca_cache')
+            .select('buscado_em')
+            .eq('cache_key', cidadeKey)
+            .gte('buscado_em', cacheExpiry)
+            .maybeSingle()
+
+          if (!cidadeJaBuscada) {
+            // Marcar ANTES de disparar para evitar jobs duplicados de buscas simultâneas
+            await supabase
+              .from('busca_cache')
+              .upsert(
+                { cache_key: cidadeKey, results_count: 1, buscado_em: new Date().toISOString() },
+                { onConflict: 'cache_key' }
+              )
+
+            try {
+              await inngest.send({
+                name: 'profissionais/popular_cidade',
+                data: { lat, lng, raio_km },
+              })
+              console.log('[BUSCA] Job de grade hexagonal disparado para', cidadeKey)
+            } catch (inngestErr) {
+              // Não bloquear a resposta se o job falhar ao disparar
+              console.warn('[BUSCA] Falha ao disparar job Inngest:', inngestErr)
+            }
+          } else {
+            console.log('[BUSCA] Cidade já populada, grade não necessária:', cidadeKey)
+          }
         } else {
-          console.warn('[BUSCA] Nenhum resultado obtido do Google Places — cache NÃO salvo para permitir retentativa')
+          console.warn('[BUSCA] Nenhum resultado obtido do Google Places — cache NÃO salvo')
         }
       } catch (err) {
         console.error('[BUSCA] Exceção na chamada Google Places:', err)
