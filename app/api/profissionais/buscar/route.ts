@@ -67,19 +67,28 @@ async function callPlacesAPI(
   body: Record<string, unknown>,
   apiKey: string
 ): Promise<{ places: GooglePlace[]; nextPageToken?: string }> {
-  const res = await fetch('https://places.googleapis.com/v1/places:searchNearby', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Goog-Api-Key': apiKey,
-      'X-Goog-FieldMask': FIELD_MASK,
-    },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(8_000),
-  })
-  if (!res.ok) return { places: [] }
-  const data = (await res.json()) as { places?: GooglePlace[]; nextPageToken?: string }
-  return { places: data.places ?? [], nextPageToken: data.nextPageToken }
+  try {
+    const res = await fetch('https://places.googleapis.com/v1/places:searchNearby', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': apiKey,
+        'X-Goog-FieldMask': FIELD_MASK,
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(12_000),
+    })
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => '(sem corpo)')
+      console.warn('[BUSCA] Google Places HTTP', res.status, ':', errBody.slice(0, 300))
+      return { places: [] }
+    }
+    const data = (await res.json()) as { places?: GooglePlace[]; nextPageToken?: string }
+    return { places: data.places ?? [], nextPageToken: data.nextPageToken }
+  } catch (err) {
+    console.warn('[BUSCA] callPlacesAPI exceção:', err instanceof Error ? err.message : err)
+    return { places: [] }
+  }
 }
 
 async function fetchPlacesPorTipo(
@@ -102,16 +111,15 @@ async function fetchPlacesPorTipo(
   const res1 = await callPlacesAPI(baseBody, apiKey)
   const todos = [...res1.places]
 
-  // Página 2
+  // Página 2 — IMPORTANTE: pageToken deve ser enviado SOZINHO, sem outros campos
   if (res1.nextPageToken) {
-    const res2 = await callPlacesAPI({ ...baseBody, pageToken: res1.nextPageToken }, apiKey)
+    const res2 = await callPlacesAPI({ pageToken: res1.nextPageToken }, apiKey)
     todos.push(...res2.places)
 
-    // Página 3 (sempre — garante cobertura máxima)
+    // Página 3
     if (res2.nextPageToken) {
-      const res3 = await callPlacesAPI({ ...baseBody, pageToken: res2.nextPageToken }, apiKey)
+      const res3 = await callPlacesAPI({ pageToken: res2.nextPageToken }, apiKey)
       todos.push(...res3.places)
-      // Se ainda tem nextPageToken na página 3 → área muito densa, registrar como incompleto
       return { places: todos, completo: !res3.nextPageToken }
     }
   }
@@ -160,9 +168,18 @@ export async function POST(req: NextRequest) {
     const apiKey = process.env.GOOGLE_PLACES_API_KEY
     if (apiKey) {
       try {
-        const resultadosPorTipo = await Promise.all(
+        // Promise.allSettled: coleta o que funcionou mesmo se 1 categoria falhar
+        const settled = await Promise.allSettled(
           TIPOS_BELEZA.map((tipo) => fetchPlacesPorTipo(lat, lng, raio_km, tipo, apiKey))
         )
+
+        const resultadosPorTipo = settled.map((r, i) => {
+          if (r.status === 'rejected') {
+            console.warn('[BUSCA] Tipo falhou:', TIPOS_BELEZA[i], r.reason)
+            return { places: [] as GooglePlace[], completo: false }
+          }
+          return r.value
+        })
 
         // Diagnóstico de cobertura por categoria
         const cobertura = Object.fromEntries(
@@ -173,7 +190,7 @@ export async function POST(req: NextRequest) {
         )
         const incompletos = Object.entries(cobertura).filter(([, v]) => !v.completo).map(([k]) => k)
         if (incompletos.length > 0) {
-          console.warn('[BUSCA] Categorias com cobertura incompleta (área densa):', incompletos)
+          console.warn('[BUSCA] Categorias com cobertura incompleta:', incompletos)
         }
 
         // Deduplicar por id (salão pode aparecer em 2 categorias)
@@ -214,15 +231,17 @@ export async function POST(req: NextRequest) {
           } else {
             console.log('[BUSCA] Upsert concluído:', rows.length, 'registros')
           }
-        }
 
-        // Salvar cache
-        await supabase
-          .from('busca_cache')
-          .upsert(
-            { cache_key: cacheKey, results_count: allPlaces.length, buscado_em: new Date().toISOString() },
-            { onConflict: 'cache_key' }
-          )
+          // Cache salvo APENAS em sucesso — nunca salvar cache vazio (bloquearia retentativas)
+          await supabase
+            .from('busca_cache')
+            .upsert(
+              { cache_key: cacheKey, results_count: allPlaces.length, buscado_em: new Date().toISOString() },
+              { onConflict: 'cache_key' }
+            )
+        } else {
+          console.warn('[BUSCA] Nenhum resultado obtido do Google Places — cache NÃO salvo para permitir retentativa')
+        }
       } catch (err) {
         console.error('[BUSCA] Exceção na chamada Google Places:', err)
       }
