@@ -37,19 +37,22 @@ interface EstabelecimentoRPC {
   longitude: number | null
 }
 
-// ─── Busca paralela por categoria (pulo do gato: 6× mais resultados) ───
-// 1 chamada com [6 tipos] = max 20 resultados totais
-// 6 chamadas paralelas (1 por tipo) = até 360 resultados únicos
+// ─── Busca paralela por termo de texto (searchText) ──────────────────────────
+// searchText suporta paginação real (nextPageToken no body da resposta)
+// Máximo: 6 queries × 60 resultados = até 360 únicos
+//
+// searchNearby NÃO suporta paginação — max 20/call, nextPageToken inválido no FieldMask
 
-const TIPOS_BELEZA = [
-  'beauty_salon',
-  'hair_care',
-  'nail_salon',
-  'spa',
-  'hair_removal',
-  'skin_care_clinic',
+const QUERIES_BUSCA = [
+  'salão de beleza',
+  'manicure pedicure unhas',
+  'spa massagem relaxamento',
+  'depilação laser',
+  'estética skincare',
+  'barbearia cabelo corte',
 ] as const
 
+// nextPageToken NUNCA vai no FieldMask — aparece automaticamente no corpo da resposta
 const FIELD_MASK = [
   'places.id',
   'places.displayName',
@@ -60,7 +63,6 @@ const FIELD_MASK = [
   'places.nationalPhoneNumber',
   'places.location',
   'places.websiteUri',
-  'nextPageToken',
 ].join(',')
 
 async function callPlacesAPI(
@@ -68,7 +70,7 @@ async function callPlacesAPI(
   apiKey: string
 ): Promise<{ places: GooglePlace[]; nextPageToken?: string }> {
   try {
-    const res = await fetch('https://places.googleapis.com/v1/places:searchNearby', {
+    const res = await fetch('https://places.googleapis.com/v1/places:searchText', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -91,19 +93,19 @@ async function callPlacesAPI(
   }
 }
 
-async function fetchPlacesPorTipo(
+async function fetchPlacesPorQuery(
   lat: number,
   lng: number,
   raio_km: number,
-  tipo: string,
+  textQuery: string,
   apiKey: string
-): Promise<{ places: GooglePlace[]; completo: boolean }> {
+): Promise<{ places: GooglePlace[] }> {
   const baseBody = {
-    includedTypes: [tipo],
+    textQuery,
+    pageSize: 20,
     locationRestriction: {
       circle: { center: { latitude: lat, longitude: lng }, radius: raio_km * 1000 },
     },
-    maxResultCount: 20,
     languageCode: 'pt-BR',
   }
 
@@ -111,20 +113,19 @@ async function fetchPlacesPorTipo(
   const res1 = await callPlacesAPI(baseBody, apiKey)
   const todos = [...res1.places]
 
-  // Página 2 — IMPORTANTE: pageToken deve ser enviado SOZINHO, sem outros campos
+  // Página 2 — pageToken vai junto com textQuery e locationRestriction
   if (res1.nextPageToken) {
-    const res2 = await callPlacesAPI({ pageToken: res1.nextPageToken }, apiKey)
+    const res2 = await callPlacesAPI({ ...baseBody, pageToken: res1.nextPageToken }, apiKey)
     todos.push(...res2.places)
 
     // Página 3
     if (res2.nextPageToken) {
-      const res3 = await callPlacesAPI({ pageToken: res2.nextPageToken }, apiKey)
+      const res3 = await callPlacesAPI({ ...baseBody, pageToken: res2.nextPageToken }, apiKey)
       todos.push(...res3.places)
-      return { places: todos, completo: !res3.nextPageToken }
     }
   }
 
-  return { places: todos, completo: true }
+  return { places: todos }
 }
 
 // ─── POST — Busca por GPS + popular banco ────────────────────────────
@@ -163,39 +164,32 @@ export async function POST(req: NextRequest) {
 
   console.log('[BUSCA] Cache hit:', !!cacheHit, '| cache_key:', cacheKey)
 
-  // Cache miss → Google Places: 6 categorias em paralelo, até 3 páginas cada
+  // Cache miss → Google Places: 6 queries em paralelo, até 3 páginas cada
   if (!cacheHit) {
     const apiKey = process.env.GOOGLE_PLACES_API_KEY
     if (apiKey) {
       try {
-        // Promise.allSettled: coleta o que funcionou mesmo se 1 categoria falhar
+        // Promise.allSettled: coleta o que funcionou mesmo se 1 query falhar
         const settled = await Promise.allSettled(
-          TIPOS_BELEZA.map((tipo) => fetchPlacesPorTipo(lat, lng, raio_km, tipo, apiKey))
+          QUERIES_BUSCA.map((query) => fetchPlacesPorQuery(lat, lng, raio_km, query, apiKey))
         )
 
-        const resultadosPorTipo = settled.map((r, i) => {
+        const resultadosPorQuery = settled.map((r, i) => {
           if (r.status === 'rejected') {
-            console.warn('[BUSCA] Tipo falhou:', TIPOS_BELEZA[i], r.reason)
-            return { places: [] as GooglePlace[], completo: false }
+            console.warn('[BUSCA] Query falhou:', QUERIES_BUSCA[i], r.reason)
+            return { places: [] as GooglePlace[] }
           }
           return r.value
         })
 
-        // Diagnóstico de cobertura por categoria
+        // Diagnóstico por query
         const cobertura = Object.fromEntries(
-          TIPOS_BELEZA.map((tipo, i) => [
-            tipo,
-            { total: resultadosPorTipo[i].places.length, completo: resultadosPorTipo[i].completo },
-          ])
+          QUERIES_BUSCA.map((q, i) => [q, resultadosPorQuery[i].places.length])
         )
-        const incompletos = Object.entries(cobertura).filter(([, v]) => !v.completo).map(([k]) => k)
-        if (incompletos.length > 0) {
-          console.warn('[BUSCA] Categorias com cobertura incompleta:', incompletos)
-        }
 
-        // Deduplicar por id (salão pode aparecer em 2 categorias)
+        // Deduplicar por id (mesmo lugar pode aparecer em múltiplas queries)
         const seenIds = new Set<string>()
-        const allPlaces = resultadosPorTipo
+        const allPlaces = resultadosPorQuery
           .flatMap((r) => r.places)
           .filter((p) => {
             if (seenIds.has(p.id)) return false
