@@ -103,7 +103,7 @@ async function fetchPlacesPorQuery(
   const baseBody = {
     textQuery,
     pageSize: 20,
-    locationRestriction: {
+    locationBias: {
       circle: { center: { latitude: lat, longitude: lng }, radius: raio_km * 1000 },
     },
     languageCode: 'pt-BR',
