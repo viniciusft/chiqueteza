@@ -16,7 +16,7 @@ export const verificarPrecos = inngest.createFunction(
     const armarioProdutos = await step.run('buscar-armario', async () => {
       const { data } = await supabase
         .from('armario_produtos')
-        .select('id, ml_produto_id, ml_preco_atual, ml_preco_minimo, usuario_id')
+        .select('id, nome, ml_produto_id, ml_preco_atual, ml_preco_minimo, usuario_id')
         .not('ml_produto_id', 'is', null)
         .neq('status', 'finalizado')
       return data ?? []
@@ -26,7 +26,7 @@ export const verificarPrecos = inngest.createFunction(
     const wishlistProdutos = await step.run('buscar-wishlist', async () => {
       const { data } = await supabase
         .from('wishlist_produtos')
-        .select('id, ml_produto_id, usuario_id')
+        .select('id, nome, ml_produto_id, usuario_id')
         .not('ml_produto_id', 'is', null)
         .in('status', ['quero'])
       return data ?? []
@@ -34,13 +34,13 @@ export const verificarPrecos = inngest.createFunction(
 
     const todos = [
       ...armarioProdutos.map(p => ({ ...p, tipo: 'armario' as const, wishlist_produto_id: null })),
-      ...wishlistProdutos.map(p => ({ id: p.id, ml_produto_id: p.ml_produto_id, ml_preco_atual: null, ml_preco_minimo: null, usuario_id: p.usuario_id, tipo: 'wishlist' as const, wishlist_produto_id: p.id })),
+      ...wishlistProdutos.map(p => ({ id: p.id, nome: p.nome, ml_produto_id: p.ml_produto_id, ml_preco_atual: null, ml_preco_minimo: null, usuario_id: p.usuario_id, tipo: 'wishlist' as const, wishlist_produto_id: p.id })),
     ]
 
     logger.info(`Verificando preços de ${todos.length} produtos`)
 
     const resultados = await step.run('verificar-todos', async () => {
-      const out: Array<{ mlId: string; precoAtual: number; queda: boolean; pct: number }> = []
+      const out: Array<{ mlId: string; nome: string; usuario_id: string; precoAnterior: number; precoAtual: number; queda: boolean; pct: number }> = []
 
       for (const prod of todos) {
         if (!prod.ml_produto_id) continue
@@ -75,7 +75,7 @@ export const verificarPrecos = inngest.createFunction(
             .eq('id', prod.id)
         }
 
-        out.push({ mlId: prod.ml_produto_id, precoAtual, queda, pct: pctQueda })
+        out.push({ mlId: prod.ml_produto_id, nome: prod.nome ?? prod.ml_produto_id, usuario_id: prod.usuario_id, precoAnterior, precoAtual, queda, pct: pctQueda })
       }
 
       return out
@@ -83,6 +83,50 @@ export const verificarPrecos = inngest.createFunction(
 
     const quedas = resultados.filter(r => r.queda)
     logger.info(`Verificação concluída: ${resultados.length} produtos, ${quedas.length} com queda > 10%`)
+
+    // 3. Notificar usuários com queda de preço
+    if (quedas.length > 0) {
+      await step.run('notificar-quedas', async () => {
+        // Agrupar quedas por usuário
+        const porUsuario = quedas.reduce<Record<string, typeof quedas>>((acc, q) => {
+          if (!acc[q.usuario_id]) acc[q.usuario_id] = []
+          acc[q.usuario_id].push(q)
+          return acc
+        }, {})
+
+        for (const [usuarioId, produtos] of Object.entries(porUsuario)) {
+          const { data: subs } = await supabase
+            .from('push_subscriptions')
+            .select('subscription_json')
+            .eq('usuario_id', usuarioId)
+
+          if (!subs || subs.length === 0) continue
+
+          const primeiro = produtos[0]
+          const precoFormatado = (v: number) => `R$${v.toFixed(2).replace('.', ',')}`
+          const body = produtos.length === 1
+            ? `${primeiro.nome}: ${precoFormatado(primeiro.precoAnterior)} → ${precoFormatado(primeiro.precoAtual)}`
+            : `${primeiro.nome} e mais ${produtos.length - 1} produto(s) estão mais baratos`
+
+          for (const sub of subs) {
+            try {
+              await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/push/send`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-inngest-secret': process.env.INNGEST_SIGNING_KEY ?? '' },
+                body: JSON.stringify({
+                  subscription: sub.subscription_json,
+                  title: '🟢 Preço caiu no Mercado Livre!',
+                  body,
+                  url: '/app/armario',
+                }),
+              })
+            } catch (err) {
+              logger.warn(`Falha ao enviar push de queda para ${usuarioId}: ${err}`)
+            }
+          }
+        }
+      })
+    }
 
     return { verificados: resultados.length, quedas: quedas.length }
   }
