@@ -1,22 +1,22 @@
 // Gera deeplink de afiliado para o Mercado Livre
-// Após cadastro no programa (mercadolivre.com.br/afiliados), preencher:
-// ML_AFFILIATE_TRACKING_ID no .env.local e Vercel
+// Após cadastro no programa (mercadolivre.com.br/afiliados):
+//   Painel → Ferramentas → Barra de Afiliados → gere um link → copie o valor de ?afiliado=XXXX
+//   Salve em ML_AFFILIATE_TRACKING_ID no .env.local e Vercel
 
 export function buildMLDeeplink(permalink: string): string {
   const trackingId = process.env.ML_AFFILIATE_TRACKING_ID
 
   if (!trackingId) {
-    // Sem tracking ainda — retorna link limpo
+    // Sem código de afiliado configurado — retorna link limpo
     return permalink
   }
 
-  // Adiciona parâmetro de rastreamento
-  // Formato oficial: ?tracking_id={tracking_id}
+  // Parâmetro oficial do programa ML Afiliados: ?afiliado=<codigo>
   try {
     const url = new URL(permalink)
-    url.searchParams.set('tracking_id', trackingId)
+    url.searchParams.set('afiliado', trackingId)
     return url.toString()
   } catch {
-    return `${permalink}?tracking_id=${trackingId}`
+    return `${permalink}?afiliado=${trackingId}`
   }
 }
