@@ -1,6 +1,6 @@
 // Busca de produtos na API pública do Mercado Livre (sem autenticação)
 // Documentação: https://developers.mercadolivre.com.br/pt_br/itens-e-buscas
-// MLB1246 = categoria "Beleza e Cuidado Pessoal"
+// Sem filtro de categoria — relevância garantida pelo parâmetro q
 
 export interface MLProduto {
   id: string
@@ -24,14 +24,12 @@ interface MLSearchResult {
   seller?: { nickname: string }
 }
 
-export async function searchMLProducts(query: string, limit = 8): Promise<MLProduto[]> {
+export async function searchMLProducts(query: string, limit = 10): Promise<MLProduto[]> {
   if (!query || query.trim().length < 2) return []
 
   const url = new URL('https://api.mercadolibre.com/sites/MLB/search')
   url.searchParams.set('q', query.trim())
-  url.searchParams.set('category', 'MLB1246') // Beleza e Cuidado Pessoal
   url.searchParams.set('limit', String(limit))
-  url.searchParams.set('condition', 'new')
 
   const res = await fetch(url.toString(), {
     next: { revalidate: 300 }, // cache 5 min
