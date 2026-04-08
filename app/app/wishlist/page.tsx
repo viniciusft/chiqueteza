@@ -6,7 +6,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Plus, Search, X, ExternalLink, ChevronDown, ChevronUp,
-  ShoppingBag, Trash2, Camera,
+  ShoppingBag, Trash2, Camera, Loader2,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
@@ -34,6 +34,18 @@ interface ProdutoWishlist {
   tags: string[] | null
   ordem: number | null
   created_at: string
+  ml_produto_id: string | null
+  ml_deeplink: string | null
+}
+
+interface MLResultado {
+  id: string
+  titulo: string
+  preco: number
+  thumbnail: string
+  permalink: string
+  deeplink: string
+  vendedor: string | null
 }
 
 // ─── Constants ────────────────────────────────────────────────────────
@@ -359,7 +371,7 @@ function FormAdicionarProduto({
   userId, onSalvar, salvando,
 }: {
   userId: string
-  onSalvar: (dados: typeof FORM_EMPTY & { foto_blob: Blob | null }) => Promise<void>
+  onSalvar: (dados: typeof FORM_EMPTY & { foto_blob: Blob | null; ml_produto_id: string | null; ml_deeplink: string | null }) => Promise<void>
   salvando: boolean
 }) {
   const [form, setForm] = useState(FORM_EMPTY)
@@ -367,6 +379,41 @@ function FormAdicionarProduto({
   const inputFotoRef = useRef<HTMLInputElement>(null)
   const [fotoBlob, setFotoBlob] = useState<Blob | null>(null)
   const [fotoPreview, setFotoPreview] = useState<string | null>(null)
+
+  // Busca ML
+  const [mlQuery, setMlQuery] = useState('')
+  const [mlResultados, setMlResultados] = useState<MLResultado[]>([])
+  const [mlBuscando, setMlBuscando] = useState(false)
+  const [mlSelecionado, setMlSelecionado] = useState<MLResultado | null>(null)
+  const mlTimerRef = useRef<ReturnType<typeof setTimeout>>()
+
+  function handleMlInput(v: string) {
+    setMlQuery(v)
+    clearTimeout(mlTimerRef.current)
+    if (v.trim().length < 2) { setMlResultados([]); return }
+    setMlBuscando(true)
+    mlTimerRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/armario/buscar-ml?q=${encodeURIComponent(v)}`)
+        const data = await res.json()
+        setMlResultados(data.produtos ?? [])
+      } catch {
+        setMlResultados([])
+      } finally {
+        setMlBuscando(false)
+      }
+    }, 400)
+  }
+
+  function handleSelecionarML(r: MLResultado) {
+    setMlSelecionado(r)
+    setMlResultados([])
+    setMlQuery('')
+    set('nome', r.titulo)
+    if (r.vendedor) set('marca', r.vendedor)
+    set('preco_estimado', String(r.preco))
+    set('link_compra', r.permalink)
+  }
 
   async function handleFoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -386,9 +433,63 @@ function FormAdicionarProduto({
 
   return (
     <form
-      onSubmit={async e => { e.preventDefault(); await onSalvar({ ...form, foto_blob: fotoBlob }) }}
+      onSubmit={async e => { e.preventDefault(); await onSalvar({ ...form, foto_blob: fotoBlob, ml_produto_id: mlSelecionado?.id ?? null, ml_deeplink: mlSelecionado?.deeplink ?? null }) }}
       style={{ display: 'flex', flexDirection: 'column', gap: 14 }}
     >
+      {/* Busca ML */}
+      <div>
+        <label style={{ fontSize: 12, fontWeight: 700, color: '#525252', marginBottom: 6, display: 'block' }}>
+          Buscar no Mercado Livre
+          <span style={{ fontWeight: 400, color: '#A3A3A3', marginLeft: 6 }}>opcional</span>
+        </label>
+        {mlSelecionado ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 12, background: 'rgba(27,94,90,0.06)', border: '1.5px solid rgba(27,94,90,0.18)' }}>
+            <img src={mlSelecionado.thumbnail} alt={mlSelecionado.titulo} style={{ width: 36, height: 36, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: '#1B5E5A' }}>🔗 Vinculado ao ML</p>
+              <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--foreground-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                R$ {mlSelecionado.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </p>
+            </div>
+            <button type="button" onClick={() => setMlSelecionado(null)}
+              style={{ width: 22, height: 22, borderRadius: '50%', background: 'rgba(239,68,68,0.1)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <X size={12} color="#EF4444" />
+            </button>
+          </div>
+        ) : (
+          <div style={{ position: 'relative' }}>
+            <Search size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#A3A3A3' }} />
+            <input
+              value={mlQuery}
+              onChange={e => handleMlInput(e.target.value)}
+              placeholder="ex: Protetor solar, batom, sérum..."
+              style={{ ...inputStyle, paddingLeft: 36 }}
+            />
+            {mlBuscando && <Loader2 size={15} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: '#A3A3A3', animation: 'spin 1s linear infinite' }} />}
+          </div>
+        )}
+        {mlResultados.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 240, overflowY: 'auto', marginTop: 8, border: '1.5px solid #EDEDED', borderRadius: 12, padding: 6 }}>
+            {mlResultados.map(r => (
+              <motion.button key={r.id} type="button" whileTap={{ scale: 0.97 }}
+                onClick={() => handleSelecionarML(r)}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 10, border: 'none', background: '#FAFAFA', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)' }}>
+                <img src={r.thumbnail} alt={r.titulo} style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--foreground)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {r.titulo}
+                  </p>
+                  <p style={{ margin: '2px 0 0', fontSize: 12, color: '#1B5E5A', fontWeight: 700 }}>
+                    R$ {r.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    {r.vendedor && <span style={{ fontWeight: 400, color: '#767676' }}> · {r.vendedor}</span>}
+                  </p>
+                </div>
+              </motion.button>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Nome */}
       <div>
         <label style={{ fontSize: 12, fontWeight: 700, color: '#525252', marginBottom: 6, display: 'block' }}>
@@ -713,7 +814,7 @@ export default function WishlistPage() {
     toast.success(`"${nome}" removido da wishlist`)
   }
 
-  async function handleSalvar(dados: typeof FORM_EMPTY & { foto_blob: Blob | null }) {
+  async function handleSalvar(dados: typeof FORM_EMPTY & { foto_blob: Blob | null; ml_produto_id: string | null; ml_deeplink: string | null }) {
     if (!userId) return
     setSalvando(true)
     const supabase = createClient()
@@ -746,6 +847,8 @@ export default function WishlistPage() {
         prioridade: dados.prioridade,
         notas: dados.notas.trim() || null,
         status: 'quero',
+        ml_produto_id: dados.ml_produto_id ?? null,
+        ml_deeplink: dados.ml_deeplink ?? null,
       })
       .select()
       .single()
