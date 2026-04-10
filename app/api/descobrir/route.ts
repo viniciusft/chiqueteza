@@ -12,11 +12,31 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ produtos: [], total: 0 })
   }
 
+  // Verificação rápida de credenciais ML antes de tentar
+  if (provider === 'mercadolivre' && (!process.env.ML_APP_ID || !process.env.ML_APP_SECRET)) {
+    console.error('[descobrir] ML_APP_ID ou ML_APP_SECRET não configurados')
+    return NextResponse.json({
+      produtos: [],
+      total: 0,
+      erro: 'sem_credenciais',
+      erro_msg: 'Integração com Mercado Livre não configurada. Configure ML_APP_ID e ML_APP_SECRET no Vercel.',
+    }, { status: 503 })
+  }
+
   try {
     const resultado = await buscarEmProvider(provider, { query: q, categoria, limit })
-    return NextResponse.json({ produtos: resultado.produtos, total: resultado.total })
+
+    if (resultado.erro) {
+      console.error('[descobrir] provider retornou erro:', resultado.erro)
+    }
+
+    return NextResponse.json({
+      produtos: resultado.produtos,
+      total: resultado.total,
+      ...(resultado.erro ? { erro: resultado.erro } : {}),
+    })
   } catch (err) {
-    console.error('[descobrir] erro:', err)
-    return NextResponse.json({ produtos: [], total: 0, erro: 'Erro na busca' }, { status: 500 })
+    console.error('[descobrir] erro inesperado:', err)
+    return NextResponse.json({ produtos: [], total: 0, erro: 'Erro interno na busca' }, { status: 500 })
   }
 }

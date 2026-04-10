@@ -46,7 +46,8 @@ export async function getMLToken(): Promise<string | null> {
 
     if (!res.ok) {
       const body = await res.text()
-      console.error(`[ML token] erro ${res.status}:`, body)
+      console.error(`[ML token] erro ${res.status} ao obter client_credentials:`, body)
+      console.error('[ML token] verifique se ML_APP_ID e ML_APP_SECRET estão corretos no Vercel')
       return null
     }
 
