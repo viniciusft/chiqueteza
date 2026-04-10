@@ -270,7 +270,7 @@ export default function DescobrirPage() {
 
   return (
     <PageTransition>
-      <AppHeader title="Descobrir" />
+      <AppHeader />
       <PageContainer>
         <div style={{ paddingTop: 8, paddingBottom: 80 }}>
 
