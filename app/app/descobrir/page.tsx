@@ -8,11 +8,19 @@ import PageContainer from '@/components/ui/PageContainer'
 import { PageTransition } from '@/components/ui/PageTransition'
 import { createClient } from '@/lib/supabase/client'
 import { CATEGORIAS_BELEZA, CATEGORIA_ML_QUERY } from '@/lib/produtos/types'
-import { searchMLClient } from '@/lib/ml/clientSearch'
-import type { MLProdutoClient } from '@/lib/ml/clientSearch'
 
-// ProdutoUnificado alias para compatibilidade de tipo nos cartões
-type Produto = MLProdutoClient
+interface Produto {
+  id: string
+  provider: string
+  titulo: string
+  preco: number
+  thumbnail: string
+  permalink: string
+  deeplink: string
+  disponivel: boolean
+  vendedor: string | null
+  condicao: string
+}
 
 // ─── Cartão de produto ────────────────────────────────────────────────
 
@@ -227,10 +235,16 @@ export default function DescobrirPage() {
       // Enriquece a query com termos da categoria (melhor relevância)
       const termoCat = cat ? CATEGORIA_ML_QUERY[cat] ?? cat : ''
       const queryFinal = [termoCat, q.trim()].filter(Boolean).join(' ')
-      const resultados = await searchMLClient(queryFinal, 12)
+      const res = await fetch(`/api/armario/buscar-ml?q=${encodeURIComponent(queryFinal)}&limit=12`)
+      if (!res.ok) throw new Error(`status ${res.status}`)
+      const data = await res.json()
+      const resultados: Produto[] = (data.produtos ?? []).map((p: Produto) => ({
+        ...p,
+        provider: 'mercadolivre',
+      }))
       setProdutos(resultados)
     } catch {
-      setErroApi('Erro de conexão. Verifique sua internet.')
+      setErroApi('Não foi possível buscar produtos. Tente novamente.')
       setProdutos([])
     } finally {
       setCarregando(false)
