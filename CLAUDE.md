@@ -24,6 +24,16 @@ com alta recorrência em serviços de beleza.
 - prompt_tecnico dos looks NUNCA retornado em rotas públicas
 - Verificar créditos SEMPRE server-side, nunca confiar no frontend
 
+## Workflow de desenvolvimento
+Seguir `.claude/WORKFLOW.md` em toda implementação (Entender → Planejar → Pesquisar → Implementar → Verificar → Documentar).
+Antes de cada push: atualizar `.claude/STATUS.md`, `.claude/features/[feature].md` e `/app/app/admin/page.tsx` se necessário.
+
+## Contexto por sessão
+- `.claude/STATUS.md` — o que está em andamento, bloqueado e concluído
+- `.claude/features/*.md` — contexto técnico detalhado por feature
+- `.claude/WORKFLOW.md` — fluxo completo de desenvolvimento + checklist de segurança
+- `/app/app/admin` — dashboard de saúde do app (env vars + stats + feature status)
+
 ---
 
 ## Identidade Visual
@@ -207,16 +217,28 @@ mas NÃO está implementado ainda. Provider será escolhido na V2.
 - Sistema de planos e créditos (banco criado)
 - Design system com paleta Chiqueteza
 - Cache stale-while-revalidate (lib/cache/ + useCache hook)
-- Service Worker PWA (public/sw.js)
+- Service Worker PWA (public/sw.js) com listeners de push + notificationclick
 - Visagismo + Colorimetria: upload, análise Gemini, resultado, foto salva no Storage
 - Upload com preview mode e dois inputs separados (câmera / galeria)
 - Diário de Looks: registro pessoal + galeria pública com curtidas
 - Checklist de Autocuidado: rotinas, streaks, drag-and-drop, lembretes
 - Armário Digital: produtos em posse, nível de uso, ciclo completo
-- Integração Mercado Livre: busca API pública, deeplinks de afiliado
+- Armário — auto-match ML silencioso: após salvar produto, busca e vincula automaticamente no ML
+- Wishlist com busca ML integrada: campo de busca no bottom sheet pré-preenche formulário
+- Wishlist — badge "Ver no ML" quando produto tem deeplink salvo
+- Página Descobrir (`/app/descobrir`): busca de produtos por categoria, grid 2 colunas, salvar na wishlist
+- Integração Mercado Livre: busca server-side com OAuth authorization_code + deeplinks de afiliado
 - OCR de embalagem: Gemini Flash extrai nome/marca/categoria de foto
 - Wishlist → Armário: migração automática ao marcar como comprado
 - Jobs Inngest: verificação diária de preços ML + alertas de reposição
+- Push Notifications: VAPID + service worker + endpoints subscribe/send
+
+### ⚠️ Pendente de configuração (funcionalidade implementada mas bloqueada)
+- **ML_REFRESH_TOKEN**: busca ML não funciona até o setup OAuth ser feito
+  → Visitar `/api/ml/setup` em produção após configurar o portal ML
+  → Checar seção "Mercado Livre — OAuth" abaixo para instruções completas
+- **VAPID Keys**: push notifications não funcionam até as keys serem adicionadas na Vercel
+  → Gerar com `npx web-push generate-vapid-keys` e salvar NEXT_PUBLIC_VAPID_KEY + VAPID_PRIVATE_KEY
 
 ### Em desenvolvimento (V2)
 - Try-On de maquiagem
@@ -316,14 +338,37 @@ mas NÃO está implementado ainda. Provider será escolhido na V2.
 
 ## Variáveis de Ambiente
 ```
-NEXT_PUBLIC_SITE_URL
+# URL pública do site
+NEXT_PUBLIC_SITE_URL=https://chiqueteza.vercel.app
+
+# Supabase
 NEXT_PUBLIC_SUPABASE_URL=https://zzrlrrzdusrtkkyvtirm.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY
-SUPABASE_SERVICE_ROLE_KEY
-GEMINI_API_KEY
-FAL_KEY
-NEXT_PUBLIC_VAPID_KEY
-VAPID_PRIVATE_KEY
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+
+# IA
+GEMINI_API_KEY=
+FAL_KEY=                        # Reservado para geração de imagens (V2)
+
+# Mercado Livre — OAuth (server-side only)
+ML_APP_ID=                      # App ID do portal developers.mercadolivre.com.br
+ML_APP_SECRET=                  # Secret Key do mesmo portal
+ML_REFRESH_TOKEN=               # ⚠️ PENDENTE — obter via /api/ml/setup (ver seção abaixo)
+
+# Mercado Livre — Afiliados (server-side)
+ML_AFFILIATE_TRACKING_ID=       # Portal ML Afiliados → matt_tool
+ML_AFFILIATE_WORD=              # Portal ML Afiliados → matt_word
+# Versão pública para deeplinks client-side (não são segredos — aparecem em todas as URLs)
+NEXT_PUBLIC_ML_AFFILIATE_TRACKING_ID=
+NEXT_PUBLIC_ML_AFFILIATE_WORD=
+
+# Push Notifications (VAPID)
+NEXT_PUBLIC_VAPID_KEY=          # Gerar: npx web-push generate-vapid-keys
+VAPID_PRIVATE_KEY=              # Mesmo comando acima
+
+# Inngest (jobs agendados)
+INNGEST_EVENT_KEY=
+INNGEST_SIGNING_KEY=
 ```
 
 ---
@@ -394,8 +439,11 @@ VAPID_PRIVATE_KEY
 
 ### Wishlist
 - `wishlist_produtos`: id, usuario_id, nome, marca, categoria, subcategoria, preco_estimado, foto_url, link_compra, status ('quero' | 'tenho' | 'comprei'), prioridade ('alta' | 'media' | 'baixa'), notas, tags, ordem, created_at
+- Colunas ML: `ml_produto_id`, `ml_deeplink`, `armario_id` (link quando migrado para o armário)
 - Storage: bucket `wishlist-fotos`, path `{userId}/{uuid}.jpg`
 - Status flow na UI: apenas `quero` e `comprei` (sem `tenho` — legado mantido no banco)
+- Badge "Ver no ML" aparece no card quando `ml_deeplink` está preenchido
+- Bottom sheet de adicionar tem busca ML no topo: busca em `/api/armario/buscar-ml`, pré-preenche nome/marca/preço/link ao selecionar, salva ml_produto_id + ml_deeplink no insert
 
 ---
 
@@ -435,13 +483,7 @@ VAPID_PRIVATE_KEY
 - `status` é calculado automaticamente pelo trigger SQL — não forçar manualmente
 - `data_fim_estimada`: calculado como `data_abertura + dias por frequência` (diaria=30, semanal=90, mensal=180, raramente=365)
 - Nível ≤ 15% → status muda para 'acabando' automaticamente
-
-### Variáveis de Ambiente (Armário)
-```
-ML_AFFILIATE_TRACKING_ID=          # Portal ML Afiliados após aprovação
-INNGEST_EVENT_KEY=                  # Portal inngest.com
-INNGEST_SIGNING_KEY=                # Portal inngest.com
-```
+- Tab "🔍 ML" foi REMOVIDA do formulário do Armário — o match é feito automaticamente após salvar
 
 ### Jobs Inngest
 - `verificar-precos-ml`: cron `0 9 * * *` — checa preços via `getMLItemDetails()`, salva em `historico_precos`, atualiza `ml_preco_atual` e `ml_preco_minimo`
@@ -453,8 +495,96 @@ INNGEST_SIGNING_KEY=                # Portal inngest.com
 - `/app/armario` — armário digital (auth obrigatório)
 - `/app/armario?nome=...&marca=...&wishlist_id=...` — abre form pré-preenchido (vindo da wishlist)
 - `/app/armario?aba=acabando` — abre na aba de produtos acabando
-- `GET /api/armario/buscar-ml?q=texto` — busca produtos na API ML (server-side)
+- `GET /api/armario/buscar-ml?q=texto&limit=N` — busca produtos na API ML (server-side, limit padrão 10)
 - `POST /api/armario/ocr-foto` — OCR de embalagem via Gemini (autenticado, server-side)
+
+---
+
+## Mercado Livre — OAuth (CRÍTICO)
+
+### Por que `client_credentials` não funciona para busca
+O ML não suporta `client_credentials` para o endpoint de search (`/sites/MLB/search`).
+Esse grant dá apenas acesso app-level (webhooks, notificações) — sem escopo de marketplace.
+Browser também não funciona: ML bloqueia CORS de origens arbitrárias.
+
+### Solução: authorization_code + refresh_token
+1. Fluxo feito **uma vez** pelo operador do app
+2. Gera `refresh_token` (válido 6 meses) salvo como env var
+3. Server-side usa `grant_type=refresh_token` para obter `access_token` (6h)
+4. `access_token` fica em cache de memória — uma renovação por cold start
+
+### Setup (quando ML_REFRESH_TOKEN ainda não está configurado)
+1. No portal ML (`developers.mercadolivre.com.br` → sua aplicação):
+   - Habilitar **"Código de Autorização"** (Authorization Code)
+   - Habilitar **"Refresh Token"**
+   - Definir redirect URI: `https://chiqueteza.vercel.app/api/ml/callback`
+2. Visitar `https://chiqueteza.vercel.app/api/ml/setup`
+3. Autorizar o app na tela do ML
+4. Copiar o `ML_REFRESH_TOKEN` exibido na página de callback
+5. Adicionar na Vercel → All Environments → Redeploy
+
+### Renovação (após 6 meses)
+Visitar `/api/ml/setup` novamente e repetir o processo.
+Os logs da Vercel mostram `[ML token] novo refresh_token emitido` quando há rotação.
+
+### Lib ML — arquivos
+- `lib/ml/token.ts` — obtém access_token via refresh_token; cache em memória
+- `lib/ml/searchProducts.ts` — busca com Bearer token; sem filtros category/condition
+- `lib/ml/buildDeeplink.ts` — adiciona matt_tool + matt_word ao permalink (server-side)
+- ~~`lib/ml/clientSearch.ts`~~ — REMOVIDO (não funciona: CORS + auth)
+
+### Lib Produtos — multi-provider (futuro: Shopee, Magalu)
+- `lib/produtos/types.ts` — interface `ProdutoUnificado`, `CATEGORIAS_BELEZA`, `CATEGORIA_ML_QUERY`
+- `lib/produtos/providers/ml.ts` — adapta MLProduto → ProdutoUnificado
+- `lib/produtos/providers/index.ts` — orchestrator extensível
+
+### Rotas ML
+- `GET /api/ml/setup` — redireciona para OAuth ML (one-time setup)
+- `GET /api/ml/callback?code=XXX` — troca code por refresh_token, exibe na tela
+
+---
+
+## Push Notifications
+
+### Arquitetura
+- Service Worker: `public/sw.js` — listeners `push` e `notificationclick`
+- Componente: `components/ui/NotificationPermission.tsx` — banner 4s após abertura do app
+- Tabela: `push_subscriptions` — armazena PushSubscription JSON por usuária
+
+### Rotas
+- `POST /api/push/subscribe` — salva subscription no Supabase (autenticado)
+- `DELETE /api/push/subscribe` — remove subscription
+- `POST /api/push/send` — envia push (autenticado via SUPABASE_SERVICE_ROLE_KEY + VAPID)
+
+### Variáveis necessárias
+```
+NEXT_PUBLIC_VAPID_KEY=   # chave pública (passa para o browser)
+VAPID_PRIVATE_KEY=       # chave privada (nunca exposta)
+```
+Gerar com: `npx web-push generate-vapid-keys`
+
+### ⚠️ Status atual
+VAPID keys ainda não foram adicionadas na Vercel. Banner de permissão está no layout
+mas a subscrição falha silenciosamente até as keys serem configuradas.
+
+---
+
+## Descobrir (`/app/descobrir`)
+
+### O que é
+Página de busca de produtos de beleza. Acessível via quick action na home (não é tab).
+Permite buscar por texto + filtrar por categoria. Salva produto direto na wishlist.
+
+### Funcionamento
+- Input com debounce 400ms → `GET /api/armario/buscar-ml?q=...&limit=12`
+- Pills de categoria (Skincare, Maquiagem, Perfume, Cabelo, Corpo, Unhas)
+  cada categoria tem um termo ML enriquecido em `CATEGORIA_ML_QUERY`
+- Grid 2 colunas com thumbnail, nome, preço, botão "Ver no ML" + botão salvar wishlist
+- Ao salvar: insert em `wishlist_produtos` com ml_produto_id + ml_deeplink
+
+### Tipos locais
+A página define `interface Produto` localmente (não importa de clientSearch — removido).
+`provider` é adicionado como `'mercadolivre'` após receber da API.
 
 ---
 

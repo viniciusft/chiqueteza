@@ -11,8 +11,6 @@ import {
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { searchMLClient } from '@/lib/ml/clientSearch'
-import type { MLProdutoClient } from '@/lib/ml/clientSearch'
 import AppHeader from '@/components/ui/AppHeader'
 import PageContainer from '@/components/ui/PageContainer'
 import EmptyState from '@/components/ui/EmptyState'
@@ -40,8 +38,17 @@ interface ProdutoWishlist {
   ml_deeplink: string | null
 }
 
-// MLResultado agora é MLProdutoClient (busca client-side direta à API ML)
-type MLResultado = MLProdutoClient
+interface MLResultado {
+  id: string
+  titulo: string
+  preco: number
+  thumbnail: string
+  permalink: string
+  deeplink: string
+  disponivel: boolean
+  vendedor: string | null
+  condicao: string
+}
 
 // ─── Constants ────────────────────────────────────────────────────────
 
@@ -420,9 +427,9 @@ function FormAdicionarProduto({
     setMlBuscando(true)
     mlTimerRef.current = setTimeout(async () => {
       try {
-        // Busca diretamente do browser — Vercel bloqueia chamadas server-to-server na API ML
-        const resultados = await searchMLClient(v, 8)
-        setMlResultados(resultados)
+        const res = await fetch(`/api/armario/buscar-ml?q=${encodeURIComponent(v)}`)
+        const data = await res.json()
+        setMlResultados(data.produtos ?? [])
       } catch {
         setMlResultados([])
       } finally {

@@ -8,7 +8,6 @@ import { Plus, X, Camera, Trash2, ChevronDown, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { searchMLClient } from '@/lib/ml/clientSearch'
 import AppHeader from '@/components/ui/AppHeader'
 import PageContainer from '@/components/ui/PageContainer'
 import EmptyState from '@/components/ui/EmptyState'
@@ -230,9 +229,9 @@ async function autoMatchML(
 ) {
   const q = [nome, marca].filter(Boolean).join(' ')
   try {
-    // Busca diretamente do browser — evita bloqueio de IP da Vercel na API do ML
-    const resultados = await searchMLClient(q, 5)
-    const primeiro = resultados[0]
+    const res = await fetch(`/api/armario/buscar-ml?q=${encodeURIComponent(q)}`)
+    const data = await res.json()
+    const primeiro = data.produtos?.[0]
     if (!primeiro) return
     await supabase.from('armario_produtos').update({
       ml_produto_id: primeiro.id,

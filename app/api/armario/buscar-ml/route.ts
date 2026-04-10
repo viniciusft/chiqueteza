@@ -3,14 +3,15 @@ import { searchMLProducts } from '@/lib/ml/searchProducts'
 import { buildMLDeeplink } from '@/lib/ml/buildDeeplink'
 
 export async function GET(req: NextRequest) {
-  const q = req.nextUrl.searchParams.get('q')
+  const q     = req.nextUrl.searchParams.get('q')
+  const limit = parseInt(req.nextUrl.searchParams.get('limit') ?? '10', 10)
 
   if (!q || q.trim().length < 2) {
     return NextResponse.json({ produtos: [] })
   }
 
   try {
-    const produtos = await searchMLProducts(q, 8)
+    const produtos = await searchMLProducts(q, Math.min(limit, 20))
     // Enriquecer com deeplink de afiliado
     const comDeeplink = produtos.map(p => ({
       ...p,
