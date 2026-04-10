@@ -2,19 +2,23 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, X, ShoppingBag, ExternalLink, ChevronRight, Sparkles } from 'lucide-react'
+import { Search, X, ExternalLink, ChevronRight, Sparkles } from 'lucide-react'
 import AppHeader from '@/components/ui/AppHeader'
 import PageContainer from '@/components/ui/PageContainer'
 import { PageTransition } from '@/components/ui/PageTransition'
 import { createClient } from '@/lib/supabase/client'
-import { CATEGORIAS_BELEZA } from '@/lib/produtos/types'
-import type { ProdutoUnificado } from '@/lib/produtos/types'
+import { CATEGORIAS_BELEZA, CATEGORIA_ML_QUERY } from '@/lib/produtos/types'
+import { searchMLClient } from '@/lib/ml/clientSearch'
+import type { MLProdutoClient } from '@/lib/ml/clientSearch'
+
+// ProdutoUnificado alias para compatibilidade de tipo nos cartões
+type Produto = MLProdutoClient
 
 // ─── Cartão de produto ────────────────────────────────────────────────
 
 function ProdutoCard({ produto, onSalvarWishlist }: {
-  produto: ProdutoUnificado
-  onSalvarWishlist: (p: ProdutoUnificado) => void
+  produto: Produto
+  onSalvarWishlist: (p: Produto) => void
 }) {
   const [salvando, setSalvando] = useState(false)
   const [salvo, setSalvo] = useState(false)
@@ -201,7 +205,7 @@ export default function DescobrirPage() {
   const supabase = createClient()
   const [query, setQuery] = useState('')
   const [categoria, setCategoria] = useState('')
-  const [produtos, setProdutos] = useState<ProdutoUnificado[]>([])
+  const [produtos, setProdutos] = useState<Produto[]>([])
   const [carregando, setCarregando] = useState(false)
   const [buscouUmaVez, setBuscouUmaVez] = useState(false)
   const [erroApi, setErroApi] = useState<string | null>(null)
@@ -220,18 +224,11 @@ export default function DescobrirPage() {
     setBuscouUmaVez(true)
     setErroApi(null)
     try {
-      const params = new URLSearchParams()
-      if (q.trim()) params.set('q', q.trim())
-      if (cat) params.set('categoria', cat)
-      params.set('limit', '12')
-      const res = await fetch(`/api/descobrir?${params}`)
-      const data = await res.json()
-      if (!res.ok || data.erro === 'sem_credenciais') {
-        setErroApi(data.erro_msg ?? 'Erro ao conectar com o Mercado Livre')
-        setProdutos([])
-      } else {
-        setProdutos(data.produtos ?? [])
-      }
+      // Enriquece a query com termos da categoria (melhor relevância)
+      const termoCat = cat ? CATEGORIA_ML_QUERY[cat] ?? cat : ''
+      const queryFinal = [termoCat, q.trim()].filter(Boolean).join(' ')
+      const resultados = await searchMLClient(queryFinal, 12)
+      setProdutos(resultados)
     } catch {
       setErroApi('Erro de conexão. Verifique sua internet.')
       setProdutos([])
@@ -252,7 +249,7 @@ export default function DescobrirPage() {
     setTimeout(() => setToast(null), 3000)
   }
 
-  async function handleSalvarWishlist(produto: ProdutoUnificado) {
+  async function handleSalvarWishlist(produto: Produto) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { showToast('Faça login para salvar na wishlist'); return }
 
@@ -262,11 +259,11 @@ export default function DescobrirPage() {
       marca: produto.vendedor ?? null,
       preco_estimado: produto.preco,
       link_compra: produto.permalink,
-      foto_url: produto.thumbnail ?? null,
+      foto_url: produto.thumbnail || null,
       status: 'quero',
       prioridade: 'media',
-      ml_produto_id: produto.provider === 'mercadolivre' ? produto.id : null,
-      ml_deeplink: produto.provider === 'mercadolivre' ? produto.deeplink : null,
+      ml_produto_id: produto.id,
+      ml_deeplink: produto.deeplink,
     })
 
     if (error) {
