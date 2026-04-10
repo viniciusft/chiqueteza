@@ -12,7 +12,7 @@ import { SkeletonList, SkeletonAppointment, SkeletonAlert } from '@/components/u
 import { StaggerList, StaggerItem } from '@/components/ui/StaggerList'
 import { setCache } from '@/lib/cache'
 import { CACHE_KEYS } from '@/lib/cache/keys'
-import { Sparkles, CalendarDays, Users, AlertTriangle, MessageCircle, ShoppingBag, Heart, GlassWater } from 'lucide-react'
+import { Sparkles, CalendarDays, Users, AlertTriangle, MessageCircle, ShoppingBag, Heart, GlassWater, Compass } from 'lucide-react'
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 
@@ -370,6 +370,22 @@ function HomeContent({ userId, nome: nomeInicial }: { userId: string; nome: stri
               icon={<GlassWater size={22} color="#D4A843" />}
               label="Armário"
               accent="rgba(212,168,67,0.12)"
+            />
+          </motion.div>
+
+          {/* Quick actions — linha 3 */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: 0.18 }}
+            className="flex items-start gap-2"
+            style={{ marginTop: -8 }}
+          >
+            <QuickAction
+              href="/app/descobrir"
+              icon={<Compass size={22} color="#A8C5CC" />}
+              label="Descobrir"
+              accent="rgba(168,197,204,0.18)"
             />
           </motion.div>
 
