@@ -234,20 +234,36 @@ function ProdutoCard({
 
           {/* Ação de status */}
           {efetivo === 'quero' ? (
-            <motion.button
-              whileTap={{ scale: 0.88 }}
-              onClick={() => onStatusChange(produto.id, 'comprei')}
-              style={{
-                flexShrink: 0,
-                padding: '6px 10px', borderRadius: 20,
-                border: '1.5px solid #1B5E5A',
-                background: 'rgba(27,94,90,0.09)', color: '#1B5E5A',
-                fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 700,
-                cursor: 'pointer', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 4,
-              }}
-            >
-              ✓ Comprei!
-            </motion.button>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
+              <motion.button
+                whileTap={{ scale: 0.88 }}
+                onClick={() => onStatusChange(produto.id, 'comprei')}
+                style={{
+                  padding: '6px 10px', borderRadius: 20,
+                  border: '1.5px solid #1B5E5A',
+                  background: 'rgba(27,94,90,0.09)', color: '#1B5E5A',
+                  fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 700,
+                  cursor: 'pointer', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 4,
+                }}
+              >
+                ✓ Comprei!
+              </motion.button>
+              {produto.ml_deeplink && (
+                <motion.button
+                  whileTap={{ scale: 0.88 }}
+                  onClick={() => window.open(produto.ml_deeplink!, '_blank')}
+                  style={{
+                    padding: '5px 9px', borderRadius: 20,
+                    border: '1.5px solid #F4A526',
+                    background: 'rgba(244,165,38,0.09)', color: '#C47F00',
+                    fontFamily: 'var(--font-body)', fontSize: 10, fontWeight: 700,
+                    cursor: 'pointer', whiteSpace: 'nowrap',
+                  }}
+                >
+                  🛒 Ver no ML
+                </motion.button>
+              )}
+            </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
               <span style={{
@@ -256,6 +272,21 @@ function ProdutoCard({
               }}>
                 🛍️ Comprado
               </span>
+              {produto.ml_deeplink && (
+                <motion.button
+                  whileTap={{ scale: 0.88 }}
+                  onClick={() => window.open(produto.ml_deeplink!, '_blank')}
+                  style={{
+                    padding: '4px 8px', borderRadius: 20,
+                    border: '1.5px solid #F4A526',
+                    background: 'rgba(244,165,38,0.09)', color: '#C47F00',
+                    fontFamily: 'var(--font-body)', fontSize: 10, fontWeight: 700,
+                    cursor: 'pointer', whiteSpace: 'nowrap',
+                  }}
+                >
+                  🛒 Ver no ML
+                </motion.button>
+              )}
               <motion.button
                 whileTap={{ scale: 0.9 }}
                 onClick={() => onStatusChange(produto.id, 'quero')}

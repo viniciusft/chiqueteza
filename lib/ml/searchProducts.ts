@@ -1,6 +1,8 @@
-// Busca de produtos na API pública do Mercado Livre (sem autenticação)
+// Busca de produtos na API do Mercado Livre
 // Documentação: https://developers.mercadolivre.com.br/pt_br/itens-e-buscas
-// Sem filtro de categoria — relevância garantida pelo parâmetro q
+// Requer autenticação: ML_APP_ID + ML_APP_SECRET (client_credentials, gratuito)
+
+import { getMLToken } from './token'
 
 export interface MLProduto {
   id: string
@@ -27,13 +29,22 @@ interface MLSearchResult {
 export async function searchMLProducts(query: string, limit = 10): Promise<MLProduto[]> {
   if (!query || query.trim().length < 2) return []
 
+  const token = await getMLToken()
+  if (!token) {
+    console.error('[ML search] sem token disponível — configure ML_APP_ID e ML_APP_SECRET')
+    return []
+  }
+
   const url = new URL('https://api.mercadolibre.com/sites/MLB/search')
   url.searchParams.set('q', query.trim())
   url.searchParams.set('limit', String(limit))
 
   const res = await fetch(url.toString(), {
     next: { revalidate: 300 }, // cache 5 min
-    headers: { 'Accept': 'application/json' },
+    headers: {
+      'Accept': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
     signal: AbortSignal.timeout(8000),
   })
 
@@ -60,9 +71,11 @@ export async function searchMLProducts(query: string, limit = 10): Promise<MLPro
 }
 
 export async function getMLItemDetails(mlId: string): Promise<{ preco: number; permalink: string; titulo: string } | null> {
+  const token = await getMLToken()
   try {
     const res = await fetch(`https://api.mercadolibre.com/items/${mlId}`, {
       next: { revalidate: 3600 },
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {},
       signal: AbortSignal.timeout(8000),
     })
     if (!res.ok) return null
