@@ -24,6 +24,16 @@ com alta recorrência em serviços de beleza.
 - prompt_tecnico dos looks NUNCA retornado em rotas públicas
 - Verificar créditos SEMPRE server-side, nunca confiar no frontend
 
+## Workflow de desenvolvimento
+Seguir `.claude/WORKFLOW.md` em toda implementação (Entender → Planejar → Pesquisar → Implementar → Verificar → Documentar).
+Antes de cada push: atualizar `.claude/STATUS.md`, `.claude/features/[feature].md` e `/app/app/admin/page.tsx` se necessário.
+
+## Contexto por sessão
+- `.claude/STATUS.md` — o que está em andamento, bloqueado e concluído
+- `.claude/features/*.md` — contexto técnico detalhado por feature
+- `.claude/WORKFLOW.md` — fluxo completo de desenvolvimento + checklist de segurança
+- `/app/app/admin` — dashboard de saúde do app (env vars + stats + feature status)
+
 ---
 
 ## Identidade Visual

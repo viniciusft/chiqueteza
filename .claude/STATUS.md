@@ -43,6 +43,7 @@
 | Jobs Inngest | Verificação diária de preços + alertas de reposição |
 | OCR de embalagem | Gemini extrai nome/marca/categoria |
 | OAuth ML endpoints | `/api/ml/setup` + `/api/ml/callback` |
+| Admin Dashboard | `/app/admin` — env health + stats + feature status |
 
 ---
 
