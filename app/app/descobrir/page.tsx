@@ -204,6 +204,7 @@ export default function DescobrirPage() {
   const [produtos, setProdutos] = useState<ProdutoUnificado[]>([])
   const [carregando, setCarregando] = useState(false)
   const [buscouUmaVez, setBuscouUmaVez] = useState(false)
+  const [erroApi, setErroApi] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -212,10 +213,12 @@ export default function DescobrirPage() {
     if (!q.trim() && !cat) {
       setProdutos([])
       setBuscouUmaVez(false)
+      setErroApi(null)
       return
     }
     setCarregando(true)
     setBuscouUmaVez(true)
+    setErroApi(null)
     try {
       const params = new URLSearchParams()
       if (q.trim()) params.set('q', q.trim())
@@ -223,8 +226,14 @@ export default function DescobrirPage() {
       params.set('limit', '12')
       const res = await fetch(`/api/descobrir?${params}`)
       const data = await res.json()
-      setProdutos(data.produtos ?? [])
+      if (!res.ok || data.erro === 'sem_credenciais') {
+        setErroApi(data.erro_msg ?? 'Erro ao conectar com o Mercado Livre')
+        setProdutos([])
+      } else {
+        setProdutos(data.produtos ?? [])
+      }
     } catch {
+      setErroApi('Erro de conexão. Verifique sua internet.')
       setProdutos([])
     } finally {
       setCarregando(false)
@@ -362,6 +371,19 @@ export default function DescobrirPage() {
           {carregando ? (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
+            </div>
+          ) : erroApi ? (
+            <div style={{
+              background: 'rgba(239,68,68,0.06)', border: '1.5px solid rgba(239,68,68,0.18)',
+              borderRadius: 16, padding: '20px 18px', textAlign: 'center',
+            }}>
+              <div style={{ fontSize: 36, marginBottom: 10 }}>⚠️</div>
+              <p style={{ margin: '0 0 6px', fontSize: 13, fontWeight: 700, color: '#EF4444', fontFamily: 'var(--font-body)' }}>
+                Não foi possível buscar
+              </p>
+              <p style={{ margin: 0, fontSize: 12, color: '#767676', fontFamily: 'var(--font-body)', lineHeight: 1.5 }}>
+                {erroApi}
+              </p>
             </div>
           ) : produtos.length > 0 ? (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
