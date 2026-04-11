@@ -3,6 +3,100 @@
 
 ---
 
+## Modo Celular — Linguagem Natural → Execução
+
+Quando a Vini envia um áudio transcrito, texto rápido ou ideia informal pelo celular,
+o Claude interpreta e classifica **antes de executar qualquer coisa**.
+
+### Como interpretar um pedido em linguagem natural
+
+**Passo 1 — Traduzir para técnico**
+Extrair da mensagem:
+- Qual feature está em foco?
+- O que deve mudar (comportamento, UI, dados, configuração)?
+- Qual o critério de sucesso ("está pronto quando…")?
+- Tem efeito colateral em outras partes do app?
+
+**Passo 2 — Classificar a tarefa**
+
+| Tipo | Símbolo | Critério |
+|---|---|---|
+| Claude faz sozinho | 🤖 | Só código, nada de env vars externas ou config em outros serviços |
+| Usuária precisa estar no computador | ✋ | Envolve Vercel, Supabase dashboard, portal ML, Inngest, etc. |
+| Depende de config pendente | ⏳ | Código existe mas só funciona após ✋ ser feito |
+
+**Passo 3 — Responder com plano antes de executar**
+```
+🔍 Entendi: [restatement técnico do pedido]
+
+🤖 Posso fazer agora: [lista]
+✋ Vai precisar fazer você: [lista]
+⏳ Fica bloqueado até: [condição]
+
+Começo pela [X]. Ok?
+```
+
+---
+
+## Tarefas Autônomas (🤖 — Claude faz sozinho)
+
+Estas tarefas **nunca precisam de ação da Vini** — só código.
+
+### UX / Interface
+- Melhorar animações, feedback visual, micro-interações
+- Revisar textos (copy, labels, mensagens de erro)
+- Corrigir layout em mobile
+- Adicionar estados de loading/empty/error em qualquer tela
+- Refatorar componentes grandes em componentes menores
+
+### Lógica e código
+- Corrigir bugs identificados no código
+- Otimizar queries Supabase (select específico, sem select *)
+- Adicionar validação de inputs
+- Melhorar tratamento de erros (try/catch, fallbacks)
+- Criar/atualizar tipos TypeScript
+- Extrair lógica repetida para hooks ou utils
+
+### Features que só precisam de banco (Supabase já configurado)
+- Novas telas que leem dados já existentes
+- Filtros, ordenações, buscas nas listas existentes
+- Histórico de preços — visualização em gráfico
+- Exportar lista do armário/wishlist como texto
+
+### Documentação e organização
+- Atualizar CLAUDE.md, STATUS.md, features/*.md
+- Criar novos feature docs
+- Melhorar a página /admin com novas métricas
+
+---
+
+## Tarefas que Precisam da Usuária (✋ — requer configuração externa)
+
+### Vercel
+- Adicionar/editar variáveis de ambiente (`ML_REFRESH_TOKEN`, VAPID keys, etc.)
+- Fazer redeploy após env vars
+- Ver logs de produção
+
+### Portal Mercado Livre
+- Habilitar Código de Autorização + Refresh Token
+- Mudar redirect URI
+- Visitar `/api/ml/setup` para autorizar e obter `ML_REFRESH_TOKEN`
+
+### Supabase Dashboard
+- Aprovar migrations críticas (não-reversíveis)
+- Verificar RLS de tabelas novas
+- Criar/editar buckets de storage
+
+### Inngest
+- Configurar webhook URL
+- Verificar histórico de execuções de jobs
+
+### Outros
+- Conta de afiliado Mercado Livre (obter `ML_AFFILIATE_TRACKING_ID`)
+- Geração de VAPID keys (`npx web-push generate-vapid-keys` — roda no terminal da Vini)
+
+---
+
 ## O Fluxo Completo
 
 ### 1. ENTENDER
@@ -10,7 +104,7 @@
 
 - Ler `STATUS.md` e `.claude/features/[feature].md` da feature em foco
 - Ler `CLAUDE.md` na raiz (regras absolutas + arquitetura)
-- Confirmar entendimento com a usuária: repetir o que vai ser feito + escopo
+- Confirmar entendimento: repetir o que vai ser feito + escopo
 - Fazer **perguntas-chave** antes de qualquer código:
   - Quais edge cases importam?
   - Afeta alguma feature existente?
@@ -100,7 +194,7 @@ git add -A && git commit -m "checkpoint: antes de [feature]"
 
 ```bash
 # TypeScript
-npx tsc --noEmit
+cd app && npx tsc --noEmit
 
 # Checar imports quebrados, refs a arquivos deletados
 grep -r "clientSearch\|TODO\|FIXME\|console\.log" app/ lib/ --include="*.ts" --include="*.tsx"
@@ -119,7 +213,7 @@ grep -r "clientSearch\|TODO\|FIXME\|console\.log" app/ lib/ --include="*.ts" --i
 - [ ] `.claude/features/[feature].md` — status, progresso, novas decisões técnicas
 - [ ] `.claude/STATUS.md` — se status da feature mudou
 - [ ] `CLAUDE.md` — se mudança arquitetural, novo padrão ou regra importante
-- [ ] `/app/app/admin/page.tsx` — se nova feature tem status/env var para monitorar
+- [ ] `/app/app/admin/_data/features.ts` — se nova feature tem status/env var para monitorar
 
 #### Commit
 ```bash
