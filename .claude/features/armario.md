@@ -1,13 +1,13 @@
 # Feature: Armário Digital
 
-**Status:** ✅ Concluído (auto-match ML dependente do ML_REFRESH_TOKEN)
-**Última atualização:** 2026-04-10
+**Status:** ✅ Concluído — v2 (7 novas features)
+**Última atualização:** 2026-04-11
 
 ---
 
 ## O que é
-Registro dos produtos de beleza que a usuária possui. Rastreia nível de uso, validade e preço no ML.
-O auto-match vincula automaticamente cada produto ao ML após salvar, sem interação da usuária.
+Registro dos produtos de beleza que a usuária possui. Rastreia nível de uso através de
+check-ins manuais, validade e preço no ML. A v2 transforma o armário num diário de uso inteligente.
 
 ---
 
@@ -15,68 +15,99 @@ O auto-match vincula automaticamente cada produto ao ML após salvar, sem intera
 
 | Arquivo | O que faz |
 |---|---|
-| `app/app/armario/page.tsx` | Página completa (lista + formulário + auto-match) |
-| `app/api/armario/buscar-ml/route.ts` | Busca ML server-side (usado por auto-match e wishlist) |
-| `app/api/armario/ocr-foto/route.ts` | OCR de embalagem via Gemini (extrai nome/marca/categoria) |
+| `app/app/armario/page.tsx` | Orquestrador: estado global, data fetching, handlers |
+| `app/app/armario/_components/ProdutoCard.tsx` | Card de produto com todas as ações |
+| `app/app/armario/_components/FormAdicionarProduto.tsx` | Formulário add/edit (manual + OCR) |
+| `app/app/armario/_components/AvaliacaoSheet.tsx` | Bottom sheet de avaliação pós-finalização |
+| `app/app/armario/_components/AlertaRotatividade.tsx` | Card de sugestão de rotatividade |
+| `app/api/armario/buscar-ml/route.ts` | Busca ML server-side |
+| `app/api/armario/ocr-foto/route.ts` | OCR de embalagem via Gemini |
 
 ---
 
 ## Banco de dados — `armario_produtos`
 
-Colunas principais (ver CLAUDE.md para lista completa):
+### Colunas v1 (existentes)
 - `status` — calculado pelo trigger `trg_status_armario` (NUNCA forçar manualmente)
 - `nivel_atual` (0-100) → ≤15 muda status para `acabando` automaticamente
 - `ml_produto_id`, `ml_preco_atual`, `ml_deeplink` — preenchidos pelo auto-match
+- `frequencia_uso` ('diaria'|'semanal'|'mensal'|'raramente')
+- `ciclos_finalizados` (int, default 0)
+
+### Colunas v2 (adicionadas via migration)
+- `avaliacao` (smallint 1–5) — avaliação da usuária ao finalizar
+- `avaliacao_texto` (text) — review escrita ao finalizar
+- `data_finalizacao` (date) — quando o produto foi finalizado
+- `ciclos_finalizados` (int, default 0) — quantas vezes esse produto foi finalizado (conta frascos)
+- `rotatividade_ativa` (boolean, default false) — incluir nas sugestões de rotatividade
+- `ultimo_uso_em` (date) — última vez que a usuária registrou uso (para ordenação e rotatividade)
 
 ---
 
-## Progresso
+## Features v2
 
-- ✅ CRUD completo de produtos
-- ✅ Foto via câmera/galeria + OCR de embalagem
-- ✅ Nível de uso com slider (0-100%)
-- ✅ Trigger SQL de status automático
-- ✅ Tab "🔍 ML" **REMOVIDA** — apenas "✍️ Manual" e "📷 Foto"
-- ✅ Auto-match ML silencioso após salvar produto
-- ✅ Toast informativo quando auto-match encontra produto
-- ✅ Insert retorna `id` do produto criado para o auto-match usar
-- ✅ Jobs Inngest: verificação diária de preços + alertas de reposição
-- ✅ Vínculo bidirecional com Wishlist (`wishlist_id`)
+### 1. Registrar Uso ("Usar ✓")
+- Botão em cada card de produto ativo
+- Decremento por uso: `Math.max(1, Math.round(100 / diasEstimados))`
+  - Diária (30d) → ~3% por uso
+  - Semanal (90d) → ~1% por uso
+- Limita 1 uso por dia por produto (`ultimo_uso_em === hoje`)
+- Se nivel cair a 0 após uso → abre avaliação automaticamente
+- Badge "Usado hoje ✓" quando já registrou no dia
+
+### 2. Edição de produto
+- Ícone de lápis no card
+- Abre FormAdicionarProduto com `produtoExistente` preenchido
+- Salva via UPDATE (mesmo formulário, modo diferente)
+
+### 3. Fluxo "Acabou" com avaliação
+- Clica "Acabou" → abre AvaliacaoSheet
+- Estrelinhas 1–5 + campo de texto (review — estrutura para compartilhar futuramente)
+- Confirmar → produto vai para Finalizados, `ciclos_finalizados++`
+- Após confirmar: CTA "Comprar de novo no ML" (deeplink ou busca)
+
+### 4. Seção Finalizados + Reativação
+- Tab "Finalizados" na página
+- Card: foto/emoji, nome, "Xº frasco" (ciclos_finalizados), avaliação em estrelas, data
+- Botão "Reativar" → volta com `nivel_atual=100`, `status` calculado pelo trigger
+  - `ciclos_finalizados` mantido (NÃO zera)
+  - `data_finalizacao` limpa, `avaliacao`/`avaliacao_texto` limpos para nova avaliação
+- Botão "Comprar de novo" (deeplink ML se disponível)
+
+### 5. Indicador ML no card
+- Mostra `ml_preco_atual` formatado junto ao botão "Ver no ML"
+- Botão "×" para desvincular (limpa ml_produto_id, ml_preco_atual, ml_deeplink)
+
+### 6. Ordenação inteligente
+- Tab "Em Uso" ordenada por:
+  1. Status acabando (nivel ≤ 15) primeiro
+  2. Produtos não usados hoje antes dos já usados
+  3. `ultimo_uso_em` mais antigo (mais esquecido) primeiro
+  4. Frequência diária antes de semanal/mensal
+
+### 7. Rotatividade
+- Toggle `rotatividade_ativa` no formulário de edição
+- AlertaRotatividade: detecta 2+ produtos da mesma categoria com rotatividade ativa
+- Sugere o produto com `ultimo_uso_em` mais antigo (ou null = nunca usado)
+- Card de alerta na tela principal do Armário
 
 ---
 
-## Contexto técnico
+## Progresso v2
 
-### Auto-match (função `autoMatchML`)
-```typescript
-// Chamada fire-and-forget após insert bem-sucedido
-if (novoProduto?.id) {
-  void autoMatchML(supabase, novoProduto.id, form.nome, form.marca)
-}
-```
-- Busca `GET /api/armario/buscar-ml?q={nome} {marca}`
-- Pega primeiro resultado (`data.produtos?.[0]`)
-- Faz update em `armario_produtos`: `ml_produto_id`, `ml_preco_atual`, `ml_deeplink`
-- Toast sutil, não bloqueante. Falha silenciosa (best-effort)
-
-### Por que tab ML foi removida
-A visão do produto é rastreamento automático e inteligente. A usuária não deve precisar
-buscar e vincular manualmente. O auto-match faz isso por ela em background.
-
-### OCR de embalagem
-- Rota: `POST /api/armario/ocr-foto`
-- Gemini Flash recebe foto em base64 → retorna JSON com nome, marca, categoria
-- NUNCA expor GEMINI_API_KEY no frontend
-
-### Jobs Inngest
-- `verificar-precos-ml`: todo dia às 9h — usa `getMLItemDetails()` de `searchProducts.ts`
-- `alertas-reposicao`: todo dia às 8h — detecta nivel ≤ 15% ou data_fim ≤ hoje+7dias
+- ✅ Migration aplicada no Supabase
+- ✅ STATUS.md e features/armario.md atualizados
+- ✅ ProdutoCard.tsx
+- ✅ FormAdicionarProduto.tsx
+- ✅ AvaliacaoSheet.tsx
+- ✅ AlertaRotatividade.tsx
+- ✅ page.tsx reescrito como orquestrador slim
+- ✅ _types.ts com interfaces e constantes compartilhadas
 
 ---
 
 ## Regras críticas de banco
 - `status` é GENERATED pelo trigger — nunca incluir no insert/update manual
+- `ciclos_finalizados` — incrementar com `.update({ ciclos_finalizados: produto.ciclos_finalizados + 1 })`
 - `data_fim_estimada`: calculado como `data_abertura + dias` (diaria=30, semanal=90, mensal=180, raramente=365)
 - `origem`: 'manual' | 'busca_ml' | 'ocr_foto' | 'da_wishlist'
-</content>
-</invoke>

@@ -1,7 +1,7 @@
 # Status do Projeto — Chiqueteza
 > Atualizar este arquivo sempre que uma feature for concluída, iniciada ou bloqueada.
 
-**Última atualização:** 2026-04-10
+**Última atualização:** 2026-04-11
 **Branch de trabalho:** `claude/init-nextjs-project-Pu4XH`
 
 ---
@@ -32,7 +32,7 @@
 
 | Feature | Observação |
 |---|---|
-| Armário Digital | Auto-match ML silencioso pós-save |
+| Armário Digital v2 | Usar ✓, edição, avaliação, finalizados, rotatividade, ordenação inteligente |
 | Wishlist | Busca ML integrada + badge "Ver no ML" |
 | Descobrir | Página de busca por categoria |
 | Push Notifications | Arquitetura completa (sw.js + endpoints) |
