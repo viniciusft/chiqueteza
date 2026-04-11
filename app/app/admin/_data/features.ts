@@ -155,6 +155,26 @@ export const FEATURES: FeatureDef[] = [
     ],
   },
   {
+    id: 'armario',
+    emoji: '🪞',
+    nome: 'Armário Digital v2',
+    resumo: 'Rastreia produtos em posse com uso inteligente, avaliações e rotatividade',
+    oQue:
+      'A usuária registra os produtos que tem em casa e o app acompanha o nível de uso de cada um. Ao tocar "Usar ✓", o nível cai automaticamente conforme a frequência de uso cadastrada. Quando um produto acaba, ela avalia com estrelas e o produto vai para o histórico de finalizados. O app também sugere rotatividade entre produtos similares para não deixar nada esquecido.',
+    comoUsuariaVe: [
+      '→ Aba Armário → lista de produtos com barra de nível',
+      '→ Botão "Usar ✓" em cada card — registra 1 uso por dia e decrementa o nível',
+      '→ Botão "Acabou" → avaliação com estrelas → produto vai para o histórico',
+      '→ Aba "Hist." → todos os produtos finalizados com avaliação e contador de frascos',
+      '→ Alerta de rotatividade quando há 2+ produtos da mesma categoria parados',
+      '→ Preço do ML atualizado automaticamente no card quando vinculado',
+    ],
+    pageUrl: '/app/armario',
+    metricKey: 'armario',
+    status: () => 'ok',
+    problema: () => null,
+  },
+  {
     id: 'tryon',
     emoji: '💄',
     nome: 'Experimentar Maquiagem Virtualmente (Try-On)',
