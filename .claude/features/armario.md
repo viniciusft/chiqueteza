@@ -1,6 +1,6 @@
 # Feature: Armário Digital
 
-**Status:** 🔄 Em andamento — v2 (7 novas features)
+**Status:** ✅ Concluído — v2 (7 novas features)
 **Última atualização:** 2026-04-11
 
 ---
@@ -97,11 +97,12 @@ check-ins manuais, validade e preço no ML. A v2 transforma o armário num diár
 
 - ✅ Migration aplicada no Supabase
 - ✅ STATUS.md e features/armario.md atualizados
-- 🔄 ProdutoCard.tsx — em implementação
-- 🔄 FormAdicionarProduto.tsx — em implementação
-- 🔄 AvaliacaoSheet.tsx — em implementação
-- 🔄 AlertaRotatividade.tsx — em implementação
-- 🔄 page.tsx — reescrita em andamento
+- ✅ ProdutoCard.tsx
+- ✅ FormAdicionarProduto.tsx
+- ✅ AvaliacaoSheet.tsx
+- ✅ AlertaRotatividade.tsx
+- ✅ page.tsx reescrito como orquestrador slim
+- ✅ _types.ts com interfaces e constantes compartilhadas
 
 ---
 

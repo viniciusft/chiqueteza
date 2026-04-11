@@ -8,18 +8,6 @@
 
 ## 🔄 Em andamento agora
 
-### Armário v2 — 7 features
-**Feature doc:** `.claude/features/armario.md`
-**Status:** Em implementação
-**Escopo:**
-1. Registrar uso por produto (botão "Usar ✓" — decrementa nível)
-2. Edição de produto existente
-3. Fluxo "Acabou" com avaliação (estrelas + texto + CTA recompra ML)
-4. Seção Finalizados com contador de ciclos e reativação
-5. Indicador ML no card (preço + desvincular)
-6. Ordenação inteligente por urgência
-7. Sugestão de rotatividade (alerta no app)
-
 ### ML OAuth — Busca de Produtos
 **Feature doc:** `.claude/features/ml-oauth.md`
 **Status:** Implementado, aguardando ação manual da usuária
@@ -44,7 +32,7 @@
 
 | Feature | Observação |
 |---|---|
-| Armário Digital v1 | Auto-match ML silencioso pós-save |
+| Armário Digital v2 | Usar ✓, edição, avaliação, finalizados, rotatividade, ordenação inteligente |
 | Wishlist | Busca ML integrada + badge "Ver no ML" |
 | Descobrir | Página de busca por categoria |
 | Push Notifications | Arquitetura completa (sw.js + endpoints) |
