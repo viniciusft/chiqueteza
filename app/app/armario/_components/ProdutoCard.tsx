@@ -169,7 +169,7 @@ export function ProdutoCard({
                   </motion.button>
                 )}
                 {produto.ml_deeplink && (
-                  <motion.button whileTap={{ scale: 0.95 }} onClick={() => window.open(produto.ml_deeplink!, '_blank')}
+                  <motion.button whileTap={{ scale: 0.95 }} onClick={() => window.open(produto.ml_deeplink!, '_blank', 'noopener,noreferrer')}
                     style={{ flex: 1, padding: '7px 0', borderRadius: 10, border: 'none', background: 'rgba(255,229,0,0.15)', fontSize: 12, fontWeight: 700, cursor: 'pointer', color: '#C8960C', fontFamily: 'var(--font-body)' }}>
                     Comprar de novo 🛍️
                   </motion.button>
@@ -202,7 +202,7 @@ export function ProdutoCard({
                 {produto.ml_deeplink && (
                   <div style={{ position: 'relative', flex: 1 }}>
                     <motion.button whileTap={{ scale: 0.95 }}
-                      onClick={() => window.open(produto.ml_deeplink!, '_blank')}
+                      onClick={() => window.open(produto.ml_deeplink!, '_blank', 'noopener,noreferrer')}
                       style={{ width: '100%', padding: '7px 0', borderRadius: 10, border: 'none', background: 'rgba(255,229,0,0.15)', fontSize: 11, fontWeight: 700, cursor: 'pointer', color: '#C8960C', fontFamily: 'var(--font-body)', lineHeight: 1.2 }}>
                       {produto.ml_preco_atual
                         ? `R$${produto.ml_preco_atual.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
