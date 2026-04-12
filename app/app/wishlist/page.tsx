@@ -36,6 +36,7 @@ interface ProdutoWishlist {
   created_at: string
   ml_produto_id: string | null
   ml_deeplink: string | null
+  publico: boolean
 }
 
 interface MLResultado {
@@ -377,6 +378,7 @@ const FORM_EMPTY = {
   link_compra: '',
   prioridade: 'media' as ProdutoWishlist['prioridade'],
   notas: '',
+  publico: false,
 }
 
 async function comprimirFoto(file: File): Promise<{ blob: Blob; preview: string }> {
@@ -408,7 +410,7 @@ function FormAdicionarProduto({
   salvando: boolean
 }) {
   const [form, setForm] = useState(FORM_EMPTY)
-  const set = (k: keyof typeof FORM_EMPTY, v: string) => setForm(f => ({ ...f, [k]: v }))
+  const set = <K extends keyof typeof FORM_EMPTY>(k: K, v: typeof FORM_EMPTY[K]) => setForm(f => ({ ...f, [k]: v }))
   const inputFotoRef = useRef<HTMLInputElement>(null)
   const [fotoBlob, setFotoBlob] = useState<Blob | null>(null)
   const [fotoPreview, setFotoPreview] = useState<string | null>(null)
@@ -705,6 +707,39 @@ function FormAdicionarProduto({
         />
       </div>
 
+      {/* Toggle público */}
+      <button
+        type="button"
+        onClick={() => set('publico', !form.publico)}
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '12px 14px', borderRadius: 14, border: '1.5px solid #E8E8E8',
+          background: '#fff', cursor: 'pointer', width: '100%',
+        }}
+      >
+        <div style={{ textAlign: 'left' }}>
+          <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--foreground)', fontFamily: 'var(--font-body)' }}>
+            🌍 Público no meu perfil
+          </p>
+          <p style={{ margin: '2px 0 0', fontSize: 11, color: '#A3A3A3', fontFamily: 'var(--font-body)' }}>
+            Outras usuárias poderão ver este item na sua wishlist
+          </p>
+        </div>
+        <div style={{
+          width: 40, height: 22, borderRadius: 11, position: 'relative',
+          background: form.publico ? '#1B5E5A' : '#D0D0D0',
+          transition: 'background 0.2s', flexShrink: 0,
+        }}>
+          <div style={{
+            position: 'absolute', top: 3,
+            left: form.publico ? 20 : 2,
+            width: 16, height: 16, borderRadius: '50%',
+            background: '#fff', transition: 'left 0.2s',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+          }} />
+        </div>
+      </button>
+
       {/* Salvar */}
       <motion.button
         type="submit"
@@ -882,6 +917,7 @@ export default function WishlistPage() {
         status: 'quero',
         ml_produto_id: dados.ml_produto_id ?? null,
         ml_deeplink: dados.ml_deeplink ?? null,
+        publico: dados.publico ?? false,
       })
       .select()
       .single()
