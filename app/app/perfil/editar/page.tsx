@@ -25,8 +25,9 @@ export default function EditarPerfilPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const supabase = createClient()
-    void supabase.auth.getUser().then(async ({ data: { user } }) => {
+    void (async () => {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
       setUserId(user.id)
       const { data } = await supabase
@@ -41,7 +42,7 @@ export default function EditarPerfilPage() {
         setAvatarUrl(data.avatar_url ?? null)
       }
       setLoading(false)
-    })
+    })()
   }, [router])
 
   function validarUsername(val: string) {

@@ -86,12 +86,12 @@ export default function GaleriaPage() {
   async function enriquecerAutores(lista: LookPublico[]): Promise<LookComAutor[]> {
     if (lista.length === 0) return []
     const supabase = createClient()
-    const ids = [...new Set(lista.map((l) => l.usuario_id))]
+    const ids = Array.from(new Set(lista.map((l) => l.usuario_id)))
     const { data: perfis } = await supabase
       .from('perfis')
       .select('id, nome, username, avatar_url')
       .in('id', ids)
-    const map = Object.fromEntries((perfis ?? []).map((p) => [p.id, p as UsuarioBasico]))
+    const map = Object.fromEntries((perfis ?? []).map((p: UsuarioBasico) => [p.id, p]))
     return lista.map((l) => ({ ...l, autor: map[l.usuario_id] ?? null }))
   }
 
@@ -158,8 +158,9 @@ export default function GaleriaPage() {
 
   // Carregar userId + seguidos ao montar
   useEffect(() => {
-    const supabase = createClient()
-    void supabase.auth.getUser().then(async ({ data: { user } }) => {
+    void (async () => {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
       setUserId(user.id)
 
@@ -180,7 +181,7 @@ export default function GaleriaPage() {
       setPagina(0)
       await carregarGaleria('em_alta', 0, false, null, 'explorar', ids, user.id)
       setLoading(false)
-    })
+    })()
   }, [carregarGaleria])
 
   useEffect(() => {

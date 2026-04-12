@@ -22,15 +22,16 @@ export default function AppHeader({ actions }: AppHeaderProps) {
 
   useEffect(() => {
     const supabase = createClient()
-    void supabase.auth.getUser().then(async ({ data: { user } }) => {
+    void (async () => {
+      const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
-      const { data } = await supabase
+      const { data: perfil } = await supabase
         .from('perfis')
         .select('nome, username, avatar_url')
         .eq('id', user.id)
         .single()
-      if (data) setPerfil(data as PerfilBasico)
-    })
+      if (perfil) setPerfil(perfil as PerfilBasico)
+    })()
   }, [])
 
   return (

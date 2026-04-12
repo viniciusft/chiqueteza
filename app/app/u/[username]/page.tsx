@@ -157,7 +157,7 @@ export default function PerfilPublicoPage({ params }: { params: Promise<{ userna
     const supabase = createClient()
     const [
       { count: seguidores },
-      { count: seguindo: seguindoCount },
+      { count: seguindoCount },
       { count: looksPublicos },
       { data: meuSeg },
     ] = await Promise.all([
@@ -208,8 +208,9 @@ export default function PerfilPublicoPage({ params }: { params: Promise<{ userna
   }, [])
 
   useEffect(() => {
-    const supabase = createClient()
-    void supabase.auth.getUser().then(async ({ data: { user } }) => {
+    void (async () => {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
       setMeId(user.id)
 
@@ -230,7 +231,7 @@ export default function PerfilPublicoPage({ params }: { params: Promise<{ userna
         carregarLooks(p.id),
       ])
       setLoading(false)
-    })
+    })()
   }, [username, router, carregarPerfil, carregarLooks])
 
   useEffect(() => {

@@ -213,15 +213,14 @@ export default function PerfilPage() {
   }, [])
 
   useEffect(() => {
-    const supabase = createClient()
-    void supabase.auth.getUser().then(({ data: { user } }) => {
+    void (async () => {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
       setUserId(user.id)
-      void Promise.all([
-        carregarPerfil(user.id),
-        carregarLooks(user.id),
-      ]).finally(() => setLoading(false))
-    })
+      await Promise.all([carregarPerfil(user.id), carregarLooks(user.id)])
+      setLoading(false)
+    })()
   }, [router, carregarPerfil, carregarLooks])
 
   useEffect(() => {

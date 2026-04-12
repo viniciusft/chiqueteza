@@ -24,8 +24,9 @@ export default function BuscarPage() {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    const supabase = createClient()
-    void supabase.auth.getUser().then(async ({ data: { user } }) => {
+    void (async () => {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
       setMeId(user.id)
 
@@ -46,10 +47,10 @@ export default function BuscarPage() {
 
       const naoSigo = (meSegue ?? [])
         .map((s: Record<string, unknown>) => s.perfis as UsuarioBasico)
-        .filter((u) => !ids.has(u.id))
-        .map((u) => ({ ...u, seguindo: false }))
+        .filter((u: UsuarioBasico) => !ids.has(u.id))
+        .map((u: UsuarioBasico) => ({ ...u, seguindo: false }))
       setSugestoes(naoSigo)
-    })
+    })()
   }, [router])
 
   useEffect(() => {
