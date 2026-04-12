@@ -24,6 +24,7 @@ export interface ArmarioProduto {
   ciclos_finalizados: number
   rotatividade_ativa: boolean
   ultimo_uso_em: string | null
+  publico: boolean
   created_at: string
 }
 
