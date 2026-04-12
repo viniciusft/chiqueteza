@@ -175,6 +175,25 @@ export const FEATURES: FeatureDef[] = [
     problema: () => null,
   },
   {
+    id: 'social',
+    emoji: '👥',
+    nome: 'Rede Social de Beleza',
+    resumo: 'Perfis públicos, seguir usuárias e feed curado de looks e produtos',
+    oQue:
+      'Cada usuária tem um @username único e um perfil público com seus looks, armário e wishlist públicos. É possível seguir outras usuárias e ver um feed "Seguindo" na galeria com só o conteúdo de quem você segue. A busca de usuárias permite descobrir pessoas novas pelo nome ou @username.',
+    comoUsuariaVe: [
+      '→ Aba "Perfil" (ícone de avatar no header) → configurar @username e bio',
+      '→ Galeria → tab "Seguindo" — feed das pessoas que você segue',
+      '→ Galeria → tab "Explorar" — todos os looks públicos',
+      '→ Ícone de busca 🔍 na galeria → buscar usuárias por nome ou @username',
+      '→ Ao salvar look/produto no armário/item na wishlist → toggle "Público no meu perfil"',
+      '→ Perfil de outra usuária → botão "Seguir" / "Seguindo"',
+    ],
+    pageUrl: '/app/perfil',
+    status: () => 'ok',
+    problema: () => null,
+  },
+  {
     id: 'tryon',
     emoji: '💄',
     nome: 'Experimentar Maquiagem Virtualmente (Try-On)',

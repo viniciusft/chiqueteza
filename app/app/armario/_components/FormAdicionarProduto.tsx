@@ -50,6 +50,7 @@ export function FormAdicionarProduto({ userId, onSalvar, onClose, prefill, produ
     nivel_atual: produtoExistente?.nivel_atual ?? 100,
     notas: produtoExistente?.notas ?? '',
     rotatividade_ativa: produtoExistente?.rotatividade_ativa ?? false,
+    publico: produtoExistente?.publico ?? false,
   })
 
   const set = (k: keyof typeof form, v: string | number | boolean) =>
@@ -147,6 +148,7 @@ export function FormAdicionarProduto({ userId, onSalvar, onClose, prefill, produ
         nivel_atual: form.nivel_atual,
         notas: form.notas.trim() || null,
         rotatividade_ativa: form.rotatividade_ativa,
+        publico: form.publico,
         ...(fotoBlob ? { foto_url } : {}),
       }).eq('id', produtoExistente.id)
 
@@ -172,6 +174,7 @@ export function FormAdicionarProduto({ userId, onSalvar, onClose, prefill, produ
         notas: form.notas.trim() || null,
         wishlist_id: prefill?.wishlist_id || null,
         rotatividade_ativa: form.rotatividade_ativa,
+        publico: form.publico,
         origem: prefill?.wishlist_id ? 'da_wishlist' : 'manual',
       }).select('id').single()
 
@@ -331,6 +334,18 @@ export function FormAdicionarProduto({ userId, onSalvar, onClose, prefill, produ
         </div>
         <div style={{ width: 40, height: 24, borderRadius: 12, background: form.rotatividade_ativa ? '#1B5E5A' : '#D0D0D0', position: 'relative', transition: 'background 0.2s', flexShrink: 0, marginLeft: 12 }}>
           <div style={{ position: 'absolute', top: 2, left: form.rotatividade_ativa ? 18 : 2, width: 20, height: 20, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+        </div>
+      </button>
+
+      {/* Público */}
+      <button type="button" onClick={() => set('publico', !form.publico)}
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: 14, border: '1.5px solid #E8E8E8', background: '#fff', cursor: 'pointer' }}>
+        <div style={{ textAlign: 'left' }}>
+          <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--foreground)', fontFamily: 'var(--font-body)' }}>🌍 Público no meu perfil</p>
+          <p style={{ margin: '2px 0 0', fontSize: 11, color: '#A3A3A3', fontFamily: 'var(--font-body)' }}>Outras usuárias poderão ver este produto no seu perfil</p>
+        </div>
+        <div style={{ width: 40, height: 24, borderRadius: 12, background: form.publico ? '#1B5E5A' : '#D0D0D0', position: 'relative', transition: 'background 0.2s', flexShrink: 0, marginLeft: 12 }}>
+          <div style={{ position: 'absolute', top: 2, left: form.publico ? 18 : 2, width: 20, height: 20, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
         </div>
       </button>
 

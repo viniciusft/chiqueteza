@@ -1,21 +1,14 @@
 # Status do Projeto — Chiqueteza
 > Atualizar este arquivo sempre que uma feature for concluída, iniciada ou bloqueada.
 
-**Última atualização:** 2026-04-11
+**Última atualização:** 2026-04-12
 **Branch de trabalho:** `claude/init-nextjs-project-Pu4XH`
 
 ---
 
 ## 🔄 Em andamento agora
 
-### ML OAuth — Busca de Produtos
-**Feature doc:** `.claude/features/ml-oauth.md`
-**Status:** Implementado, aguardando ação manual da usuária
-**Bloqueio:** Usuária precisa:
-1. Habilitar "Código de Autorização" + "Refresh Token" no portal ML
-2. Mudar redirect URI para `https://chiqueteza.vercel.app/api/ml/callback`
-3. Visitar `/api/ml/setup` → autorizar → copiar `ML_REFRESH_TOKEN`
-4. Adicionar na Vercel → Redeploy
+Nenhuma feature em andamento. Ver backlog abaixo.
 
 ---
 
@@ -23,7 +16,7 @@
 
 | Feature | O que falta |
 |---|---|
-| Busca ML | `ML_REFRESH_TOKEN` na Vercel (ver bloqueio acima) |
+| Busca ML | `ML_REFRESH_TOKEN` na Vercel — visitar `/api/ml/setup` em produção |
 | Push Notifications | `NEXT_PUBLIC_VAPID_KEY` + `VAPID_PRIVATE_KEY` na Vercel |
 
 ---
@@ -32,18 +25,19 @@
 
 | Feature | Observação |
 |---|---|
-| Armário Digital v2 | Usar ✓, edição, avaliação, finalizados, rotatividade, ordenação inteligente |
-| Wishlist | Busca ML integrada + badge "Ver no ML" |
+| **Rede Social** | Perfis @username, seguir/seguindo, galeria Explorar/Seguindo, busca de usuárias, toggle público por item |
+| Armário Digital v2 | Usar ✓, edição, avaliação, finalizados, rotatividade, ordenação inteligente, toggle público |
+| Wishlist | Busca ML integrada + badge "Ver no ML" + toggle público |
 | Descobrir | Página de busca por categoria |
 | Push Notifications | Arquitetura completa (sw.js + endpoints) |
 | Multi-provider ML | lib/produtos/ preparada para Shopee/Magalu |
 | Visagismo + Colorimetria | Gemini Flash, resultado completo |
-| Diário de Looks | Galeria pública + curtidas |
+| Diário de Looks | Galeria pública + curtidas + feed social |
 | Checklist Autocuidado | Streaks + drag-and-drop |
 | Jobs Inngest | Verificação diária de preços + alertas de reposição |
 | OCR de embalagem | Gemini extrai nome/marca/categoria |
 | OAuth ML endpoints | `/api/ml/setup` + `/api/ml/callback` |
-| Admin Dashboard | `/app/admin` — env health + stats + feature status |
+| Admin Dashboard | `/app/admin` — env health + stats + feature status (inclui social) |
 
 ---
 
@@ -53,6 +47,8 @@
 - [ ] PremiumGate — componente de paywall com Stripe
 - [ ] Ideias de corte de cabelo (V3) — usa dados do visagismo
 - [ ] Matching de base colaborativo (V3)
+- [ ] Notificação push de novo seguidor (V2 social)
+- [ ] Comentários em looks (V2 social)
 
 ---
 
